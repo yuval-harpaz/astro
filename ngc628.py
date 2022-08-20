@@ -47,5 +47,5 @@ plt.imshow(img, origin='lower', cmap='gray')
 plt.axis('off')
 plt.text(500, 50, 'NGC 628. miri filters: f770w, f1000w, f1130w', color='w',weight='bold')
 plt.show(block=False)
-plt.imsave(dir+'/pics/'+'NGC_628_miri.png', np.flipud(img))
+plt.imsave(dir+'/pics/'+'NGC_628_miri.png', np.flipud(img), cmap='gray')
 
