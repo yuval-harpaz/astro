@@ -9,6 +9,8 @@ cartwheel_long.py
 ### NGC 628
 manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])<br>
 ngc629.py
+#### NIRCam
 ![Alt ngc628_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_nircam.png?raw=true)
+#### MIRI
 ![Alt ngc628_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_miri.png?raw=true)
 
