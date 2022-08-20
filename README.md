@@ -6,4 +6,9 @@ I followed the instructions recommended [here](https://github.com/spacetelescope
 get_cartwheel.py<br>
 cartwheel_long.py
 ![Alt nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/median_rgb.png?raw=true)
-### under construction
+### NGC 628
+manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])
+ngc629.py
+![Alt ngc628_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_nircam.png?raw=true)
+![Alt ngc628_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_miri.png?raw=true)
+

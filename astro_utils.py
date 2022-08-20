@@ -1,6 +1,7 @@
 
 from astropy.io import fits
 from astropy import wcs
+from reproject import reproject_interp
 import os
 import glob
 import matplotlib
@@ -10,12 +11,13 @@ import numpy as np
 from pathlib import Path
 from astropy.convolution import Ring2DKernel
 from scipy.ndimage.filters import median_filter
-
+from astroquery.mast import Observations
 
 def list_files(parent, search='*_cal.fits', exclude='', include=''):
     """
     List all fits files in subfolders of path.
     """
+    os.chdir(list_files.__code__.co_filename[:-14]+'data')
     os.chdir(parent)
     path = []
     for found in Path('./').rglob(search):
@@ -51,6 +53,7 @@ def mosaic_xy(path, plot=False):
     crval[:, :] = np.nan
     dims = np.ndarray((len(path), 1))
     size = []
+    pix = []
     for ii, p in enumerate(path):
         hdul = fits.open(p)
         w = wcs.WCS(hdul[1].header)
@@ -58,7 +61,10 @@ def mosaic_xy(path, plot=False):
             w0 = w.copy()
         crval[ii, :len(w.wcs.crval)] = w.wcs.crval
         size.append(w.array_shape)
+        pix.append(w.wcs.crpix)
         dims[ii] = len(w.array_shape)
+    # if len(np.unique(pix)) > 1:
+    #     raise ValueError('Images have different pixel scales')
     if len(np.unique(dims)) > 1:
         raise Exception('Images are not the same dimensions')
     size = np.array(size)
@@ -214,8 +220,79 @@ def optimize_xy(layers, square_size=100, tests=9, plot=False):
         plt.show(block=False)
     return bestx, besty, layers
 
+def download_fits(object_name, extension='_i2d.fits', mrp=True, include=''):
+    if len(include) == 0:  # make sure include is a list
+        include = []
+    elif type(include) == str:
+        include = [include]
+    if not os.path.isdir('data'):
+        os.mkdir('data')
+    os.chdir('data')
+    if not os.path.isdir(object_name.lower().replace(' ', '_')):
+        os.mkdir(object_name.lower().replace(' ', '_'))
+    os.chdir(object_name.lower().replace(' ', '_'))
+    obs_table = Observations.query_object(object_name)
+    if len(obs_table) == 0:
+        print('No observations found for {}'.format(object_name))
+        return
+    obs_table = obs_table[obs_table["dataRights"] == "PUBLIC"]
+    obs_table = obs_table[obs_table["dataproduct_type"] == "image"]
+    obs_table = obs_table[obs_table["obs_collection"] == "JWST"]
+    to_download = []
+    size = []
+    for obs in obs_table:
+        all = Observations.get_product_list(obs)
+        filt = all[all["productType"] == "SCIENCE"]
+        filt = filt[filt["dataRights"] == "PUBLIC"]
+        filt = Observations.filter_products(filt, extension=extension, mrp_only=mrp)
+
+        if len(filt) > 0:
+            if len(include) > 0:
+
+                for jj in filt:
+                    got_any = False  # when include = []
+                    for inc in include:
+                        if inc in jj['obs_id']:  ## looking for a dataset where filenames contain "something"
+                            got_any = True
+                    if got_any:
+                        size.append(int(jj['size']))
+                        to_download.append(jj)
+    total_size = int(np.round(np.sum(size)/1e6))
+    resp = input('Download {} files ({} MB) ?'.format(len(to_download), total_size))
+    manifest = []
+    if resp.lower() == 'y':
+        for jj in to_download:
+            manifest.append(Observations.download_products(jj))
+    else:
+        print('abort')
+    return manifest
+
+def reproject(path, project_to=0):
+    template = path[project_to]
+    # remove the template from the path
+    # path = path[:project_to] + path[project_to+1:]
+    hdu_temp = fits.open(template)
+    layers = np.ndarray((hdu_temp[1].shape[0], hdu_temp[1].shape[1], len(path)))
+    for ii, pp in enumerate(path):
+        hdu = fits.open(pp)
+        if ii == project_to:
+            layers[:,:,ii] = hdu[1].data
+        else:
+            reproj, _ = reproject_interp(hdu[1], hdu_temp[1].header)
+            layers[:, :, ii] = reproj
+    return layers
+
+
 if __name__ == '__main__':
-    path = list_files('Cartwheel/long', search='*.fits')
+
+    path = list_files('ngc_628', search='*nircam*.fits')
+    # get filename from full path
+    layers = reproject(path, project_to=1)
+
+    # manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])
+    # path = list_files('data/ngc_628', search='*miri*.fits')
+    # path = list_files('Cartwheel/long', search='*.fits')
+    path = list_files('ngc_628', search='*miri*1000*.fits')
     median = mosaic(path, plot=True, method='median')
     mn = 0.11
     mx = 1.7
