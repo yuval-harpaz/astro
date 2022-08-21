@@ -7,10 +7,13 @@ Imaging astronomy data from James Webb Space Telescope. See python [GitHub](http
 #### MIRI
 ![Alt cartwheel miri](https://github.com/yuval-harpaz/astro/blob/main/pics/cartwheel_miri.png?raw=true)
 ### NGC 628
-manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])<br>
-ngc629.py
 #### NIRCam
 ![Alt ngc628_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_nircam.png?raw=true)
 #### MIRI
 ![Alt ngc628_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_miri.png?raw=true)
+### NGC 1365
+#### NIRCam, MIRI
+![Alt ngc1365_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC1365_nircam_long.png?raw=true)
+#### MIRI
+![Alt ngc1365_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC1365_miri.png?raw=true)
 
