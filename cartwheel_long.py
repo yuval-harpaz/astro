@@ -4,7 +4,7 @@ matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 import os
-path = list_files('data/cartwheel', search='*.fits', exclude='clear')
+path = list_files('cartwheel', search='*.fits', exclude='clear')
 median = mosaic(path, plot=True, method='median')
 mn = 0.11
 mx = 1.7

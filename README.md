@@ -5,7 +5,7 @@ I followed the instructions recommended [here](https://github.com/spacetelescope
 ### Cartwheel Galaxy
 get_cartwheel.py<br>
 cartwheel_long.py
-![Alt nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/cartwheel.png?raw=true)
+![Alt nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/cartwheel_nircam.png?raw=true)
 ### NGC 628
 manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])<br>
 ngc629.py
@@ -13,4 +13,6 @@ ngc629.py
 ![Alt ngc628_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_nircam.png?raw=true)
 #### MIRI
 ![Alt ngc628_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_miri.png?raw=true)
+### Gallery
+[GALLERY.md]('https://github.com/yuval-harpaz/astro/blob/main/README.md')
 
