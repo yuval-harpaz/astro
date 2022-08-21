@@ -19,4 +19,7 @@ Imaging astronomy data from James Webb Space Telescope. See python [GitHub](http
 #### NIRCam, MIRI
 ![Alt carina_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/carina_nircam.png?raw=true)
 ![Alt carina_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/carina_miri.png?raw=true)
-
+### IC 1623B
+#### NIRCam+MIRI
+Okay, I cheated, I used DS9 to create the image, not python. Most of the light comes from NIRCam, some extra turquoise from MIRI. 
+![Alt ic_1623b](https://github.com/yuval-harpaz/astro/blob/main/pics/ic_1623b.png?raw=true)

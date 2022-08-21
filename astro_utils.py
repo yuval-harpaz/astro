@@ -221,6 +221,7 @@ def optimize_xy(layers, square_size=100, tests=9, plot=False):
     return bestx, besty, layers
 
 def download_fits(object_name, extension='_i2d.fits', mrp=True, include=''):
+    os.chdir(download_fits.__code__.co_filename[:-14])
     if len(include) == 0:  # make sure include is a list
         include = []
     elif type(include) == str:
@@ -258,7 +259,11 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include=''):
                         size.append(int(jj['size']))
                         to_download.append(jj)
     total_size = int(np.round(np.sum(size)/1e6))
-    resp = input('Download {} files ({} MB) ?'.format(len(to_download), total_size))
+    resp = 'n'
+    if len(to_download) == 0:
+        resp = input('Download {} files ({} MB) ?'.format(len(to_download), total_size))
+    else:
+        print('of '+len(obs_table)+' observations')
     manifest = []
     if resp.lower() == 'y':
         for jj in to_download:
@@ -284,7 +289,7 @@ def reproject(path, project_to=0):
 
 
 if __name__ == '__main__':
-
+    manifest = download_fits('IC 1623B')
     path = list_files('ngc_628', search='*nircam*.fits')
     # get filename from full path
     layers = reproject(path, project_to=1)
