@@ -14,6 +14,5 @@ Imaging astronomy data from James Webb Space Telescope. See python [GitHub](http
 ### NGC 1365
 #### NIRCam, MIRI
 ![Alt ngc1365_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC1365_nircam_long.png?raw=true)
-#### MIRI
 ![Alt ngc1365_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC1365_miri.png?raw=true)
 
