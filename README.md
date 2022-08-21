@@ -14,5 +14,5 @@ ngc629.py
 #### MIRI
 ![Alt ngc628_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC_628_miri.png?raw=true)
 ### Gallery
-[GALLERY.md](https://github.com/yuval-harpaz/astro/GALLERY.md)
+[GALLERY.md](https://github.com/yuval-harpaz/astro/blob/main/GALLERY.md)
 
