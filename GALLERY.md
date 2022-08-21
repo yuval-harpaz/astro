@@ -15,4 +15,8 @@ Imaging astronomy data from James Webb Space Telescope. See python [GitHub](http
 #### NIRCam, MIRI
 ![Alt ngc1365_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC1365_nircam_long.png?raw=true)
 ![Alt ngc1365_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/NGC1365_miri.png?raw=true)
+### Carina Nebula
+#### NIRCam, MIRI
+![Alt carina_nircam](https://github.com/yuval-harpaz/astro/blob/main/pics/carina_nircam_long.png?raw=true)
+![Alt carina_miri](https://github.com/yuval-harpaz/astro/blob/main/pics/carina_miri.png?raw=true)
 
