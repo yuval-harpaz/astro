@@ -74,6 +74,11 @@ def mosaic_xy(path, plot=False):
                 sz = sz[1:]
             elif sz[1] == sz[2]:
                 sz = sz[1:]
+            elif len(sz) == 3:
+                if (sz[0] > 500) and (sz[1] < 100) and (sz[2] < 100):
+                    sz = sz[1:]
+                else:
+                    raise Exception('unexpected size '+str(sz))
             else:
                 raise Exception('unexpected size '+str(sz))
             size[isz, 0:2] = sz
@@ -220,7 +225,7 @@ def optimize_xy(layers, square_size=100, tests=9, plot=False):
         plt.show(block=False)
     return bestx, besty, layers
 
-def download_fits(object_name, extension='_i2d.fits', mrp=True, include=''):
+def download_fits(object_name, extension='_i2d.fits', mrp=True, include='', ptype='image'):
     os.chdir(download_fits.__code__.co_filename[:-14])
     if len(include) == 0:  # make sure include is a list
         include = []
@@ -237,13 +242,14 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include=''):
         print('No observations found for {}'.format(object_name))
         return
     obs_table = obs_table[obs_table["dataRights"] == "PUBLIC"]
-    obs_table = obs_table[obs_table["dataproduct_type"] == "image"]
+    if len(ptype) > 0:
+        obs_table = obs_table[obs_table["dataproduct_type"] == ptype]
     obs_table = obs_table[obs_table["obs_collection"] == "JWST"]
     to_download = []
     size = []
     for obs in obs_table:
         all = Observations.get_product_list(obs)
-        filt = all[all["productType"] == "SCIENCE"]
+        filt = all[(all["productType"] == "SCIENCE") | (all["productType"] == "science")]
         filt = filt[filt["dataRights"] == "PUBLIC"]
         filt = Observations.filter_products(filt, extension=extension, mrp_only=mrp)
 
@@ -261,9 +267,10 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include=''):
     total_size = int(np.round(np.sum(size)/1e6))
     resp = 'n'
     if len(to_download) == 0:
-        resp = input('Download {} files ({} MB) ?'.format(len(to_download), total_size))
+        print('found 0 of ' + str(len(obs_table)) + ' observations')
     else:
-        print('of '+len(obs_table)+' observations')
+        print('found '+str(len(to_download))+' of '+str(len(obs_table))+' observations')
+        resp = input('Download {} files ({} MB) ?'.format(len(to_download), total_size))
     manifest = []
     if resp.lower() == 'y':
         for jj in to_download:
@@ -289,45 +296,50 @@ def reproject(path, project_to=0):
 
 
 if __name__ == '__main__':
-    manifest = download_fits('IC 1623B')
-    path = list_files('ngc_628', search='*nircam*.fits')
-    # get filename from full path
-    layers = reproject(path, project_to=1)
+    include = 'jw02732-c1001_t004_miri_ch2'
+    download_fits('ngc 7319', extension='.fits', mrp=True, include=include, ptype='')
 
-    # manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])
-    # path = list_files('data/ngc_628', search='*miri*.fits')
-    # path = list_files('Cartwheel/long', search='*.fits')
-    path = list_files('ngc_628', search='*miri*1000*.fits')
-    median = mosaic(path, plot=True, method='median')
-    mn = 0.11
-    mx = 1.7
-    plt.clim(mn, mx)
-    plt.show(block=False)
-    img = (median-mn)/(mx-mn)*255
-    img[img < 0] = 0
-    img[img > 255] = 255
-    img = img.astype(np.uint8)
-    img[1947:1952, 1019:1024] = 255
-    img[775:777, 2042:2045] = 255
-    plt.imsave('median.png', np.flipud(img), cmap='gray')
-    plt.imsave('median_hot.png', np.flipud(img), cmap='hot')
-    layers = mosaic(path, plot=False, method='layers')
-    layers[layers == 0] = np.nan
-    rgb = np.zeros((median.shape[0], median.shape[1], 3))
-    for ii in range(3):
-        layer1 = np.nanmedian(layers[:, :, ii*8:ii*8+8], axis=2)
-        layer1[np.isnan(layer1)] = np.nanmedian(layer1)
-        rgb[:, :, ii] = layer1
-    img = (rgb - mn) / (mx - mn) * 255
-    img[img < 0] = 0
-    img[img > 255] = 255
-    img = img.astype(np.uint8)
-    img[1945:1952, 1018:1025] = 255
-    img[773:777, 2042:2046] = 255
-    plt.imsave('median_rgb.png', img)
-    mosaic(path, plot=True, method='mean')
-    plt.clim(0.2, 1.5)
-    plt.show(block=False)
+    # path3 = list_files('/home/innereye/JWST/Quintet/ngc_7319/MAST_2022-08-27T0857/JWST/', search='*s3d.fits')
+    # xy, size = mosaic_xy(path3, plot=True)
+    # manifest = download_fits('IC 1623B')
+    # path = list_files('ngc_628', search='*nircam*.fits')
+    # # get filename from full path
+    # layers = reproject(path, project_to=1)
+    #
+    # # manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])
+    # # path = list_files('data/ngc_628', search='*miri*.fits')
+    # # path = list_files('Cartwheel/long', search='*.fits')
+    # path = list_files('ngc_628', search='*miri*1000*.fits')
+    # median = mosaic(path, plot=True, method='median')
+    # mn = 0.11
+    # mx = 1.7
+    # plt.clim(mn, mx)
+    # plt.show(block=False)
+    # img = (median-mn)/(mx-mn)*255
+    # img[img < 0] = 0
+    # img[img > 255] = 255
+    # img = img.astype(np.uint8)
+    # img[1947:1952, 1019:1024] = 255
+    # img[775:777, 2042:2045] = 255
+    # plt.imsave('median.png', np.flipud(img), cmap='gray')
+    # plt.imsave('median_hot.png', np.flipud(img), cmap='hot')
+    # layers = mosaic(path, plot=False, method='layers')
+    # layers[layers == 0] = np.nan
+    # rgb = np.zeros((median.shape[0], median.shape[1], 3))
+    # for ii in range(3):
+    #     layer1 = np.nanmedian(layers[:, :, ii*8:ii*8+8], axis=2)
+    #     layer1[np.isnan(layer1)] = np.nanmedian(layer1)
+    #     rgb[:, :, ii] = layer1
+    # img = (rgb - mn) / (mx - mn) * 255
+    # img[img < 0] = 0
+    # img[img > 255] = 255
+    # img = img.astype(np.uint8)
+    # img[1945:1952, 1018:1025] = 255
+    # img[773:777, 2042:2046] = 255
+    # plt.imsave('median_rgb.png', img)
+    # mosaic(path, plot=True, method='mean')
+    # plt.clim(0.2, 1.5)
+    # plt.show(block=False)
 
 
     # path = list_files('/home/innereye/JWST/MAST_2022-08-09T0239/JWST/', include='_02101_')
