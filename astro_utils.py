@@ -1,23 +1,29 @@
-
+import pandas as pd
 from astropy.io import fits
 from astropy import wcs
 from reproject import reproject_interp
 import os
-import glob
+# import glob
 import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
-from astropy.convolution import Ring2DKernel
-from scipy.ndimage.filters import median_filter
+from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
+from scipy.ndimage import median_filter, maximum_filter
+from scipy.signal import find_peaks
 from astroquery.mast import Observations
+from skimage.morphology import disk
+
+# root = __file__[:-14]
+# root = list_files.__code__.co_filename[:-14]
+root = os.environ['HOME']+'/astro/'
 
 def list_files(parent, search='*_cal.fits', exclude='', include=''):
     """
     List all fits files in subfolders of path.
     """
-    os.chdir(list_files.__code__.co_filename[:-14]+'data')
+    os.chdir(root+'data')
     os.chdir(parent)
     path = []
     for found in Path('./').rglob(search):
@@ -179,7 +185,7 @@ def optimize_xy(layers, square_size=100, tests=9, plot=False):
     szx05 = int(layers.shape[0]/2-square_size/2)
     szy05 = int(layers.shape[1]/2-square_size/2)
     square0 = layers[szx05:szx05+square_size, szy05:szy05+square_size, 0]
-    ring = Ring2DKernel(9, 3)
+    # ring = Ring2DKernel(9, 3)
     # square0 = median_filter(square0, footprint=ring.array)
     square0 = median_filter(square0, footprint=np.ones((2, 2)))
     data_vec0 = square0.flatten()
@@ -280,6 +286,7 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include='', ptyp
     return manifest
 
 def reproject(path, project_to=0):
+    # FIXME add support for exact and adaptive methods
     template = path[project_to]
     # remove the template from the path
     # path = path[:project_to] + path[project_to+1:]
@@ -294,128 +301,354 @@ def reproject(path, project_to=0):
             layers[:, :, ii] = reproj
     return layers
 
+def fill_holes(layer, fill_below=20, if_above=1000, hole_size=20, pad=1, ip_mask=None, op_mask=None, fill_dead=True):
+    # fill black (zero) holes in the middle for stars
+    # param 1 for x_stddev gives gaussian 9 by 9. 8*std+1. use param=[1,3] to fix holes in different sizes
+    # method can be median, ring, other for convolution
+    # op_mask is True or 'padded' to get the filled holes as a binary image
+
+    holes = layer <= fill_below
+    if ip_mask is not None:
+        holes = holes + ip_mask
+        layer[ip_mask * (layer < if_above)] = if_above
+    local_max = maximum_filter(layer, size=hole_size)
+    holes[local_max < if_above] = False
+
+
+    filled = layer.copy()
+    filled[holes] = local_max[holes]
+    if pad > 0:
+        padmask = holes.copy()
+        padmask[:-pad,:] = padmask[:-pad,:]+holes[pad:,:]
+        padmask[pad:,:] = padmask[pad:,:]+holes[:-pad,:]
+        padmask[:,:-pad] = padmask[:,:-pad]+holes[:,pad:]
+        padmask[:,pad:] = padmask[:,pad:]+holes[:,:-pad]
+        filled[padmask] = local_max[padmask]
+    else:
+        filled[holes] = local_max[holes]
+    if fill_dead:
+        kernel = Gaussian2DKernel(x_stddev=2)
+        median = median_filter(filled, footprint=kernel.array)
+        filled[filled < fill_below] = median[filled < fill_below]
+    if op_mask == True:
+        return filled, holes
+    elif op_mask == 'padded':
+        return filled, padmask
+    else:
+        return filled
+
+def fill_holes_old(layer, param=[1,2], method='median'):
+    if not type(param) == list:
+        param = [param]
+    for pp in param:
+        if method == 'ring':
+            kernel = Ring2DKernel(pp, 3)
+            # 3 radius + 1 thickness gives a 9 by 9 square. 4 >> 11, 5 >> 13
+        else:
+            kernel = Gaussian2DKernel(x_stddev=pp)
+        # kerned size is 8*std+1
+        zeros = layer == 0
+        if np.sum(zeros) == 0:
+            print('no holes for parameter '+str(pp))
+        else:
+            if (method == 'median') or (method == 'ring'):
+                conv = median_filter(layer, footprint=kernel.array)
+                layer[zeros] = conv[zeros]
+            else:  # convolve, ignore nans
+                layer[zeros] = np.nan
+                conv = convolve(layer, kernel)
+                layer[np.isnan(layer)] = conv[np.isnan(layer)]
+    return layer
+
+
+def clip_square_edge(shape, x0, x1, y0, y1):
+    # find indices for a redctangle but clip it when before 0 or after image size
+    x0 = np.max([x0, 0])
+    x1 = np.min([x1, shape[0]])
+    y0 = np.max([y0, 0])
+    y1 = np.min([y1, shape[1]])
+    return [x0, x1, y0, y1]
+
+
+def fill_craters(img1, method='peaks'):
+    layer = img1.copy()
+    kernel = Gaussian2DKernel(x_stddev=4)
+    # kerned size is 8*std+1
+    layer[layer < 0] = 0
+    zeros = layer == 0
+    if np.sum(zeros) <= 0:
+        print('no holes?')
+        return layer
+
+    # conv = median_filter(layer, footprint=kernel.array)
+    # layer[zeros] = conv[zeros]
+    zeros = layer == 0
+    zeros_smoothed = convolve(zeros, kernel=kernel.array)
+    hor = np.zeros(layer.shape, bool)
+    for ii in range(layer.shape[0]):
+        peaks = find_peaks(zeros_smoothed[ii, :])[0]
+        if len(peaks) > 0:
+            peaks = peaks[zeros_smoothed[ii,peaks] < 1]
+        # if len(peaks) > 0:
+        hor[ii, peaks] = True
+    ver = np.zeros(layer.shape, bool)
+    for jj in range(layer.shape[1]):
+        peaks = find_peaks(zeros_smoothed[:, jj])[0]
+        if len(peaks) > 0:
+            peaks = peaks[zeros_smoothed[peaks, jj] < 1]
+        # if len(peaks) > 0:
+        ver[peaks, jj] = True
+    peaks2d = np.where(ver*hor)
+    for hole in range(len(peaks2d[0])):
+        if hole == 53:
+            print('hole 53')
+        where = np.where(layer[peaks2d[0][hole], 1:peaks2d[1][hole]] - layer[peaks2d[0][hole], :peaks2d[1][hole]-1] > 0)[0]
+        if len(where) == 0:  # edge issues, maybe zeros
+            continue
+        y0 = where[-1]
+        where = np.where(layer[peaks2d[0][hole], peaks2d[1][hole]+1:] - layer[peaks2d[0][hole], peaks2d[1][hole]:-1] > 0)[0]
+        if len(where) == 0:
+            continue
+        y1 = where[0] + peaks2d[1][hole] + 1
+        plt.imshow(layer)
+        plt.show(block=False)
+        rim = []
+        mx = 0
+        if method == 'peaks':
+            max_range = int(40/2)  # how far to look for rim around center of zeros (+- 20 pix)
+            prct = 1/30  # percents of maximum un
+            prom = np.max(layer[
+                              np.max([peaks2d[0][hole]-max_range,0]):
+                              np.min([peaks2d[0][hole]+max_range,layer.shape[0]]),
+                              np.max([peaks2d[1][hole]-max_range,0]):
+                              np.min([peaks2d[1][hole]+max_range, layer.shape[1]])])*prct
+            for yy in range(y0, y1):
+                pk = find_peaks(layer[:, yy], prominence=prom)[0]
+                pk = pk[(pk > peaks2d[0][hole]-max_range) & (pk < peaks2d[0][hole]+max_range)]
+                pknear = np.where(pk <= peaks2d[0][hole])[0]
+                if len(pknear) == 0:
+                    x0 = peaks2d[0][hole]
+                else:
+                    x0 = pk[pknear[-1]]
+                pknear = np.where(pk >= peaks2d[0][hole])[0]
+                if len(pknear) == 0:
+                    x1 = peaks2d[0][hole]
+                else:
+                    x1 = pk[pknear[0]]
+                rim.append([x0, x1, yy])
+                if layer[x0, yy] > mx:
+                    mx = layer[x0, yy]
+                    imx = len(rim)
+                if layer[x1, yy] > mx:
+                    mx = layer[x1, yy]
+                    # imx = len(rim)
+        elif method == 'gaus':
+            threshold = np.min(zeros_smoothed[peaks2d[0][hole], y0:y1])
+            rad = np.max([y1-peaks2d[1][hole], peaks2d[1][hole]-y0]) + 1
+            if rad > 100:
+                print('dbg')
+            idx = clip_square_edge(layer.shape,
+                                   peaks2d[0][hole]-rad,
+                                   peaks2d[0][hole]+rad,
+                                   peaks2d[1][hole]-rad,
+                                   peaks2d[1][hole]+rad)
+            mx = layer[idx[0]:idx[1], idx[2]:idx[3]].max()
+            for yy in range(peaks2d[1][hole]-rad-1, peaks2d[1][hole]+rad+2):
+                x0 = np.where(zeros_smoothed[:peaks2d[0][hole], yy] < threshold)[0]
+                if len(x0) > 0:
+                    x0 = x0[-1]
+                x1 = np.where(zeros_smoothed[:peaks2d[0][hole]+rad, yy] > threshold)[0]
+                if len(x1) > 0:
+                    x1 = x1[-1]
+                # if x0 > x1:
+                #     print('dbg')
+                # if np.max(layer[x0:x1 + 1, yy]) > mx:
+                #     mx = np.max(layer[x0:x1 + 1, yy])
+                if type(x0) == np.int64 and type(x1) == np.int64:
+                    tmp = layer[x0:x1+1, yy]  # fails if x0 and x1 are empty arrays.
+                    rim.append([x0, x1, yy])
+        else:
+            # imx = np.nan
+            for yy in range(y0, y1):
+                x0 = np.where(layer[1:peaks2d[0][hole], yy] - layer[:peaks2d[0][hole]-1, yy] > 0)[0][-1] + 1
+                x1 = np.where(layer[peaks2d[0][hole]+1:, yy] - layer[peaks2d[0][hole]:-1, yy] < 0)[0][0] + peaks2d[0][hole]
+                rim.append([x0, x1, yy])
+                if layer[x0, yy] > mx:
+                    mx = layer[x0, yy]
+                    # imx = len(rim)
+                if layer[x1, yy] > mx:
+                    mx = layer[x1, yy]
+                    # imx = len(rim)
+        # if hole == 47:
+        #     print('first large wholw')
+        if mx > np.median(layer)/100:
+            for r in rim:
+                if r[1] - r[0] > 1:
+                    layer[r[0]+1:r[1], r[2]] = mx
+    # conv = median_filter(layer, footprint=kernel.array)
+    # layer[layer <= 0] = conv[layer <= 0]
+        # else:  # convolve, ignore nans
+        #     layer[zeros] = np.nan
+        #     conv = convolve(layer, kernel)
+        #     layer[np.isnan(layer)] = conv[np.isnan(layer)]
+    return layer
+
+
+def get_lines(source='FS+M', lims=[4, 30]):
+    '''
+    Get IR emission lines from the tables listed here https://www.mpe.mpg.de/ir/ISO/linelists/index.html
+
+    Parameters
+    source: str
+        which table of lines to read. default is fine structure + molecular. alternatives: 'FSlines','Molecular', 'Hydrogenic'
+    lims:   list
+        lower and upper wavelength limits e.g. [3,30]
+     _________
+     Returns
+     table: DataFrame
+        with species and wavelength columns (in micrometer)
+    '''
+    table = []
+    if source == 'FSlines':
+        t0 = pd.read_csv(root+'docs/FSlines.csv', sep=',')
+        species = np.asarray(t0['species'])
+        wavelength = np.asarray(t0['lambda'])
+        # from https://www.mpe.mpg.de/ir/ISO/linelists/FSlines.html
+    elif source == 'Hydrogenic':
+        t0 = pd.read_csv(root+'docs/Hydrogenic.csv', sep=',', index_col=False)
+        species = np.asarray(t0['ion'])
+        wavelength = np.asarray(t0['vacuumwavel'])
+        # https://www.mpe.mpg.de/ir/ISO/linelists/Hydrogenic.html
+    elif source == 'H2':
+        #https://www.mpe.mpg.de/ir/ISO/linelists/H2.html
+        t0 = pd.read_csv(root+'docs/H2.csv', sep=',')
+        species = np.asarray(t0['H2'])
+        wavelength = t0['Wavelength']
+    elif source == 'Molecular':
+        # https://www.mpe.mpg.de/ir/ISO/linelists/Molecular.html
+        t0 = pd.read_csv(root+'docs/Molecular.csv', sep=',')
+        species = np.asarray(t0['Species'])
+        wavelength = np.asarray(t0['Lambda(mu)'])
+    elif source == 'FS+M':
+        t1 = table = pd.read_csv(root+'docs/FSlines.csv', sep=',')
+        species = np.asarray(t1['species'])
+        wavelength = t1['lambda']
+        t2 = pd.read_csv(root + 'docs/Molecular.csv', sep=',')
+        t2['Species'] = t2['Species'].str.replace('H2','H₂')
+        t2['Species'] = t2['Species'].str.replace('o-H₂O','H₂O')
+        t2['Species'] = t2['Species'].str.replace('p-H₂O', 'H₂O')
+        t2.loc[t2['Species'].str.contains('OH'), 'Species'] = 'OH'
+        species = np.concatenate([species,np.asarray(t2['Species'])])
+        wavelength = np.concatenate([wavelength,np.asarray(t2['Lambda(mu)'])])
+        t3 = pd.read_csv(root + 'docs/H_4to30.csv', sep=',')
+        species = np.concatenate([species,np.asarray(t3['atoms'])])
+        wavelength = np.concatenate([wavelength, np.asarray(t3['wavelength(um)'])])
+        t4 = pd.read_csv(root + 'docs/PAH.csv', sep=',')
+        species = np.concatenate([species, np.asarray(t4['label'])])
+        wavelength = np.concatenate([wavelength, np.asarray(t4['wavelength'])])
+
+    order = np.argsort(wavelength)
+    species = species[order]
+    wavelength = wavelength[order]
+    if lims is not None:
+        if len(lims) == 2:
+            keep = (wavelength < lims[1]) & (wavelength > lims[0])
+            species = species[keep]
+            wavelength = wavelength[keep]
+        else:
+            raise Warning('something strange with lims, returning all')
+    table = pd.DataFrame({'species': species, 'wavelength': wavelength})
+    # t2['Species'] = t2['Species'].str.replace('OH1/2-3/2', 'OH')
+    return table
+
+
+def evaluate_redshift(flux, wavelength=None, max_z=1, resolution=0.0001, prom_med=10):
+    '''
+    evaluate redshift from peaks in observed data
+
+    Parameters
+    __________
+    flux:       hdu | np.ndarray
+        can be a hdu list, hdu BinTable (hdu[1]) or an ndarray
+    wavelength: None | np.ndarray
+        None if flux is hdu containing the wavelength. otherwise ndarray
+    max_z: int | float
+        maximum redshift to consider
+    prom_med: int | float
+        how many medians to consider as prominence for peak detection
+    Returns
+    _______
+    '''
+    if type(flux) == fits.hdu.hdulist.HDUList:
+        wavelength = flux[1].data['WAVELENGTH']
+        flux = flux[1].data['FLUX']
+    elif type(flux) == fits.hdu.table.BinTableHDU:
+        wavelength = flux['WAVELENGTH']
+        flux = flux['FLUX']
+    lims = [wavelength[0], wavelength[-1]*(max_z+1)]
+    table = get_lines(lims=lims)
+    w_expected = np.asarray(table['wavelength'])
+    s_expected = np.asarray(table['species'])
+    prom = np.median(np.abs(np.diff(flux))) * prom_med
+    peaks = find_peaks(flux, prominence=prom, width=[1, 20])[0]
+
+    best_z = 0
+    err = np.inf
+    # n_dec = -np.log10(resolution)
+    z = -resolution
+    while z < max_z:
+        z += resolution
+        vbest = []
+        ibest = []
+        for ip, peak in enumerate(peaks):
+            dif = np.abs(w_expected*(1+z)-wavelength[peak])
+            vbest.append(np.min(dif))
+            ibest.append(np.argmin(dif))
+        err0 = np.median(vbest)
+        if err0 < err:
+            err = err0
+            best = ibest
+            best_z = z
+
+    # plt.figure()
+    # plt.plot(wavelength, flux)
+    # plt.plot(wavelength[peaks], flux[peaks], '.k')
+    # for ii in range(len(w_expected)):
+    #     plt.text(w_expected[ii]*(1+best_z),np.median(flux),s_expected[ii],ha='center',rotation=90)
+    # for ib in best:
+    #     plt.text(w_expected[ib]*(1+best_z),np.median(flux),s_expected[ib],color='g',ha='center',rotation=90)
+    # plt.show(block=False)
+    return best_z
+
+
+def filt_num(path):
+    filt = np.zeros(len(path))
+    for ii in range(len(path)):
+        plip = path[ii][-1:0:-1]
+        plip = plip.replace('-','_')
+        iF = plip.find('f_')  # index of filter, sorry
+        if iF == -1:
+            filt[ii] = np.nan
+        else:
+            p = plip[:iF][-1:0:-1]
+            filt[ii] = int(p[:p.find('_')-1])
+    return filt
+
 
 if __name__ == '__main__':
-    include = 'jw02732-c1001_t004_miri_ch2'
-    download_fits('ngc 7319', extension='.fits', mrp=True, include=include, ptype='')
+    path = list_files('/home/innereye/JWST/Ori/', search='*.fits')
+    # hdu = fits.open(path[8])
+    hdu = fits.open(path[8])
+    # img = hdu[1].data[3800:5000, 5600:7000]
+    img = hdu[1].data[1800:2400, 2800:3800]
+    xy = hole_xy(img)
+    size = hole_size(img, xy, plot=True)
+    filled = hole_circle_fill(img, xy, size)
 
-    # path3 = list_files('/home/innereye/JWST/Quintet/ngc_7319/MAST_2022-08-27T0857/JWST/', search='*s3d.fits')
-    # xy, size = mosaic_xy(path3, plot=True)
-    # manifest = download_fits('IC 1623B')
-    # path = list_files('ngc_628', search='*nircam*.fits')
-    # # get filename from full path
-    # layers = reproject(path, project_to=1)
-    #
-    # # manifest = download_fits('ngc 628', include=['_miri_', '_nircam_', 'clear'])
-    # # path = list_files('data/ngc_628', search='*miri*.fits')
-    # # path = list_files('Cartwheel/long', search='*.fits')
-    # path = list_files('ngc_628', search='*miri*1000*.fits')
-    # median = mosaic(path, plot=True, method='median')
-    # mn = 0.11
-    # mx = 1.7
-    # plt.clim(mn, mx)
-    # plt.show(block=False)
-    # img = (median-mn)/(mx-mn)*255
-    # img[img < 0] = 0
-    # img[img > 255] = 255
-    # img = img.astype(np.uint8)
-    # img[1947:1952, 1019:1024] = 255
-    # img[775:777, 2042:2045] = 255
-    # plt.imsave('median.png', np.flipud(img), cmap='gray')
-    # plt.imsave('median_hot.png', np.flipud(img), cmap='hot')
-    # layers = mosaic(path, plot=False, method='layers')
-    # layers[layers == 0] = np.nan
-    # rgb = np.zeros((median.shape[0], median.shape[1], 3))
-    # for ii in range(3):
-    #     layer1 = np.nanmedian(layers[:, :, ii*8:ii*8+8], axis=2)
-    #     layer1[np.isnan(layer1)] = np.nanmedian(layer1)
-    #     rgb[:, :, ii] = layer1
-    # img = (rgb - mn) / (mx - mn) * 255
-    # img[img < 0] = 0
-    # img[img > 255] = 255
-    # img = img.astype(np.uint8)
-    # img[1945:1952, 1018:1025] = 255
-    # img[773:777, 2042:2046] = 255
-    # plt.imsave('median_rgb.png', img)
-    # mosaic(path, plot=True, method='mean')
-    # plt.clim(0.2, 1.5)
-    # plt.show(block=False)
-
-
-    # path = list_files('/home/innereye/JWST/MAST_2022-08-09T0239/JWST/', include='_02101_')
-    # canvas = mosaic(path, plot=True, clip=[7.45, 10], method='layers')
-    # canvas = mosaic(path, clip=[7.45, 10], plot=True)
-    # exclude = ['jw02727002001_02105_00001_nrcb2', 'cal/', 'Link ']
-    # parent = '/home/innereye/JWST/MAST_2022-08-09T0229/JWST'
-    # path = list_files(parent, exclude=exclude)
-    # bestx, besty, canvaso = optimize_xy(canvas, square_size=100, tests=9, plot=True)
-    # # bestx = [0, 2, 1, 1]
-    # # besty = [0, -1, -1, 1]
-    # x1 = 550
-    # y1 = 500
-    # plt.figure()
-    # for ii in range(canvas.shape[2]):
-    #     plt.subplot(2,5, ii+1)
-    #     plt.imshow(canvas[x1:x1+100,y1:y1+100,ii], cmap='hot')
-    #     plt.axis('equal')
-    #     plt.clim(7.45, 10)
-    #     plt.axis('off')
-    #     plt.show(block=False)
-    # plt.subplot(2, 5, 5)
-    # plt.imshow(np.nanmean(canvas[x1:x1+100,y1:y1+100, :],axis=2), cmap='hot')
-    # plt.axis('equal')
-    # plt.clim(7.45, 10)
-    # plt.axis('off')
-    # plt.show(block=False)
-    # for ii in range(canvaso.shape[2]):
-    #     plt.subplot(2,5, ii+6)
-    #     plt.imshow(canvaso[x1:x1+100,y1:y1+100,ii], cmap='hot')
-    #     plt.axis('equal')
-    #     plt.clim(7.45, 10)
-    #     plt.axis('off')
-    #     plt.show(block=False)
-    # plt.subplot(2, 5, 10)
-    # plt.imshow(np.nanmean(canvaso[x1:x1+100,y1:y1+100, :],axis=2), cmap='hot')
-    # plt.axis('equal')
-    # plt.clim(7.45, 10)
-    # plt.axis('off')
-    # plt.show(block=False)
-    #
-    # xy, size = mosaic_xy(path)
-    # data = np.empty((size[0, 0], size[0, 1], size.shape[0]))
-    # for ii, p in enumerate(path):
-    #     hdul = fits.open(p)
-    #     data[:, :, ii] = hdul[1].data.copy()
-    # plt.figure()
-    # plt.imshow(np.mean(data,axis=2), cmap='hot')
-    # # plt.imshow(data[:,:,0], cmap='hot')
-    # plt.axis('equal')
-    # plt.clim(7.45, 10)
-    # # plt.xlim(0, x1)
-    # # plt.ylim(0, y1)
-    # plt.axis('off')
-    # plt.show(block=False)
-    # mask = np.zeros(data.shape[:2], dtype=bool)
-    # mask[np.sum(data > 9, axis=2) == data.shape[2]] = True
-    # mask[np.sum(data < 2.5, axis=2) == data.shape[2]] = True
-    # mask[:12, :] = True
-    # mask[-12:, :] = True
-    # mask[:, :12] = True
-    # mask[:, -12:] = True
-    # data[mask, ...] = np.nan
-    # avg = np.nanmean(data, axis=2)
-    # avg[mask] = 0
-    # plt.figure()
-    # plt.imshow(avg, cmap='hot')
-    # plt.axis('equal')
-    # plt.clim(7.45, 10)
-    # plt.axis('off')
-    # plt.show(block=False)
-    #
-    # mosaic(path, plot=False, clip=[0.35, 0.6])
-    # canvas = mosaic(path, plot=True, clip=[0.35, 0.6])
-    # parent = '/home/innereye/JWST/MAST_2022-08-09T0229/JWST/jw02727002001_02105_00001_nrcb2'
-    # path = list_files(parent)
-    # mosaic_xy(path, plot=True)
+    fix = fill_craters(img, method='gaus')
+    # fix = fill_holes(img, pad=1)
+    plt.figure();plt.imshow(img[200:400,100:300]);plt.show(block=False)
+    plt.figure();plt.imshow(fix[200:400,100:300]);plt.show(block=False)
+    print('tada')
 
 

@@ -4,6 +4,7 @@ matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 import os
+from astropy.convolution import Gaussian2DKernel, convolve
 os.chdir('/home/innereye/JWST/Carina/')
 path = ['jw02731-o001_t017_nircam_clear-f335m_i2d.fits',
         'jw02731-o001_t017_nircam_clear-f444w_i2d.fits',
@@ -40,27 +41,52 @@ plt.axis('off')
 # plt.text(500, 100, 'NGC 628. miri filters: R=f770w, G=f1000w, B=f1130w', color='w',weight='bold')
 plt.clim(10, 255)
 plt.show(block=False)
-zeros = np.min(layers, axis=2) == 0
-img_fix = img.copy()
-for ll in range(3):
-    layer = img[:, :, ll]
-    for ii, row in enumerate(layer):
-        # loc = find_peaks(255-row, prominence=120, width=[1,20])[0]
-        start = np.where((row[:-1] > 0) & (row[1:] == 0))[0]+1
-        end = np.where((row[1:] > 0) & (row[:-1] == 0))[0]
-        if len(start) > 0 and len(end) > 0:
-            if end[-1] >= start[0]:
-                end = end[end >= start[0]]
-                start = start[start <= end[-1]]
-                if len(start) == len(end):
-                    for zz in range(len(start)):
-                        if (0 < (end[zz] - start[zz]) < 30) and img[ii, start[zz]-2, ll] > 240 and img[ii, end[zz]+2, ll] > 240:
-                            img_fix[ii, start[zz]:end[zz], ll] = 255
-                            img_fix[ii, start[zz]:end[zz]+1, ll] = np.linspace(img[ii, start[zz]-1, ll], img[ii, end[zz]+2, ll], end[zz]-start[zz]+1)
-                        # else:
-                        #     print('?')
-                else:
-                    raise ValueError('start and end do not match')
+
+# kernel = Gaussian2DKernel(x_stddev=16)
+img = layers.copy()
+for ii in [0,1,2]:
+    # img[:,:,ii] = fill_holes(img[:,:,ii],[1,2,1])
+    # img[:, :, ii] = fill_holes(img[:, :, ii], param=[2], method='median')
+    # conv[:,:,ii] = convolve(img[:,:,ii], kernel)
+    img[:, :, ii] = fill_holes(img[:, :, ii], param=[10], method='ring')
+    print(ii)
+# img[np.isnan(img)] = conv[np.isnan(img)]
+for ii in [0, 1, 2]:
+    img[:, :, ii] = (img[:, :, ii]-mnl[ii])/(mxl[ii]-mnl[ii])*255
+img[img < 0] = 0
+img[img > 255] = 255
+img = img.astype(np.uint8)
+plt.figure()
+plt.imshow(img, origin='lower')
+plt.axis('off')
+plt.show(block=False)
+
+plt.imsave('carina_r.png', np.flipud(img[:,:,0]))
+plt.imsave('carina_g.png', np.flipud(img[:,:,1]))
+plt.imsave('carina_b.png', np.flipud(img[:,:,2]))
+
+#
+# zeros = np.min(layers, axis=2) == 0
+# img_fix = img.copy()
+# for ll in range(3):
+#     layer = img[:, :, ll]
+#     for ii, row in enumerate(layer):
+#         # loc = find_peaks(255-row, prominence=120, width=[1,20])[0]
+#         start = np.where((row[:-1] > 0) & (row[1:] == 0))[0]+1
+#         end = np.where((row[1:] > 0) & (row[:-1] == 0))[0]
+#         if len(start) > 0 and len(end) > 0:
+#             if end[-1] >= start[0]:
+#                 end = end[end >= start[0]]
+#                 start = start[start <= end[-1]]
+#                 if len(start) == len(end):
+#                     for zz in range(len(start)):
+#                         if (0 < (end[zz] - start[zz]) < 30) and img[ii, start[zz]-2, ll] > 240 and img[ii, end[zz]+2, ll] > 240:
+#                             img_fix[ii, start[zz]:end[zz], ll] = 255
+#                             img_fix[ii, start[zz]:end[zz]+1, ll] = np.linspace(img[ii, start[zz]-1, ll], img[ii, end[zz]+2, ll], end[zz]-start[zz]+1)
+#                         # else:
+#                         #     print('?')
+#                 else:
+#                     raise ValueError('start and end do not match')
 
 
     # if len(loc) > 0:
@@ -81,12 +107,7 @@ for ll in range(3):
     #                 #         holes[neib0:neib1, jj] = True
 
 # img1[holes] = 255
-plt.figure()
-plt.imshow(img_fix, origin='lower')
-plt.axis('off')
-plt.show(block=False)
 
-plt.imsave('carina_nircam1.png', np.flipud(img_fix))
 
 #
 # plt.plot(img1[314,:])
