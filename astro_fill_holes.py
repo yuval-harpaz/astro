@@ -6,12 +6,23 @@ from matplotlib import pyplot as plt
 import numpy as np
 from astropy.convolution import Gaussian2DKernel, convolve
 from scipy.signal import find_peaks
-from scipy.ndimage import median_filter
 from skimage.morphology import disk
+# from scipy.ndimage import median_filter
 
 root = os.environ['HOME']+'/astro/'
 
 def hole_xy(layer, x_stddev=4):
+    """
+    find xy for holes by filtering a mask = layer <= 0, then finding peaks in the filtered mask.
+    Parameters
+    ----------
+    layer: 2D np.ndarray
+    x_stddev: int, passed as property of Gaussian2DKernel and sets the size. kerned size is 8 * x_stddev + 1
+
+    Returns
+    -------
+    peaks: N by 2 np.ndarray, with x and y of hole position
+    """
     # Find x, y for holes in a filtered mask of layer == 0
     # FIXME: consider to points or more with the same max value
     kernel = Gaussian2DKernel(x_stddev=x_stddev)
@@ -42,6 +53,19 @@ def hole_xy(layer, x_stddev=4):
     return peaks
 
 def hole_size(layer, xy, plot=False):
+    """
+    Here we look for hole size by climbing out of a "crater" to 4 directions, to the rim of the crater.
+    Thus we get 4 estimates of hole size.
+    Parameters
+    ----------
+    layer: the image as a 2D np.ndarray
+    xy: location of holes, N by 2 np.ndarray
+    plot: bool, True if you want to see rim detection
+
+    Returns
+    -------
+    rad_rim: N by 4 np.ndarray, radius from hole center to rim. 4 radii for left right up and down.
+    """
     rad_rim = np.zeros((xy.shape[0], 4))
     rad_rim[...] = np.nan
     # rad_zeros = np.zeros(xy.shape[0])
@@ -94,6 +118,22 @@ def hole_size(layer, xy, plot=False):
     return rad_rim
 
 def hole_circle_fill(img, xy, size, larger_than=2, allowed=1/3):
+    """
+    fill holes with a disk
+    check if there are at least 3 similar radii (consistent circular size),
+    then replace zeros area with a disk. the value of the disk is local maximum
+    Parameters
+    ----------
+    img: 2D np.ndarray
+    xy: N by 2 np.ndarray
+    size: N by 4 np.ndarray
+    larger_than: lower limit for radius size, dont try to fix small holes
+    allowed: when evaluating number of valid radii per hole, allow "allowed" variability
+
+    Returns
+    -------
+    filled: the fixed image
+    """
     # fill holes larger than larger_than with a circle according to xy and size
     # TODO: realign center from xy to middle of rim points (xy +- size)
     # TODO: remove leftover zeros with dark neighbors
@@ -117,7 +157,20 @@ def hole_circle_fill(img, xy, size, larger_than=2, allowed=1/3):
     return filled
 
 def hole_conv_fill(img, n_pixels_around=4, x_stddev=3):
+    """
+    fill (small) holes with local mean. local mean is computed after ignoring zeros.
+    zero and negative values are replaced. neighbors are also replaced if smaller than 75% of local mean.
+    designed to fill dead pixels, not stars
+    Parameters
+    ----------
+    img: the input 2D image
+    n_pixels_around: int, how far should neighbors be from zeros
+    x_stddev: int, passed as property of Gaussian2DKernel and sets the size. kerned size is 8 * x_stddev + 1.
 
+    Returns
+    -------
+    img: the fixed image
+    """
     clean_below = 0.75  # clean when the pixel is 75% of the median or lower
     kernel = Gaussian2DKernel(x_stddev=x_stddev)
     # conv = median_filter(img, footprint=kernel.array)
