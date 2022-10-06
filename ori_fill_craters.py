@@ -5,12 +5,12 @@ from matplotlib import pyplot as plt
 import numpy as np
 import os
 from reproject import reproject_interp
-from sklearn import decomposition
+from astro_fill_holes import *
 import pickle
 
 
 path = list_files('/home/innereye/JWST/Ori/',search='*.fits')
-from astropy.convolution import Gaussian2DKernel, convolve
+# from astropy.convolution import Gaussian2DKernel, convolve
 # path = list_files('ngc_628', search='*miri*.fits')
 mfilt = np.where(['m_i2d.fits' in x for x in path])[0][:-1]
 path = [path[ii] for ii in mfilt]
@@ -52,23 +52,29 @@ for ii in range(layers.shape[2]):
     img[img == 0] = np.nan
     med = np.nanmedian(img)
     img[np.isnan(img)] = 0
-    img = fill_craters(img)
+    # img = fill_craters(img)
+    # img = hdu[0].data
+    xy = hole_xy(img, x_stddev=6)
+    size = hole_size(img, xy, plot=False)
+    # orig = img.copy()
+    img = hole_circle_fill(img, xy, size, larger_than=0, allowed=0.5)
+    img = hole_median_fill(img)
     img = img - (med / meds)
     img = img / (med * meds) * 255
     img[img > 255] = 255
     img[img < 0] = 0
     plt.subplot(2,3,ii+1)
-    plt.imshow(img, cmap='hot')
+    plt.imshow(img, cmap='gray', origin='lower')
     if ii == 0:
         r = img
     elif ii == 5:
         b = img
     total += img
-total = total / len(mfilt)
+
 plt.show(block=False)
 
 
-
+total = total / len(mfilt)
 # layers = mosaic(path,method='layers')
 rgbt = np.zeros((total.shape[0], total.shape[1], 3))
 rgbt[..., 0] = b
