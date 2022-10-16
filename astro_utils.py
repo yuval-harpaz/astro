@@ -5,7 +5,7 @@ from reproject import reproject_interp
 import os
 # import glob
 import matplotlib
-matplotlib.use('TkAgg')
+matplotlib.use('Qt5Agg')
 from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
@@ -13,8 +13,9 @@ from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
 from scipy.ndimage import median_filter, maximum_filter
 from scipy.signal import find_peaks
 from astroquery.mast import Observations
-from skimage.morphology import disk
-
+# from skimage.morphology import disk
+from astropy.wcs import WCS
+from astropy.nddata import Cutout2D
 # root = __file__[:-14]
 # root = list_files.__code__.co_filename[:-14]
 root = os.environ['HOME']+'/astro/'
@@ -370,128 +371,7 @@ def clip_square_edge(shape, x0, x1, y0, y1):
     return [x0, x1, y0, y1]
 
 
-def fill_craters(img1, method='peaks'):
-    layer = img1.copy()
-    kernel = Gaussian2DKernel(x_stddev=4)
-    # kerned size is 8*std+1
-    layer[layer < 0] = 0
-    zeros = layer == 0
-    if np.sum(zeros) <= 0:
-        print('no holes?')
-        return layer
 
-    # conv = median_filter(layer, footprint=kernel.array)
-    # layer[zeros] = conv[zeros]
-    zeros = layer == 0
-    zeros_smoothed = convolve(zeros, kernel=kernel.array)
-    hor = np.zeros(layer.shape, bool)
-    for ii in range(layer.shape[0]):
-        peaks = find_peaks(zeros_smoothed[ii, :])[0]
-        if len(peaks) > 0:
-            peaks = peaks[zeros_smoothed[ii,peaks] < 1]
-        # if len(peaks) > 0:
-        hor[ii, peaks] = True
-    ver = np.zeros(layer.shape, bool)
-    for jj in range(layer.shape[1]):
-        peaks = find_peaks(zeros_smoothed[:, jj])[0]
-        if len(peaks) > 0:
-            peaks = peaks[zeros_smoothed[peaks, jj] < 1]
-        # if len(peaks) > 0:
-        ver[peaks, jj] = True
-    peaks2d = np.where(ver*hor)
-    for hole in range(len(peaks2d[0])):
-        if hole == 53:
-            print('hole 53')
-        where = np.where(layer[peaks2d[0][hole], 1:peaks2d[1][hole]] - layer[peaks2d[0][hole], :peaks2d[1][hole]-1] > 0)[0]
-        if len(where) == 0:  # edge issues, maybe zeros
-            continue
-        y0 = where[-1]
-        where = np.where(layer[peaks2d[0][hole], peaks2d[1][hole]+1:] - layer[peaks2d[0][hole], peaks2d[1][hole]:-1] > 0)[0]
-        if len(where) == 0:
-            continue
-        y1 = where[0] + peaks2d[1][hole] + 1
-        plt.imshow(layer)
-        plt.show(block=False)
-        rim = []
-        mx = 0
-        if method == 'peaks':
-            max_range = int(40/2)  # how far to look for rim around center of zeros (+- 20 pix)
-            prct = 1/30  # percents of maximum un
-            prom = np.max(layer[
-                              np.max([peaks2d[0][hole]-max_range,0]):
-                              np.min([peaks2d[0][hole]+max_range,layer.shape[0]]),
-                              np.max([peaks2d[1][hole]-max_range,0]):
-                              np.min([peaks2d[1][hole]+max_range, layer.shape[1]])])*prct
-            for yy in range(y0, y1):
-                pk = find_peaks(layer[:, yy], prominence=prom)[0]
-                pk = pk[(pk > peaks2d[0][hole]-max_range) & (pk < peaks2d[0][hole]+max_range)]
-                pknear = np.where(pk <= peaks2d[0][hole])[0]
-                if len(pknear) == 0:
-                    x0 = peaks2d[0][hole]
-                else:
-                    x0 = pk[pknear[-1]]
-                pknear = np.where(pk >= peaks2d[0][hole])[0]
-                if len(pknear) == 0:
-                    x1 = peaks2d[0][hole]
-                else:
-                    x1 = pk[pknear[0]]
-                rim.append([x0, x1, yy])
-                if layer[x0, yy] > mx:
-                    mx = layer[x0, yy]
-                    imx = len(rim)
-                if layer[x1, yy] > mx:
-                    mx = layer[x1, yy]
-                    # imx = len(rim)
-        elif method == 'gaus':
-            threshold = np.min(zeros_smoothed[peaks2d[0][hole], y0:y1])
-            rad = np.max([y1-peaks2d[1][hole], peaks2d[1][hole]-y0]) + 1
-            if rad > 100:
-                print('dbg')
-            idx = clip_square_edge(layer.shape,
-                                   peaks2d[0][hole]-rad,
-                                   peaks2d[0][hole]+rad,
-                                   peaks2d[1][hole]-rad,
-                                   peaks2d[1][hole]+rad)
-            mx = layer[idx[0]:idx[1], idx[2]:idx[3]].max()
-            for yy in range(peaks2d[1][hole]-rad-1, peaks2d[1][hole]+rad+2):
-                x0 = np.where(zeros_smoothed[:peaks2d[0][hole], yy] < threshold)[0]
-                if len(x0) > 0:
-                    x0 = x0[-1]
-                x1 = np.where(zeros_smoothed[:peaks2d[0][hole]+rad, yy] > threshold)[0]
-                if len(x1) > 0:
-                    x1 = x1[-1]
-                # if x0 > x1:
-                #     print('dbg')
-                # if np.max(layer[x0:x1 + 1, yy]) > mx:
-                #     mx = np.max(layer[x0:x1 + 1, yy])
-                if type(x0) == np.int64 and type(x1) == np.int64:
-                    tmp = layer[x0:x1+1, yy]  # fails if x0 and x1 are empty arrays.
-                    rim.append([x0, x1, yy])
-        else:
-            # imx = np.nan
-            for yy in range(y0, y1):
-                x0 = np.where(layer[1:peaks2d[0][hole], yy] - layer[:peaks2d[0][hole]-1, yy] > 0)[0][-1] + 1
-                x1 = np.where(layer[peaks2d[0][hole]+1:, yy] - layer[peaks2d[0][hole]:-1, yy] < 0)[0][0] + peaks2d[0][hole]
-                rim.append([x0, x1, yy])
-                if layer[x0, yy] > mx:
-                    mx = layer[x0, yy]
-                    # imx = len(rim)
-                if layer[x1, yy] > mx:
-                    mx = layer[x1, yy]
-                    # imx = len(rim)
-        # if hole == 47:
-        #     print('first large wholw')
-        if mx > np.median(layer)/100:
-            for r in rim:
-                if r[1] - r[0] > 1:
-                    layer[r[0]+1:r[1], r[2]] = mx
-    # conv = median_filter(layer, footprint=kernel.array)
-    # layer[layer <= 0] = conv[layer <= 0]
-        # else:  # convolve, ignore nans
-        #     layer[zeros] = np.nan
-        #     conv = convolve(layer, kernel)
-        #     layer[np.isnan(layer)] = conv[np.isnan(layer)]
-    return layer
 
 
 def get_lines(source='FS+M', lims=[4, 30]):
@@ -621,18 +501,43 @@ def evaluate_redshift(flux, wavelength=None, max_z=1, resolution=0.0001, prom_me
     return best_z
 
 
-def filt_num(path):
-    filt = np.zeros(len(path))
-    for ii in range(len(path)):
-        plip = path[ii][-1:0:-1]
-        plip = plip.replace('-','_')
-        iF = plip.find('f_')  # index of filter, sorry
-        if iF == -1:
-            filt[ii] = np.nan
-        else:
-            p = plip[:iF][-1:0:-1]
-            filt[ii] = int(p[:p.find('_')-1])
-    return filt
+# def filt_num(path):
+#     filt = np.zeros(len(path))
+#     for ii in range(len(path)):
+#         plip = path[ii][-1:0:-1]
+#         plip = plip.replace('-','_')
+#         iF = plip.find('f_')  # index of filter, sorry
+#         if iF == -1:
+#             filt[ii] = np.nan
+#         else:
+#             p = plip[:iF][-1:0:-1]
+#             filt[ii] = int(p[:p.find('_')-1])
+#     return filt
+
+
+def crop_fits(hdu1, center, sizes):
+    '''
+
+    Parameters
+    ----------
+    hdu: hdu with hdu.data and hdu.header
+    center: list, [x,y] for center of cropped rectangle
+    sizes: list, [width, height]
+
+    Returns
+    -------
+    hdu: cropped hdu
+
+    '''
+    wcs = WCS(hdu1.header)
+    pos = wcs.wcs_pix2world([[center[0] - sizes[0] / 2, center[1] - sizes[1] / 2], center], 0)
+    pix = wcs.wcs_world2pix(pos, 0)
+    pix = np.round(np.asarray(pix))
+    cutout = Cutout2D(hdu1.data, pix[1, :], sizes, wcs)
+    hdu1.data = cutout.data
+    hdu1.header.update(cutout.wcs.to_header())
+    return hdu1, pos, pix
+
 
 
 if __name__ == '__main__':
@@ -652,3 +557,125 @@ if __name__ == '__main__':
     print('tada')
 
 
+# def fill_craters(img1, method='peaks'):
+#     layer = img1.copy()
+#     kernel = Gaussian2DKernel(x_stddev=4)
+#     # kerned size is 8*std+1
+#     layer[layer < 0] = 0
+#     zeros = layer == 0
+#     if np.sum(zeros) <= 0:
+#         print('no holes?')
+#         return layer
+#
+#     # conv = median_filter(layer, footprint=kernel.array)
+#     # layer[zeros] = conv[zeros]
+#     zeros = layer == 0
+#     zeros_smoothed = convolve(zeros, kernel=kernel.array)
+#     hor = np.zeros(layer.shape, bool)
+#     for ii in range(layer.shape[0]):
+#         peaks = find_peaks(zeros_smoothed[ii, :])[0]
+#         if len(peaks) > 0:
+#             peaks = peaks[zeros_smoothed[ii,peaks] < 1]
+#         # if len(peaks) > 0:
+#         hor[ii, peaks] = True
+#     ver = np.zeros(layer.shape, bool)
+#     for jj in range(layer.shape[1]):
+#         peaks = find_peaks(zeros_smoothed[:, jj])[0]
+#         if len(peaks) > 0:
+#             peaks = peaks[zeros_smoothed[peaks, jj] < 1]
+#         # if len(peaks) > 0:
+#         ver[peaks, jj] = True
+#     peaks2d = np.where(ver*hor)
+#     for hole in range(len(peaks2d[0])):
+#         if hole == 53:
+#             print('hole 53')
+#         where = np.where(layer[peaks2d[0][hole], 1:peaks2d[1][hole]] - layer[peaks2d[0][hole], :peaks2d[1][hole]-1] > 0)[0]
+#         if len(where) == 0:  # edge issues, maybe zeros
+#             continue
+#         y0 = where[-1]
+#         where = np.where(layer[peaks2d[0][hole], peaks2d[1][hole]+1:] - layer[peaks2d[0][hole], peaks2d[1][hole]:-1] > 0)[0]
+#         if len(where) == 0:
+#             continue
+#         y1 = where[0] + peaks2d[1][hole] + 1
+#         plt.imshow(layer)
+#         plt.show(block=False)
+#         rim = []
+#         mx = 0
+#         if method == 'peaks':
+#             max_range = int(40/2)  # how far to look for rim around center of zeros (+- 20 pix)
+#             prct = 1/30  # percents of maximum un
+#             prom = np.max(layer[
+#                               np.max([peaks2d[0][hole]-max_range,0]):
+#                               np.min([peaks2d[0][hole]+max_range,layer.shape[0]]),
+#                               np.max([peaks2d[1][hole]-max_range,0]):
+#                               np.min([peaks2d[1][hole]+max_range, layer.shape[1]])])*prct
+#             for yy in range(y0, y1):
+#                 pk = find_peaks(layer[:, yy], prominence=prom)[0]
+#                 pk = pk[(pk > peaks2d[0][hole]-max_range) & (pk < peaks2d[0][hole]+max_range)]
+#                 pknear = np.where(pk <= peaks2d[0][hole])[0]
+#                 if len(pknear) == 0:
+#                     x0 = peaks2d[0][hole]
+#                 else:
+#                     x0 = pk[pknear[-1]]
+#                 pknear = np.where(pk >= peaks2d[0][hole])[0]
+#                 if len(pknear) == 0:
+#                     x1 = peaks2d[0][hole]
+#                 else:
+#                     x1 = pk[pknear[0]]
+#                 rim.append([x0, x1, yy])
+#                 if layer[x0, yy] > mx:
+#                     mx = layer[x0, yy]
+#                     imx = len(rim)
+#                 if layer[x1, yy] > mx:
+#                     mx = layer[x1, yy]
+#                     # imx = len(rim)
+#         elif method == 'gaus':
+#             threshold = np.min(zeros_smoothed[peaks2d[0][hole], y0:y1])
+#             rad = np.max([y1-peaks2d[1][hole], peaks2d[1][hole]-y0]) + 1
+#             if rad > 100:
+#                 print('dbg')
+#             idx = clip_square_edge(layer.shape,
+#                                    peaks2d[0][hole]-rad,
+#                                    peaks2d[0][hole]+rad,
+#                                    peaks2d[1][hole]-rad,
+#                                    peaks2d[1][hole]+rad)
+#             mx = layer[idx[0]:idx[1], idx[2]:idx[3]].max()
+#             for yy in range(peaks2d[1][hole]-rad-1, peaks2d[1][hole]+rad+2):
+#                 x0 = np.where(zeros_smoothed[:peaks2d[0][hole], yy] < threshold)[0]
+#                 if len(x0) > 0:
+#                     x0 = x0[-1]
+#                 x1 = np.where(zeros_smoothed[:peaks2d[0][hole]+rad, yy] > threshold)[0]
+#                 if len(x1) > 0:
+#                     x1 = x1[-1]
+#                 # if x0 > x1:
+#                 #     print('dbg')
+#                 # if np.max(layer[x0:x1 + 1, yy]) > mx:
+#                 #     mx = np.max(layer[x0:x1 + 1, yy])
+#                 if type(x0) == np.int64 and type(x1) == np.int64:
+#                     tmp = layer[x0:x1+1, yy]  # fails if x0 and x1 are empty arrays.
+#                     rim.append([x0, x1, yy])
+#         else:
+#             # imx = np.nan
+#             for yy in range(y0, y1):
+#                 x0 = np.where(layer[1:peaks2d[0][hole], yy] - layer[:peaks2d[0][hole]-1, yy] > 0)[0][-1] + 1
+#                 x1 = np.where(layer[peaks2d[0][hole]+1:, yy] - layer[peaks2d[0][hole]:-1, yy] < 0)[0][0] + peaks2d[0][hole]
+#                 rim.append([x0, x1, yy])
+#                 if layer[x0, yy] > mx:
+#                     mx = layer[x0, yy]
+#                     # imx = len(rim)
+#                 if layer[x1, yy] > mx:
+#                     mx = layer[x1, yy]
+#                     # imx = len(rim)
+#         # if hole == 47:
+#         #     print('first large wholw')
+#         if mx > np.median(layer)/100:
+#             for r in rim:
+#                 if r[1] - r[0] > 1:
+#                     layer[r[0]+1:r[1], r[2]] = mx
+#     # conv = median_filter(layer, footprint=kernel.array)
+#     # layer[layer <= 0] = conv[layer <= 0]
+#         # else:  # convolve, ignore nans
+#         #     layer[zeros] = np.nan
+#         #     conv = convolve(layer, kernel)
+#         #     layer[np.isnan(layer)] = conv[np.isnan(layer)]
+#     return layer

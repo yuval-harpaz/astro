@@ -1,0 +1,80 @@
+from astro_utils import *
+import matplotlib
+matplotlib.use('TkAgg')
+from matplotlib import pyplot as plt
+import numpy as np
+import os
+from reproject import reproject_interp
+from astro_fill_holes import *
+import pickle
+
+
+path = list_files('/home/innereye/JWST/RX_J2129/', search='*.fits')
+path = path[:6]
+# from astropy.convolution import Gaussian2DKernel, convolve
+# path = list_files('ngc_628', search='*miri*.fits')
+# mfilt = np.where(['m_i2d.fits' in x for x in path])[0][:-1]
+# path = [path[ii] for ii in mfilt]
+# ## brief preview
+meds = 6
+# crop = [3800,5000,5600,6800]
+center = [3200, 1450]
+crop = [int(center[0]-1080/2), int(center[0]+1080/2), int(center[1]-1920/2), int(center[1]+1920/2)]
+
+crop = [4520 - 1080, 4520, 4540 - 1920 - 750, 4540 - 750]
+layers = np.zeros((1080, 1920, len(path)))
+
+if os.path.isfile('cropped.pkl'):
+    layers = np.load('cropped.pkl', allow_pickle=True)
+else:
+    for ii in range(len(path)):
+        if ii == 0:
+            hdu0 = fits.open(path[ii])
+            img = hdu0[1].data
+            img = img[crop[0]:crop[1],crop[2]:crop[3]]
+            # img = fill_holes(img, pad=1, hole_size=50)
+            hdr0 = hdu0[1].header
+            del hdu0
+        else:
+            hdu = fits.open(path[ii])
+            reproj, _ = reproject_interp(hdu[1], hdr0)
+            img = reproj
+            img = img[crop[0]:crop[1],crop[2]:crop[3]]
+        layers[:,:,ii] = img
+    with open('cropped.pkl', 'wb') as f:
+        pickle.dump(layers, f)
+
+total = np.zeros(layers.shape[:2])
+for ii in range(layers.shape[2]):
+    img = layers[:, :, ii]
+    img = img ** 0.5
+    img[img == 0] = np.nan
+    med = np.nanmedian(img)
+    img[np.isnan(img)] = 0
+    if np.any(img <= 0):
+        print(np.sum(img <= 0))
+        img = hole_conv_fill(img, n_pixels_around=None)
+    subtract = med
+    img = img - subtract
+    img = img / (med * meds - subtract) * 255
+    img[img > 255] = 255
+    img[img < 0] = 0
+    if ii == 0:
+        b = img
+    elif ii == layers.shape[2]-1:
+        r = img
+    total += img
+
+total = total / (ii+1)
+# layers = mosaic(path,method='layers')
+rgbt = np.zeros((total.shape[0], total.shape[1], 3))
+rgbt[..., 0] = r
+rgbt[..., 1] = total
+rgbt[..., 2] = b
+
+
+plt.figure()
+plt.imshow(rgbt.astype('uint8'), origin='lower')
+plt.axis('off')
+plt.show(block=False)
+print('tada')

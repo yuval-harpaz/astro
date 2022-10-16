@@ -4,7 +4,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
-from astropy.convolution import Gaussian2DKernel, convolve
+from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
 from scipy.signal import find_peaks
 from skimage.morphology import disk
 # from scipy.ndimage import median_filter
@@ -117,7 +117,7 @@ def hole_size(layer, xy, plot=False):
         plt.show(block=False)
     return rad_rim
 
-def hole_circle_fill(img, xy, size, larger_than=2, allowed=1/3):
+def hole_disk_fill(img, xy, size, larger_than=2, allowed=1/3):
     """
     fill holes with a disk
     check if there are at least 3 similar radii (consistent circular size),
@@ -156,7 +156,7 @@ def hole_circle_fill(img, xy, size, larger_than=2, allowed=1/3):
                     filled[xy[ii, 0]-sz:xy[ii, 0]+sz+1, xy[ii, 1]-sz:xy[ii, 1]+sz+1] = fill
     return filled
 
-def hole_conv_fill(img, n_pixels_around=4, x_stddev=3):
+def hole_conv_fill(img, n_pixels_around=4, ringsize=15, clean_below_local=0.75, clean_below=1):
     """
     fill (small) holes with local mean. local mean is computed after ignoring zeros.
     zero and negative values are replaced. neighbors are also replaced if smaller than 75% of local mean.
@@ -171,29 +171,33 @@ def hole_conv_fill(img, n_pixels_around=4, x_stddev=3):
     -------
     img: the fixed image
     """
-    clean_below = 0.75  # clean when the pixel is 75% of the median or lower
-    kernel = Gaussian2DKernel(x_stddev=x_stddev)
+    # kernel = Gaussian2DKernel(x_stddev=x_stddev)
+    kernel = Ring2DKernel(ringsize, 3)
     # conv = median_filter(img, footprint=kernel.array)
     img[np.isnan(img)] = 0  # turn nans to zeros for later filling
     zer = np.where(img <= 0)
     zer = np.asarray(zer).T
     img[img == 0] = np.nan  # turn zeros to nans to ignore when computing fill values
     conv = convolve(img, kernel)
+    med = np.nanmedian(img)
     img[np.isnan(img)] = 0  # change back to zeros to allow operands
 
-
-    idx = list(range(-n_pixels_around, n_pixels_around+1))
-    for ii in range(zer.shape[0]):
-        img[zer[ii, 0], zer[ii, 1]] = conv[zer[ii, 0], zer[ii, 1]]
-        for jj in idx:
-            x = zer[ii, 0] + jj
-            for kk in idx:
-                y = zer[ii, 1] + kk
-                try:  # fails near the edge
-                    if img[x, y] < conv[x, y] * clean_below:
-                        img[x, y] = conv[x, y]
-                except:
-                    pass
+    if n_pixels_around is None or n_pixels_around == 0:
+        img[img == 0] = conv[img == 0]
+    else:
+        idx = list(range(-n_pixels_around, n_pixels_around+1))
+        for ii in range(zer.shape[0]):
+            img[zer[ii, 0], zer[ii, 1]] = conv[zer[ii, 0], zer[ii, 1]]
+            for jj in idx:
+                x = zer[ii, 0] + jj
+                for kk in idx:
+                    y = zer[ii, 1] + kk
+                    if x == 511 and y == 88:
+                        a=1  # debug stop
+                    if x > -1 and y > -1 and x < img.shape[0] and y < img.shape[1]:
+                        if (img[x, y] < conv[x, y] * clean_below_local) and img[x, y] < med * clean_below:
+                            img[x, y] = conv[x, y]
+    img[np.isnan(img)] = 0
     return img
 
 
@@ -207,8 +211,13 @@ if __name__ == '__main__':
     xy = hole_xy(img)
     size = hole_size(img, xy, plot=False)
     orig = img.copy()
-    filled = hole_circle_fill(img, xy, size, larger_than=3)
-    filled = hole_conv_fill(filled, x_stddev=4)
+    filled = hole_disk_fill(img, xy, size, larger_than=3)
+    # filled = hole_conv_fill(filled, x_stddev=4)
+    filled = hole_conv_fill(filled, n_pixels_around=3, ringsize=15, clean_below_local=0.75, clean_below=2)
+    plt.figure();
+    plt.imshow(filled, origin='lower');
+    plt.clim(0, 1000);
+    plt.show(block=False)
     conved = orig.copy()
     conved = hole_conv_fill(conved)
     plt.figure()
