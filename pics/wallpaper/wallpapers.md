@@ -9,6 +9,9 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/NGC628_miri.png" download>
   <img title="NGC 628" alt="NGC 628" src="thumb/NGC628_miri.png">
 </a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/southern_ring.png" download>
+  <img title="Southern Ring Nebula" src="thumb/southern_ring.png">
+</a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/orion_bar.png" download>
   <img title="The bar in Orion Nebula" src="thumb/orion_bar.png">
 </a>
