@@ -3,8 +3,8 @@
 Image processing and python code by [@yuvharpaz](https://twitter.com/yuvharpaz). This page and python code for download and image processing are hosted on  [GitHub](https://github.com/yuval-harpaz/astro)
 ### Image preview
 #### Click on images to download high-res pics. Hover over to see object names.
-<a href="cartwheel.png" download>
-  <img src="thumb/cartwheel.png" alt="Cartwheel Galaxy">
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/cartwheel.png" download>
+    <img src="thumb/cartwheel.png" alt="Cartwheel Galaxy">
 </a>
 <a href="NGC628_miri.png" download>
   <img src="thumb/NGC628_miri.png" alt="NGC 628">
