@@ -7,7 +7,7 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
     <img src="thumb/cartwheel.png" alt="Cartwheel Galaxy">
 </a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/NGC628_miri.png" download>
-  <img src="thumb/NGC628_miri.png" alt="NGC 628">
+  <img title="NGC 628" alt="NGC 628" src="thumb/NGC628_miri.png">
 </a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/orion_bar.png" download>
   <img src="thumb/orion_bar.png" alt="The bar in Orion Nebula">
