@@ -22,7 +22,7 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
   <img title="Cosmic cliffs in Carina Nebula" src="thumb/carina_large.png">
 </a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/carina_bay.png" download>
-  <img src="thumb/carina_bay.png" alt="Cosmic cliffs in Carina Nebula">
+  <img src="thumb/carina_bay.png" title="Cosmic cliffs in Carina Nebula">
 </a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/carina_bay_pink.png" download>
   <img title="Cosmic cliffs in Carina Nebula" src="thumb/carina_bay_pink.png">
