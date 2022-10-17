@@ -1,5 +1,5 @@
 # JWST wallpapers
-### James Webb space telescope images prepared For 1920 x 1080 screens
+### James Webb Space Telescope images prepared for 1920 x 1080 screens
 Image processing and python code by [@yuvharpaz](https://twitter.com/yuvharpaz). This page and python code for download and image processing are hosted on  [GitHub](https://github.com/yuval-harpaz/astro)
 ### Image preview
 Right-click and ***save link as***.<br>Atlernatively, Click on images to view high-res, then right-click and ***save image as***<br>
