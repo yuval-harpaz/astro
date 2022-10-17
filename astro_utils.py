@@ -302,65 +302,6 @@ def reproject(path, project_to=0):
             layers[:, :, ii] = reproj
     return layers
 
-def fill_holes(layer, fill_below=20, if_above=1000, hole_size=20, pad=1, ip_mask=None, op_mask=None, fill_dead=True):
-    # fill black (zero) holes in the middle for stars
-    # param 1 for x_stddev gives gaussian 9 by 9. 8*std+1. use param=[1,3] to fix holes in different sizes
-    # method can be median, ring, other for convolution
-    # op_mask is True or 'padded' to get the filled holes as a binary image
-
-    holes = layer <= fill_below
-    if ip_mask is not None:
-        holes = holes + ip_mask
-        layer[ip_mask * (layer < if_above)] = if_above
-    local_max = maximum_filter(layer, size=hole_size)
-    holes[local_max < if_above] = False
-
-
-    filled = layer.copy()
-    filled[holes] = local_max[holes]
-    if pad > 0:
-        padmask = holes.copy()
-        padmask[:-pad,:] = padmask[:-pad,:]+holes[pad:,:]
-        padmask[pad:,:] = padmask[pad:,:]+holes[:-pad,:]
-        padmask[:,:-pad] = padmask[:,:-pad]+holes[:,pad:]
-        padmask[:,pad:] = padmask[:,pad:]+holes[:,:-pad]
-        filled[padmask] = local_max[padmask]
-    else:
-        filled[holes] = local_max[holes]
-    if fill_dead:
-        kernel = Gaussian2DKernel(x_stddev=2)
-        median = median_filter(filled, footprint=kernel.array)
-        filled[filled < fill_below] = median[filled < fill_below]
-    if op_mask == True:
-        return filled, holes
-    elif op_mask == 'padded':
-        return filled, padmask
-    else:
-        return filled
-
-def fill_holes_old(layer, param=[1,2], method='median'):
-    if not type(param) == list:
-        param = [param]
-    for pp in param:
-        if method == 'ring':
-            kernel = Ring2DKernel(pp, 3)
-            # 3 radius + 1 thickness gives a 9 by 9 square. 4 >> 11, 5 >> 13
-        else:
-            kernel = Gaussian2DKernel(x_stddev=pp)
-        # kerned size is 8*std+1
-        zeros = layer == 0
-        if np.sum(zeros) == 0:
-            print('no holes for parameter '+str(pp))
-        else:
-            if (method == 'median') or (method == 'ring'):
-                conv = median_filter(layer, footprint=kernel.array)
-                layer[zeros] = conv[zeros]
-            else:  # convolve, ignore nans
-                layer[zeros] = np.nan
-                conv = convolve(layer, kernel)
-                layer[np.isnan(layer)] = conv[np.isnan(layer)]
-    return layer
-
 
 def clip_square_edge(shape, x0, x1, y0, y1):
     # find indices for a redctangle but clip it when before 0 or after image size
@@ -489,30 +430,21 @@ def evaluate_redshift(flux, wavelength=None, max_z=1, resolution=0.0001, prom_me
             err = err0
             best = ibest
             best_z = z
-
-    # plt.figure()
-    # plt.plot(wavelength, flux)
-    # plt.plot(wavelength[peaks], flux[peaks], '.k')
-    # for ii in range(len(w_expected)):
-    #     plt.text(w_expected[ii]*(1+best_z),np.median(flux),s_expected[ii],ha='center',rotation=90)
-    # for ib in best:
-    #     plt.text(w_expected[ib]*(1+best_z),np.median(flux),s_expected[ib],color='g',ha='center',rotation=90)
-    # plt.show(block=False)
     return best_z
 
 
-# def filt_num(path):
-#     filt = np.zeros(len(path))
-#     for ii in range(len(path)):
-#         plip = path[ii][-1:0:-1]
-#         plip = plip.replace('-','_')
-#         iF = plip.find('f_')  # index of filter, sorry
-#         if iF == -1:
-#             filt[ii] = np.nan
-#         else:
-#             p = plip[:iF][-1:0:-1]
-#             filt[ii] = int(p[:p.find('_')-1])
-#     return filt
+def filt_num(path):
+    filt = np.zeros(len(path))
+    for ii in range(len(path)):
+        plip = path[ii][-1:0:-1]
+        plip = plip.replace('-','_')
+        iF = plip.find('f_')  # index of filter, sorry
+        if iF == -1:
+            filt[ii] = np.nan
+        else:
+            p = plip[:iF][-1:0:-1]
+            filt[ii] = int(p[:p.find('_')-1])
+    return filt
 
 
 def crop_fits(hdu1, center, sizes):
@@ -679,3 +611,63 @@ if __name__ == '__main__':
 #         #     conv = convolve(layer, kernel)
 #         #     layer[np.isnan(layer)] = conv[np.isnan(layer)]
 #     return layer
+
+# def fill_holes(layer, fill_below=20, if_above=1000, hole_size=20, pad=1, ip_mask=None, op_mask=None, fill_dead=True):
+#     # fill black (zero) holes in the middle for stars
+#     # param 1 for x_stddev gives gaussian 9 by 9. 8*std+1. use param=[1,3] to fix holes in different sizes
+#     # method can be median, ring, other for convolution
+#     # op_mask is True or 'padded' to get the filled holes as a binary image
+#
+#     holes = layer <= fill_below
+#     if ip_mask is not None:
+#         holes = holes + ip_mask
+#         layer[ip_mask * (layer < if_above)] = if_above
+#     local_max = maximum_filter(layer, size=hole_size)
+#     holes[local_max < if_above] = False
+#
+#
+#     filled = layer.copy()
+#     filled[holes] = local_max[holes]
+#     if pad > 0:
+#         padmask = holes.copy()
+#         padmask[:-pad,:] = padmask[:-pad,:]+holes[pad:,:]
+#         padmask[pad:,:] = padmask[pad:,:]+holes[:-pad,:]
+#         padmask[:,:-pad] = padmask[:,:-pad]+holes[:,pad:]
+#         padmask[:,pad:] = padmask[:,pad:]+holes[:,:-pad]
+#         filled[padmask] = local_max[padmask]
+#     else:
+#         filled[holes] = local_max[holes]
+#     if fill_dead:
+#         kernel = Gaussian2DKernel(x_stddev=2)
+#         median = median_filter(filled, footprint=kernel.array)
+#         filled[filled < fill_below] = median[filled < fill_below]
+#     if op_mask == True:
+#         return filled, holes
+#     elif op_mask == 'padded':
+#         return filled, padmask
+#     else:
+#         return filled
+#
+# def fill_holes_old(layer, param=[1,2], method='median'):
+#     if not type(param) == list:
+#         param = [param]
+#     for pp in param:
+#         if method == 'ring':
+#             kernel = Ring2DKernel(pp, 3)
+#             # 3 radius + 1 thickness gives a 9 by 9 square. 4 >> 11, 5 >> 13
+#         else:
+#             kernel = Gaussian2DKernel(x_stddev=pp)
+#         # kerned size is 8*std+1
+#         zeros = layer == 0
+#         if np.sum(zeros) == 0:
+#             print('no holes for parameter '+str(pp))
+#         else:
+#             if (method == 'median') or (method == 'ring'):
+#                 conv = median_filter(layer, footprint=kernel.array)
+#                 layer[zeros] = conv[zeros]
+#             else:  # convolve, ignore nans
+#                 layer[zeros] = np.nan
+#                 conv = convolve(layer, kernel)
+#                 layer[np.isnan(layer)] = conv[np.isnan(layer)]
+#     return layer
+#
