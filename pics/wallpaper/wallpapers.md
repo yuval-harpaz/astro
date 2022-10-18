@@ -26,6 +26,12 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/NGC1365_miri.png" download>
   <img title="NGC 1365" src="thumb/NGC1365_miri.png">
 </a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/NGC7319.png" download>
+  <img title="NGC 7319 in Stephan's Quintet" src="thumb/NGC7319.png">
+</a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/Stephans_Quintet.png" download>
+  <img title="Stephan's Quintet" src="thumb/Stephans_Quintet.png.png">
+</a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/carina_large.png" download>
   <img title="Cosmic cliffs in Carina Nebula" src="thumb/carina_large.png">
 </a>
