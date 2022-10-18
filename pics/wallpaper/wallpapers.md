@@ -1,3 +1,5 @@
+<meta property="og:image" content="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/thumb/southern_ring.png" />
+
 # JWST wallpapers
 ### James Webb Space Telescope images prepared for 1920 x 1080 screens
 Image processing and python code by [@yuvharpaz](https://twitter.com/yuvharpaz). This page and python code for download and image processing are hosted on  [GitHub](https://github.com/yuval-harpaz/astro)
@@ -11,6 +13,9 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
 </a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/southern_ring.png" download>
   <img title="Southern Ring Nebula" src="thumb/southern_ring.png">
+</a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/southern_ring_red.png" download>
+  <img title="Southern Ring Nebula" src="thumb/southern_ring_red.png">
 </a>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/orion_bar.png" download>
   <img title="The bar in Orion Nebula" src="thumb/orion_bar.png">
