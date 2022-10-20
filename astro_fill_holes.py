@@ -8,6 +8,7 @@ from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
 from scipy.signal import find_peaks
 from skimage.morphology import disk
 # from scipy.ndimage import median_filter
+from tqdm import tqdm
 
 root = os.environ['HOME']+'/astro/'
 
@@ -51,6 +52,31 @@ def hole_xy(layer, x_stddev=4):
     peaks = np.where(ver * hor)
     peaks = np.asarray(peaks).T
     return peaks
+
+def find_peaks2d(img, x_stddev=4):
+    kernel = Gaussian2DKernel(x_stddev=x_stddev)
+    print('smoothing')
+    smoothed = convolve(img, kernel=kernel.array)
+    print('done')
+    hor = np.zeros(img.shape, bool)
+    for ii in range(img.shape[0]):
+        peaks = find_peaks(smoothed[ii, :])[0]
+        if len(peaks) > 0:
+            peaks = peaks[smoothed[ii, peaks] < 1]
+        # if len(peaks) > 0:
+        hor[ii, peaks] = True
+    ver = np.zeros(img.shape, bool)
+    for jj in range(img.shape[1]):
+        peaks = find_peaks(smoothed[:, jj])[0]
+        if len(peaks) > 0:
+            peaks = peaks[smoothed[peaks, jj] < 1]
+        # if len(peaks) > 0:
+        ver[peaks, jj] = True
+    peaks = np.where(ver * hor)
+    peaks = np.asarray(peaks).T
+    return peaks
+
+
 
 def hole_size(layer, xy, plot=False):
     """
