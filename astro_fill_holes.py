@@ -172,8 +172,8 @@ def hole_disk_fill(img, xy, size, larger_than=2, allowed=1/3):
             sz = sz[np.abs(sz/np.median(sz)-1) <= allowed]
             if len(sz) > 2:
                 sz = int(np.ceil(np.mean(sz)))
-                in_frame = (xy[ii,0] - sz > 0) and (xy[ii, 1] - sz > 0) and (xy[ii, 0] + sz <= img.shape[0]) \
-                           and (xy[ii, 1] + sz <= img.shape[1])
+                in_frame = (xy[ii,0] - sz > 0) and (xy[ii, 1] - sz > 0) and (xy[ii, 0] + sz < img.shape[0]) \
+                           and (xy[ii, 1] + sz < img.shape[1])
                 if sz > larger_than and in_frame:
                     mask = disk(sz + 1, bool)
                     mask = mask[1:-1, 1:-1]

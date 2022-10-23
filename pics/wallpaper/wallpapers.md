@@ -42,6 +42,9 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/carina_bay_pink.png" download>
   <img title="Cosmic cliffs in Carina Nebula" src="thumb/carina_bay_pink.png">
 </a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/M16_middle_finger.png" download>
+  <img title="M16, Eagle Nebula, pillar tip" src="thumb/M16_middle_finger.png">
+</a>
 #### NASA images
 [M16, Eagle Nebula (pillars of creation)](https://webbtelescope.org/contents/media/images/2022/052/01GF423GBQSK6ANC89NTFJW8VM). See the capybara?<br>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/pillars.png" download>
