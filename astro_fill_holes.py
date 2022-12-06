@@ -1,7 +1,8 @@
 from astropy.io import fits
 import os
 import matplotlib
-matplotlib.use('TkAgg')
+
+matplotlib.use('Qt5Agg')
 from matplotlib import pyplot as plt
 import numpy as np
 from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
@@ -209,7 +210,7 @@ def hole_conv_fill(img, n_pixels_around=4, ringsize=15, clean_below_local=0.75, 
     img[np.isnan(img)] = 0  # change back to zeros to allow operands
 
     if n_pixels_around is None or n_pixels_around == 0:
-        img[img == 0] = conv[img == 0]
+        img[img <= clean_below*med] = conv[img <= clean_below*med]
     else:
         idx = list(range(-n_pixels_around, n_pixels_around+1))
         for ii in range(zer.shape[0]):
