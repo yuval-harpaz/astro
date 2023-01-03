@@ -489,185 +489,28 @@ if __name__ == '__main__':
     print('tada')
 
 
-# def fill_craters(img1, method='peaks'):
-#     layer = img1.copy()
-#     kernel = Gaussian2DKernel(x_stddev=4)
-#     # kerned size is 8*std+1
-#     layer[layer < 0] = 0
-#     zeros = layer == 0
-#     if np.sum(zeros) <= 0:
-#         print('no holes?')
-#         return layer
-#
-#     # conv = median_filter(layer, footprint=kernel.array)
-#     # layer[zeros] = conv[zeros]
-#     zeros = layer == 0
-#     zeros_smoothed = convolve(zeros, kernel=kernel.array)
-#     hor = np.zeros(layer.shape, bool)
-#     for ii in range(layer.shape[0]):
-#         peaks = find_peaks(zeros_smoothed[ii, :])[0]
-#         if len(peaks) > 0:
-#             peaks = peaks[zeros_smoothed[ii,peaks] < 1]
-#         # if len(peaks) > 0:
-#         hor[ii, peaks] = True
-#     ver = np.zeros(layer.shape, bool)
-#     for jj in range(layer.shape[1]):
-#         peaks = find_peaks(zeros_smoothed[:, jj])[0]
-#         if len(peaks) > 0:
-#             peaks = peaks[zeros_smoothed[peaks, jj] < 1]
-#         # if len(peaks) > 0:
-#         ver[peaks, jj] = True
-#     peaks2d = np.where(ver*hor)
-#     for hole in range(len(peaks2d[0])):
-#         if hole == 53:
-#             print('hole 53')
-#         where = np.where(layer[peaks2d[0][hole], 1:peaks2d[1][hole]] - layer[peaks2d[0][hole], :peaks2d[1][hole]-1] > 0)[0]
-#         if len(where) == 0:  # edge issues, maybe zeros
-#             continue
-#         y0 = where[-1]
-#         where = np.where(layer[peaks2d[0][hole], peaks2d[1][hole]+1:] - layer[peaks2d[0][hole], peaks2d[1][hole]:-1] > 0)[0]
-#         if len(where) == 0:
-#             continue
-#         y1 = where[0] + peaks2d[1][hole] + 1
-#         plt.imshow(layer)
-#         plt.show(block=False)
-#         rim = []
-#         mx = 0
-#         if method == 'peaks':
-#             max_range = int(40/2)  # how far to look for rim around center of zeros (+- 20 pix)
-#             prct = 1/30  # percents of maximum un
-#             prom = np.max(layer[
-#                               np.max([peaks2d[0][hole]-max_range,0]):
-#                               np.min([peaks2d[0][hole]+max_range,layer.shape[0]]),
-#                               np.max([peaks2d[1][hole]-max_range,0]):
-#                               np.min([peaks2d[1][hole]+max_range, layer.shape[1]])])*prct
-#             for yy in range(y0, y1):
-#                 pk = find_peaks(layer[:, yy], prominence=prom)[0]
-#                 pk = pk[(pk > peaks2d[0][hole]-max_range) & (pk < peaks2d[0][hole]+max_range)]
-#                 pknear = np.where(pk <= peaks2d[0][hole])[0]
-#                 if len(pknear) == 0:
-#                     x0 = peaks2d[0][hole]
-#                 else:
-#                     x0 = pk[pknear[-1]]
-#                 pknear = np.where(pk >= peaks2d[0][hole])[0]
-#                 if len(pknear) == 0:
-#                     x1 = peaks2d[0][hole]
-#                 else:
-#                     x1 = pk[pknear[0]]
-#                 rim.append([x0, x1, yy])
-#                 if layer[x0, yy] > mx:
-#                     mx = layer[x0, yy]
-#                     imx = len(rim)
-#                 if layer[x1, yy] > mx:
-#                     mx = layer[x1, yy]
-#                     # imx = len(rim)
-#         elif method == 'gaus':
-#             threshold = np.min(zeros_smoothed[peaks2d[0][hole], y0:y1])
-#             rad = np.max([y1-peaks2d[1][hole], peaks2d[1][hole]-y0]) + 1
-#             if rad > 100:
-#                 print('dbg')
-#             idx = clip_square_edge(layer.shape,
-#                                    peaks2d[0][hole]-rad,
-#                                    peaks2d[0][hole]+rad,
-#                                    peaks2d[1][hole]-rad,
-#                                    peaks2d[1][hole]+rad)
-#             mx = layer[idx[0]:idx[1], idx[2]:idx[3]].max()
-#             for yy in range(peaks2d[1][hole]-rad-1, peaks2d[1][hole]+rad+2):
-#                 x0 = np.where(zeros_smoothed[:peaks2d[0][hole], yy] < threshold)[0]
-#                 if len(x0) > 0:
-#                     x0 = x0[-1]
-#                 x1 = np.where(zeros_smoothed[:peaks2d[0][hole]+rad, yy] > threshold)[0]
-#                 if len(x1) > 0:
-#                     x1 = x1[-1]
-#                 # if x0 > x1:
-#                 #     print('dbg')
-#                 # if np.max(layer[x0:x1 + 1, yy]) > mx:
-#                 #     mx = np.max(layer[x0:x1 + 1, yy])
-#                 if type(x0) == np.int64 and type(x1) == np.int64:
-#                     tmp = layer[x0:x1+1, yy]  # fails if x0 and x1 are empty arrays.
-#                     rim.append([x0, x1, yy])
-#         else:
-#             # imx = np.nan
-#             for yy in range(y0, y1):
-#                 x0 = np.where(layer[1:peaks2d[0][hole], yy] - layer[:peaks2d[0][hole]-1, yy] > 0)[0][-1] + 1
-#                 x1 = np.where(layer[peaks2d[0][hole]+1:, yy] - layer[peaks2d[0][hole]:-1, yy] < 0)[0][0] + peaks2d[0][hole]
-#                 rim.append([x0, x1, yy])
-#                 if layer[x0, yy] > mx:
-#                     mx = layer[x0, yy]
-#                     # imx = len(rim)
-#                 if layer[x1, yy] > mx:
-#                     mx = layer[x1, yy]
-#                     # imx = len(rim)
-#         # if hole == 47:
-#         #     print('first large wholw')
-#         if mx > np.median(layer)/100:
-#             for r in rim:
-#                 if r[1] - r[0] > 1:
-#                     layer[r[0]+1:r[1], r[2]] = mx
-#     # conv = median_filter(layer, footprint=kernel.array)
-#     # layer[layer <= 0] = conv[layer <= 0]
-#         # else:  # convolve, ignore nans
-#         #     layer[zeros] = np.nan
-#         #     conv = convolve(layer, kernel)
-#         #     layer[np.isnan(layer)] = conv[np.isnan(layer)]
-#     return layer
-
-# def fill_holes(layer, fill_below=20, if_above=1000, hole_size=20, pad=1, ip_mask=None, op_mask=None, fill_dead=True):
-#     # fill black (zero) holes in the middle for stars
-#     # param 1 for x_stddev gives gaussian 9 by 9. 8*std+1. use param=[1,3] to fix holes in different sizes
-#     # method can be median, ring, other for convolution
-#     # op_mask is True or 'padded' to get the filled holes as a binary image
-#
-#     holes = layer <= fill_below
-#     if ip_mask is not None:
-#         holes = holes + ip_mask
-#         layer[ip_mask * (layer < if_above)] = if_above
-#     local_max = maximum_filter(layer, size=hole_size)
-#     holes[local_max < if_above] = False
-#
-#
-#     filled = layer.copy()
-#     filled[holes] = local_max[holes]
-#     if pad > 0:
-#         padmask = holes.copy()
-#         padmask[:-pad,:] = padmask[:-pad,:]+holes[pad:,:]
-#         padmask[pad:,:] = padmask[pad:,:]+holes[:-pad,:]
-#         padmask[:,:-pad] = padmask[:,:-pad]+holes[:,pad:]
-#         padmask[:,pad:] = padmask[:,pad:]+holes[:,:-pad]
-#         filled[padmask] = local_max[padmask]
-#     else:
-#         filled[holes] = local_max[holes]
-#     if fill_dead:
-#         kernel = Gaussian2DKernel(x_stddev=2)
-#         median = median_filter(filled, footprint=kernel.array)
-#         filled[filled < fill_below] = median[filled < fill_below]
-#     if op_mask == True:
-#         return filled, holes
-#     elif op_mask == 'padded':
-#         return filled, padmask
-#     else:
-#         return filled
-#
-# def fill_holes_old(layer, param=[1,2], method='median'):
-#     if not type(param) == list:
-#         param = [param]
-#     for pp in param:
-#         if method == 'ring':
-#             kernel = Ring2DKernel(pp, 3)
-#             # 3 radius + 1 thickness gives a 9 by 9 square. 4 >> 11, 5 >> 13
-#         else:
-#             kernel = Gaussian2DKernel(x_stddev=pp)
-#         # kerned size is 8*std+1
-#         zeros = layer == 0
-#         if np.sum(zeros) == 0:
-#             print('no holes for parameter '+str(pp))
-#         else:
-#             if (method == 'median') or (method == 'ring'):
-#                 conv = median_filter(layer, footprint=kernel.array)
-#                 layer[zeros] = conv[zeros]
-#             else:  # convolve, ignore nans
-#                 layer[zeros] = np.nan
-#                 conv = convolve(layer, kernel)
-#                 layer[np.isnan(layer)] = conv[np.isnan(layer)]
-#     return layer
-#
+def movmean(data, win):
+    #  smooth data with a moving average. win should be an odd number of samples.
+    #  data is np.ndarray with samples by channels shape
+    #  to get smoothing of 3 samples back and 3 samples forward use win=7
+    if len(data.shape) == 1:
+        data = data[:, np.newaxis]
+        nChannels = 1
+    else:
+        nChannels = data.shape[1]
+    smooth = data.copy()
+    for iChannel in range(nChannels):
+        if len(data.shape) == 1:
+            vec = data
+        else:
+            vec = data[:, iChannel]
+        padded = np.concatenate(
+            (np.ones((win,)) * vec[0], vec, np.ones((win,)) * vec[-1]))
+        sm = np.convolve(padded, np.ones((win,)) / win, mode='valid')
+        sm = sm[int(win / 2):]
+        sm = sm[0:vec.shape[0]]
+        if len(data.shape) == 1:
+            smooth[:] = sm
+        else:
+            smooth[:, iChannel] = sm
+    return smooth

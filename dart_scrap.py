@@ -1,72 +1,68 @@
 import matplotlib.pyplot as plt
 import numpy as np
-%matplotlib qt
+# %matplotlib qt
 from astro_utils import *
 from astro_fill_holes import *
 import os
 import pandas as pd
-# import pickle
-## Take the first day data (before impact) to compute flat field
+# import cv2
+dist = np.asarray([11.41, 11.23, 11.08, 10.95, 10.84, 10.76, 10.70])*10**6
+pix_size = np.tan(np.deg2rad(0.1143/2/3600))*dist*2
+
 os.chdir('/home/innereye/Dropbox/Moris_20220926-20221002/')
 stuff = '/home/innereye/astro/dart/'
-path = list_files('/home/innereye/Dropbox/Moris_20220926-20221002/', '*.fits')
+path = np.asarray(list_files('/home/innereye/Dropbox/Moris_20220926-20221002/', '*.fits'))
 kernel = Gaussian2DKernel(x_stddev=3)  # a gaussian for smoothing the data
 mmdd = np.asarray([x[9:13] for x in path])
 mmddu = np.unique(mmdd)
+## get center of didymos for al images
 
-data = np.load(stuff+'per_day.pkl', allow_pickle=True)
+day = 5
+date = mmddu[day]
+filt = []
+pathc = path[mmdd == date]
+filename = stuff + 'xy'+date+'.csv'
+dfxy = pd.read_csv(filename)
+# for ii in range(len(pathc)):
+#     f = pathc[ii]
+#     hdu = fits.open(f)
+#     filt.append(hdu[0].header['FILTER'])
+# filt = np.asarray(filt)
+# filtu = np.unique(filt)
+# print(date)
+# for ii in range(len(filtu)):
+#     print(filtu[ii]+': '+str(np.sum(filt == filtu[ii])))
 
-%matplotlib qt
 
-jet = matplotlib.cm.get_cmap('jet', 9)
-jet = jet(np.linspace(0, 1, 9))
-
-plt.plot(data[150, :,:]);plt.legend(mmddu)
-
+## clean V data
+# hot = pd.read_csv(stuff+'hot_pixels.csv')
+# halfdid = 150
+# didV = np.zeros((halfdid*2, halfdid*2, 7))
+#
+# filt = []
+# pathc = path[mmdd == date]
+# filename = stuff + 'xy'+date+'.csv'
+# dfxy = pd.read_csv(filename)
+# xy = np.zeros((len(dfxy),2), int)
+# xy[:,0] = dfxy['x'].to_numpy()
+# xy[:, 1] = dfxy['y'].to_numpy()
+# n = 0
+# did_clean = []
+df = pd.read_csv(stuff+'meta.csv')
+# df = df[df['x'] > 0]
+mmdd = np.asarray([x[9:13] for x in df['file']])
+filt = np.asarray([x[-1].lower() for x in df['filter']])
+# idx = np.where((filt == 'v') & (mmdd == '1001') & (df['x'] > 0) & (df['y'] < 370))[0]
+df = df[(filt == 'v') & (mmdd == '1001') & (df['x'] > 0) & (df['y'] < 370)]
+file = df['file'].to_numpy()
+c = 0
 plt.figure()
-for ii in range(7):
-    plt.plot(data[150,:,ii]-np.mean(data[150,22:30,ii]), label=mmddu[ii], color=jet[ii+1,:3])
-plt.xlim(120, 180)
-plt.ylim(0, 300)
-plt.grid()
-plt.legend()
-
-plt.figure()
-for ii in range(7):
-    d = data[:,:,ii]
-    d = d - np.mean(d[6:-7, 30])
-    if ii == 4:
-        d = d*1.5
-    op = d / 2 * 255
-    op[op < 0] = 0
-    op[op > 255] = 255
-    op = op.astype('uint8')
-    plt.subplot(2,4,ii+1)
-    plt.imshow(op, origin='lower', cmap='gray')
-
-levs = 10.0**np.arange(-2,2.6,0.5)
-plt.figure()
-for ii in range(7):
-    d = data[:,:,ii].copy()
-    bl = (np.median(d[15:50,15:50])+np.median(d[-50:-15,-50:-15]))/2
-    d = d - bl
-    if ii == 4:
-        d = d*1.5
-    d[d < 0.01] = 0.01
-    # op = d / 2 * 255
-    # op[op < 0] = 0
-    # op[op > 255] = 255
-    # op = op.astype('uint8')
-    plt.subplot(2,4,ii+1)
-    # fig, ax = plt.subplots()
-    # lev_exp = np.arange(-10, 100)
-    #                     levs = np.power(10, lev_exp)
-    #                     cs = ax.contourf(X, Y, z, levs, norm=colors.LogNorm())
-    # cs = plt.contourf(d, locator=matplotlib.ticker.LogLocator(base=5, numdecs=5))
-    cs = plt.contourf(d, levs, norm = matplotlib.colors.LogNorm())
-    plt.axis('off')
-    plt.axis('square')
-plt.subplot(2,4,8)
-plt.axis('off')
-plt.colorbar(format='%.2f')
-    # cs = plt.contourf(d, levels=[0, 10, 20, 30, 40])
+for ii in range(283):
+    c += 1
+    if c == 37:
+        c = 1
+        plt.figure()
+    hdu = fits.open(file[ii])
+    plt.subplot(6, 6, c)
+    plt.imshow(hdu[0].data, origin='lower')
+    plt.clim(200, 205)
