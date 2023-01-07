@@ -1,4 +1,5 @@
 %matplotlib qt
+##
 from astro_utils import *
 from astro_fill_holes import *
 import os
@@ -13,16 +14,6 @@ kernel = Gaussian2DKernel(x_stddev=3)  # a gaussian for smoothing the data
 mmdd = np.asarray([x[9:13] for x in path])
 mmddu = np.unique(mmdd)
 df = pd.read_csv(stuff+'meta.csv')
-## get center of didymos for al images
-if False:
-    file = df['file'].to_numpy()
-    for ff in file:
-        hdu = fits.open(ff)
-        img = hdu[0].data.copy()
-        img[img > 205] = 210
-        img[img < 198] = 198
-        plt.imsave(stuff+'png/'+ff[:-4]+'png', img,origin='lower')
-        print(ff)
 
 ##
 halfdid = 500
@@ -36,10 +27,12 @@ for ii in range(len(isgood)):
 filt = np.asarray([x[-1].lower() for x in df['filter']])
 df = df[(filt == 'v') & (df['x'] > 0) & isgood]
 mmdd = np.asarray([x[9:13] for x in df['file']])
+##
 data = np.zeros((halfdid*2+1, halfdid*2+1, 7))
 raw = data.copy()
 # ops = np.zeros((halfdid*2, halfdid*2, 7), 'uint8')
 nonan = np.zeros(7)
+# plt.figure()
 for day in range(7):
     date = mmddu[day]
     print(date)
@@ -51,6 +44,8 @@ for day in range(7):
     print(n)
     cube = np.zeros((halfdid*2+1, halfdid*2+1, n))
     cube[...] = np.nan
+    md = np.zeros(cube.shape[2])
+    sd = np.zeros(cube.shape[2])
     for ii in range(n):
         # print(ii)
         f = pathc[ii]
@@ -66,6 +61,9 @@ for day in range(7):
         tmp[...] = np.nan
         tmp[x0:x0+512,y0:y0+512] = img
         cube[:,:,ii] = tmp
+        # md[ii] = np.nanmedian(cube[:, :, ii])
+        # sd[ii] = np.nanstd(cube[:, :, ii])
+    # bad = sd > np.median(sd)+np.std(sd)*3
     med = np.zeros((halfdid*2+1,halfdid*2+1))
     med[:,:] = np.nan
     for jj in range(med.shape[0]):
@@ -86,13 +84,18 @@ for day in range(7):
         if ns[ii] > 15:
             cube[:,:,ii] = np.nan
         else:
-            cube[:,:,ii] = cube[:,:,ii] - np.nanmedian(noise)
+            noise[noise > 205] = np.nan
+            cube[:,:,ii] = cube[:,:,ii] - np.nanmean(noise)
+    if day == 1:
+        cube[:,:,300:500] = np.nan
+    elif day == 5:
+        cube[:,:,11:24] = np.nan
     nonan[day] = np.sum(~np.isnan(cube[halfdid,halfdid,:]))
     d = np.zeros((halfdid*2+1,halfdid*2+1))
     for jj in range(med.shape[0]):
         for kk in range(med.shape[1]):
-            d[jj, kk] = np.nanmean(cube[jj, kk,:])
-    del cube
+            d[jj, kk] = np.nanmean(cube[jj, kk, :])
+    # del cube
     raw[:, :, day] = d.copy()
     nans = np.isnan(d)
     d[nans] = np.nanpercentile(d[630:, :], 50)
@@ -107,19 +110,22 @@ for day in range(7):
     d = convolve(d, kernel=kernel.array)
     d[nans] = np.nan
     data[:, :, day] = d
-
+    # plt.subplot(2, 4, day + 1)
+    # plt.imshow(d)
+    # plt.clim(-0.5, 1)
+print(' no nan ')
+print(nonan)
 # ok = np.where(np.sum(np.isnan(data[:,halfdid+1,1]),1) == 0)[0]
 ok = np.where(~np.isnan(data[:,halfdid+1,1]))[0]
 cropped = data[ok[0]:ok[-1]+1,:,:]
 ok = np.where(~np.isnan(data[halfdid+1,:,1]))[0]
 cropped = cropped[:,ok[0]:ok[-1]+1,:]
-cropped[96:515,:,ii]
 ##
 plt.figure()
 for ii in range(7):
     prc = np.nanpercentile(cropped[:,:,ii], 25)
     plt.subplot(2,4,ii+1)
-    plt.imshow(cropped[96:515,:,ii]-prc)
+    plt.imshow(cropped[:,:,ii]-prc)
     plt.clim(0, 1)
 
 ##
@@ -130,7 +136,7 @@ ok = np.where(~np.isnan(data[:,halfdid+1,1]))[0]
 cropped = raw[ok[0]:ok[-1]+1,:,:]
 ok = np.where(~np.isnan(data[halfdid+1,:,1]))[0]
 cropped = cropped[:,ok[0]:ok[-1]+1,:]
-cropped[96:515,:,ii]
+
 
 with open(stuff+'per_day_raw2.pkl', 'wb') as f:
     pickle.dump(cropped, f)

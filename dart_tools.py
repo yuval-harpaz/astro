@@ -3,10 +3,6 @@ from cv2 import circle
 from astro_utils import *
 from scipy.signal import find_peaks
 ## Take the first day data (before impact) to compute flat field
-data = np.load('/home/innereye/astro/dart/per_day_raw1.pkl', allow_pickle=True)
-gray = data[:,:,1].copy()
-gray = gray - np.percentile(gray, 45)
-gray[gray < 0] = 0
 # orig = plt.imread('/home/innereye/Data/DART/chile_27_sep.jpg')
 # gray = np.min(orig,2)
 
@@ -83,7 +79,13 @@ def sorty(xf,yf, div):
             idxf[rowsf] = idxf[rowsf[orderf]]
     yf = yf[idxf]
     return(yf)
-
+##
+if __name__ == "__main__":
+    data = np.load('/home/innereye/astro/dart/per_day_raw2.pkl', allow_pickle=True)
+    gray = data[:, :, 1].copy()
+    gray = gray - np.percentile(gray, 45)
+    gray[gray < 0] = 0
+    ridges(gray, rad_vec, tangential_smooth=10, prominence=None, height=None, center=None, smooth=False, plot=False)
 
 # #
 # plt.figure()
