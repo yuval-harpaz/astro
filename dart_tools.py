@@ -2,9 +2,7 @@
 from cv2 import circle
 from astro_utils import *
 from scipy.signal import find_peaks
-## Take the first day data (before impact) to compute flat field
-# orig = plt.imread('/home/innereye/Data/DART/chile_27_sep.jpg')
-# gray = np.min(orig,2)
+
 
 def ridges(gray, rad_vec, tangential_smooth=10, prominence=None, height=None, center=None, smooth=False, plot=False):
     if center is None or smooth:

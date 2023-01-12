@@ -2,9 +2,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 # %matplotlib qt
 from astro_utils import *
-from astro_fill_holes import *
+# from astro_fill_holes import *
 import os
 import pandas as pd
+from scipy.ndimage import median_filter
 # import cv2
 # %matplotlib qt
 
@@ -33,6 +34,7 @@ for dd, date in enumerate(['0928', '0929', '1002']):
             y = df['y'][row]
             dat[:, :, c] = img[x-halfdid:x+halfdid, y-halfdid:y+halfdid]
         data[date][ff] = dat
+##
 c = 0
 plt.figure()
 for date in ['0928','0929','1002']:
@@ -56,7 +58,7 @@ for date in ['0928','0929','1002']:
         plt.axis('off')
         good = int(np.median(np.nansum(~np.isnan(dat), axis=2)))
         plt.title(date+' '+str(good) + '/' + str(dat.shape[2]) + ' ' + ff)
-
+##
 means = data.copy()
 for date in ['0928','0929','1002']:
     for ff in ['r','g','v']:
@@ -74,7 +76,7 @@ for date in ['0928','0929','1002']:
                 # layer[layer > 210] = np.nan
         clean = np.nanmean(dat, axis=2)
         means[date][ff] = clean
-
+##
 c = 0
 plt.figure()
 for date in ['0928','0929','1002']:
@@ -88,12 +90,13 @@ for date in ['0928','0929','1002']:
         plt.title(date + ' ' + ff+'-v')
 
 
-
+##
+log = False
 c = 0
 plt.figure()
 for date in ['0928','0929','1002']:
     c += 1
-    plt.subplot(1, 3, c)
+    plt.subplot(2, 2, c)
     r = means[date]['r'].copy()
     mask = r < np.median(r)+1.5
     r = r - np.mean(r[:50,:50])
@@ -102,9 +105,20 @@ for date in ['0928','0929','1002']:
     g = g - np.mean(g[:50, :50])
     # g = convolve(g, kernel=kernel)
     # ratio = convolve(r/g, kernel=kernel)
-    ratio = r/g
+    ratio = median_filter(r/g, footprint=kernel.array)
+    # ratio = r/g
     ratio[mask] = 1
-    plt.imshow(ratio, origin='lower')
-    plt.clim(1, 2)
+    if log:
+        ratio[ratio < 1] = 1
+        plt.imshow(np.log(ratio), origin='lower')
+        plt.clim(0.2, 0.75)
+    else:
+        plt.imshow(ratio, origin='lower')
+        plt.clim(1.5, 2.1)
     plt.axis('off')
     plt.title(date)
+plt.subplot(2,2,4)
+# plt.imshow(ratio, origin='lower')
+# plt.clim(1, 2)
+plt.axis('off')
+plt.colorbar()

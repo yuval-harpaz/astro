@@ -42,7 +42,7 @@ for day in range(7):
         ratio[day, thr-2] = size[day, thr-2]/size[0, thr-2]
 
 m = np.median((ratio[3, :] + ratio[5, :])/2/ratio[4, :])
-# m = 1.316422045828965
+# m = 1.364255650560085
 ##  read data and subtract percentile
 bl = np.zeros(7)
 for day in range(7):
@@ -138,7 +138,15 @@ for day in range(1,7):
     ll = LL[day]
     for il in range(3):
         l = ll[il]
-        xx = np.linspace(-50, 50, len(l))
+        sign = np.linspace(-50, 50, len(l))
+        sign = sign/np.abs(sign)
+        sign[np.isnan(sign)] = 0
+        x = XY[day][il][:, 0]
+        y = XY[day][il][:, 1]
+        px = PP[day][il][0]
+        py = PP[day][il][1]
+        xx = ((x-px)**2 + (y-py)**2)**0.5 # * pix_size[day]
+        xx = xx * sign
         for it, thr in enumerate(threshold):
             left = np.where(l[xx < 0] > thr)[0]
             if len(left) == 0:
@@ -210,14 +218,6 @@ for day in range(1,7):
         x, y = np.where(imgl[:, :, 0])
         y = sorty(x, y, 1)
         ll = data[x, y, day]
-        # plt.imshow(I, origin='lower')
-        # print(np.min(y))
-        # x0 = np.max(x)-np.min(x)
-        # y0 = np.max(y)-np.min(y)
-        # x0 = np.max(np.abs(x - center[0]))
-        # y0 = np.max(np.abs(y - center[1]))
-        # dist = (x0**2+y0**2)**0.5
-        # xx = np.linspace(dist, 0, len(ll)) * pix_size[day]
         xx = ((x-center[0])**2 + (y-center[1])**2)**0.5 * pix_size[day]
         if ll[0] > ll[-1]:
             ll = np.flipud(ll)
@@ -263,55 +263,34 @@ if plot:
 
 ## save
 # length
-df = pd.read_csv(stuff+'length.csv')
-for col in range(3):
-    l = np.round(length[:,col]).astype(int)
-    l[l > 1900] = 1900
-    df[df.columns[col+1]] = l
-df.to_csv(stuff+'length.csv',sep=',',index=False)
-# width
-w = width[:,:,0].copy()*2
-for ii in range(3):
-    w[:,ii] *= pix_size[1:]
-w = np.round(w).astype(int)
-df = pd.read_csv(stuff+'width.csv')
-for col in range(3):
-    df[df.columns[col+1]] = w[:,col]
-df.to_csv(stuff+'width.csv',sep=',',index=False)
-# angle
-ang = np.zeros((6, 3))
-for day in range(1, 7):
-    ang[day-1,:] = np.rad2deg(np.arctan2(PP[day][:,1]-center[1],PP[day][:,0]-center[0]))
-ang[:, 1] = 360+ang[:, 1]
-ang[1:, 2] = 360+ang[1:, 2]
-ang = np.round(ang).astype(int)
-df = pd.read_csv(stuff+'angle.csv')
-for col in range(3):
-    df[df.columns[col+1]] = ang[:,col]
-df.to_csv(stuff+'angle.csv',sep=',',index=False)
-# peaks
-with open(stuff+'peaks'+str(rad)+'.pkl', 'wb') as f:
-    pickle.dump(PP, f)
+if save:
+    df = pd.read_csv(stuff+'length.csv')
+    for col in range(3):
+        l = np.round(length[:, col]).astype(int)
+        l[l > 1900] = 1900
+        df[df.columns[col+1]] = l
+    df.to_csv(stuff+'length.csv', sep=',', index=False)
+    # width
+    w = width[:,:,0].copy()*2
+    for ii in range(3):
+        w[:,ii] *= pix_size[1:]
+    w = np.round(w).astype(int)
+    df = pd.read_csv(stuff+'width.csv')
+    for col in range(3):
+        df[df.columns[col+1]] = w[:, col]
+    df.to_csv(stuff+'width.csv', sep=',', index=False)
+    # angle
+    ang = np.zeros((6, 3))
+    for day in range(1, 7):
+        ang[day-1,:] = 180 - np.rad2deg(np.arctan2(PP[day][:,1]-center[1],PP[day][:,0]-center[0])) + 1
+    # ang[:, 1] = 360+ang[:, 1]
+    # ang[1:, 2] = 360+ang[1:, 2]
+    ang = np.round(ang, 1)  # .astype(int)
+    df = pd.read_csv(stuff+'angle.csv')
+    for col in range(3):
+        df[df.columns[col+1]] = ang[:,col]
+    df.to_csv(stuff+'angle.csv',sep=',',index=False)
+    # peaks
+    with open(stuff+'peaks'+str(rad)+'.pkl', 'wb') as f:
+        pickle.dump([PP, LL, XY, width], f)
 
-## old code
-##
-# plt.figure()
-# for day in range(7):
-#     # dash = np.median(data[:, :, day])
-#     ll = LL[day]
-#     plt.subplot(2, 4, day+1)
-#     for il in range(3):
-#         l = ll[il]
-#         xx = np.linspace(-50, 50, len(l))
-#         plt.plot(xx,l)
-#         # plt.plot([xx[0],xx[-1]], [dash*10,dash*10],'k:')
-#         # plt.plot([xx[0], xx[-1]], [5*dash, 5*dash], 'k:')
-#     plt.ylim(0, 1)
-#     plt.title('night '+str(day))
-#     plt.grid()
-#     plt.yticks(np.arange(0,1,0.1))
-#     plt.xticks(np.arange(-50,50,10))
-#     plt.xlabel('tail width (pixels)')
-#     plt.ylabel('light')
-#     if day == 0:
-#         plt.legend(['A','B','C'])
