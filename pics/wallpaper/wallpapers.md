@@ -45,8 +45,17 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/M16_middle_finger.png" download>
   <img title="M16, Eagle Nebula, pillar tip" src="thumb/M16_middle_finger.png">
 </a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/ngc1385_miri.png" download>
+  <img title="NGC 1385, MIRI" src="thumb/ngc1385_miri.png">
+</a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/ngc3627.png" download>
+  <img title="NGC 3627 (M66)" src="thumb/ngc3627.png">
+</a>
 #### NASA images
 [M16, Eagle Nebula (pillars of creation)](https://webbtelescope.org/contents/media/images/2022/052/01GF423GBQSK6ANC89NTFJW8VM). See the capybara?<br>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/pillars.png" download>
   <img title="M16, Eagle Nebula (pillars of creation)" src="thumb/pillars.png">
+</a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/NGC346.png" download>
+  <img title="NGC 346" src="thumb/NGC346.png">
 </a>

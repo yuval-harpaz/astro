@@ -4,7 +4,7 @@ from astro_utils import *
 from astro_fill_holes import *
 from dart_tools import ridges
 import os
-from cv2 import putText, FONT_HERSHEY_DUPLEX
+from cv2 import putText, FONT_HERSHEY_DUPLEX, arrowedLine
 
 
 ## Take the first day data (before impact) to compute flat field
@@ -106,6 +106,21 @@ img = putText(white, 'tangential peak', [100, 55], FONT_HERSHEY_DUPLEX, 1, color
 img = putText(img, 'width', [100, 85], FONT_HERSHEY_DUPLEX, 1, color=[0, 0, 0])
 img = putText(img, 'length', [100, 115], FONT_HERSHEY_DUPLEX, 1, color=[0, 0, 0])
 img = putText(img, 'center', [100, 145], FONT_HERSHEY_DUPLEX, 1, color=[0, 0, 0])
+arrow = {'N': -1, 'E': -91, 'sun': -108.5, 'impact': 119.5}
+for iar in range(4):
+    name = list(arrow.keys())[iar]
+    angar = arrow[name]
+    xx1 = np.cos(np.deg2rad(angar-90)) * 50
+    yy1 = np.sin(np.deg2rad(angar-90)) * 50
+    # xx1 = np.cos(np.deg2rad(90) + ang) * 50
+    # yy1 = np.sin(np.deg2rad(90) + ang) * 50
+    img = arrowedLine(img, center, (int(xx1)+center[0], int(yy1)+center[1]), [0, 0, 0], 3, 8, 0, 0.1)
+    xl = 0
+    yl = 5
+    if name == 'sun':
+        xl = 60
+        yl = -5
+    img = putText(img, name, [int(xx1)+center[0]-xl, int(yy1)+center[1]-yl], FONT_HERSHEY_DUPLEX, 1, color=[0, 0, 0])
 plt.imshow(img, cmap='gray')
 plt.plot([0,40],[50,50],'r')
 plt.plot([0, 40],[85, 85], 'b', 2)
@@ -113,6 +128,9 @@ plt.plot(20, 115, 'og')
 plt.plot(20, 145, 'or')
 plt.clim(0,1)
 plt.axis('off')
+
+
+
 
 ## lengths
 datetick = [x.replace('09', 'Sep ').replace('10', 'Oct ') for x in mmddu]
@@ -159,37 +177,33 @@ co = [[31 / 255, 119 / 255, 180 / 255], [1, 127 / 255, 14 / 255], 'g']
 plt.figure()
 for ib in [0, 1, 2]:
     rot = np.diff(ang[ang.columns[ib+1]].to_numpy())
-    rot[rot > 180] = 360-rot[rot > 180]
-    if ib == 2:
-        rot[0] = 3.3
+    rot[rot > 180] = rot[rot > 180]-360
     plt.bar(np.arange(2, 7)+xsh[ib], rot, 0.25)
 ax = plt.gcf()
 ax.axes[0].yaxis.grid()
 plt.ylabel('rotation (deg)')
-plt.ylim(-4.5, 4.5)
+plt.ylim(-6.5, 4.5)
 # plt.xlabel('night')
 plt.title('Tail rotation from previous night')
 plt.legend(['tail A', 'tail B', 'tail C'])
-plt.yticks(np.arange(-4,5))
+plt.yticks(np.arange(-6,5))
 plt.xticks(np.arange(2,7), datetick[2:])
 plt.xlabel('rotation end date')
 ##
 plt.figure()
 for ib in [0, 1, 2]:
     rot = np.diff(ang[ang.columns[ib+1]].to_numpy())
-    rot[rot > 180] = 360-rot[rot > 180]
-    if ib == 2:
-        rot[0] = 3.7
+    rot[rot > 180] = rot[rot > 180]-360
     rot = [0]+list(np.cumsum(rot))
     plt.plot(np.arange(1, 7), rot)
 # ax = plt.gcf()
 # ax.axes[0].yaxis.grid()
 plt.grid()
 plt.ylabel('rotation (deg)')
-plt.ylim(-2, 13)
+plt.ylim(-8, 13)
 # plt.xlabel('night')
 plt.title('Cumulative tail rotation')
 plt.legend(['tail A', 'tail B', 'tail C'])
-plt.yticks(np.arange(-2,13))
+plt.yticks(np.arange(-8,13))
 plt.xticks(np.arange(1,7), datetick[1:])
 # plt.xlabel('rotation end date')

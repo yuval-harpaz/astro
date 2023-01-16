@@ -14,7 +14,7 @@ mmdd = np.asarray([x[9:13] for x in df['file']])
 filt = np.asarray([x[-1].lower() for x in df['filter']])
 
 # path = np.asarray(list_files('/home/innereye/Dropbox/Moris_20220926-20221002/', '*.fits'))
-kernel = Gaussian2DKernel(x_stddev=1)  # a gaussian for smoothing the data
+kernel = Gaussian2DKernel(x_stddev=3)  # a gaussian for smoothing the data
 # mmdd = np.asarray([x[9:13] for x in path])
 # mmddu = np.unique(mmdd)
 ## get center of didymos for al images
@@ -98,6 +98,7 @@ plt.axis('off')
 plt.colorbar()
 
 ##
+date_str = ['Sep 28','Sep 29','Oct 02']
 levs = 2.0**np.arange(0,7,0.5)
 levs = levs[:-1]
 cmap = 'jet'
@@ -128,7 +129,8 @@ for date in ['0928', '0929', '1002']:
     plt.axis('square')
     plt.xlim(100, 200)
     plt.ylim(100, 200)
-    plt.title(date)
+    plt.title(date_str[c-1])
+    print(slope.max())
 plt.subplot(2, 2, 4)
 cs = plt.contourf(slope, levs, norm=matplotlib.colors.LogNorm(), cmap=cmap)
 plt.axis('off')
