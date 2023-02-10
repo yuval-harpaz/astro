@@ -286,6 +286,7 @@ if save:
     # ang[:, 1] = 360+ang[:, 1]
     # ang[1:, 2] = 360+ang[1:, 2]
     ang = np.round(ang, 1)  # .astype(int)
+    ang = 360-ang
     df = pd.read_csv(stuff+'angle.csv')
     for col in range(3):
         df[df.columns[col+1]] = ang[:,col]

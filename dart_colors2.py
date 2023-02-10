@@ -122,7 +122,7 @@ for date in ['0928', '0929', '1002']:
     # ratio = r/g
     # slope[mask] = 1
     slope[slope < 1] = 1
-    cs = plt.contourf(slope, levs, norm=matplotlib.colors.LogNorm(), cmap=cmap)
+    cs = plt.contourf(np.flipud(slope), levs, norm=matplotlib.colors.LogNorm(), cmap=cmap)
     # plt.imshow(slope) #  norm=matplotlib.colors.LogNorm(vmin=10, vmax=100)
     # plt.clim(1, 12)
     plt.axis('off')
@@ -167,3 +167,10 @@ for date in ['0928', '0929', '1002']:
 # plt.xlim(100, 200)
 # plt.ylim(100, 200)
 # plt.colorbar()
+
+ps = [51.14, 39.88, 23.07]
+plt.figure()
+plt.bar([0, 1, 4], ps)
+plt.title('spectral slope')
+plt.ylabel('slope (%)')
+plt.xticks([0,1,4], date_str)

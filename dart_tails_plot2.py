@@ -93,12 +93,13 @@ for day in range(7):
             yy2 = -np.sin(np.deg2rad(90)+ang0) * w/2
             # plt.plot(PP[day][il][1],PP[day][il][0],'og')
             plt.plot([xx1 + PP[day][il][1], xx2 + PP[day][il][1]], [yy1 + PP[day][il][0], yy2 + PP[day][il][0]], 'b')
-            a = ang[ang.columns[il+1]].loc[day-1]
+            a = 360-ang[ang.columns[il+1]].loc[day-1]
             l = length[length.columns[il+1]].loc[day-1]
             yl = np.cos(np.deg2rad(a)) * l / pix_size[day]
             xl = np.sin(np.deg2rad(a)) * l / pix_size[day]
             if il > 0 or day ==1:
                 plt.plot(center[1] + xl,center[0] - yl,'og',markersize=3)
+
 plt.subplot(2,4, day+2)
 white = np.ones((data.shape[0], data.shape[1], 3))
 shift = 5
@@ -171,39 +172,44 @@ for tail in range(3):
         plt.legend(threshold/5)
 
 ## rotaion
+ang = pd.read_csv(stuff+'angle.csv')
 datetick = [x.replace('09', 'Sep ').replace('10', 'Oct ') for x in mmddu]
 xsh = [-0.25, 0, 0.25]
 co = [[31 / 255, 119 / 255, 180 / 255], [1, 127 / 255, 14 / 255], 'g']
 plt.figure()
 for ib in [0, 1, 2]:
     rot = np.diff(ang[ang.columns[ib+1]].to_numpy())
-    rot[rot > 180] = rot[rot > 180]-360
+    idx = rot < -180
+    if any(idx):
+        rot[idx] = rot[idx]+360
     plt.bar(np.arange(2, 7)+xsh[ib], rot, 0.25)
 ax = plt.gcf()
 ax.axes[0].yaxis.grid()
 plt.ylabel('rotation (deg)')
-plt.ylim(-6.5, 4.5)
+plt.ylim(-4.5, 6.5)
 # plt.xlabel('night')
 plt.title('Tail rotation from previous night')
 plt.legend(['tail A', 'tail B', 'tail C'])
-plt.yticks(np.arange(-6,5))
+plt.yticks(np.arange(-4,7))
 plt.xticks(np.arange(2,7), datetick[2:])
 plt.xlabel('rotation end date')
 ##
 plt.figure()
 for ib in [0, 1, 2]:
-    rot = np.diff(ang[ang.columns[ib+1]].to_numpy())
-    rot[rot > 180] = rot[rot > 180]-360
-    rot = [0]+list(np.cumsum(rot))
-    plt.plot(np.arange(1, 7), rot)
+    rot = np.diff(ang[ang.columns[ib + 1]].to_numpy())
+    idx = rot < -180
+    if any(idx):
+        print(rot)
+        rot[idx] = rot[idx] + 360
+    plt.plot(np.arange(1, 7), np.cumsum([0]+list(rot)))
 # ax = plt.gcf()
 # ax.axes[0].yaxis.grid()
 plt.grid()
 plt.ylabel('rotation (deg)')
-plt.ylim(-8, 13)
+plt.ylim(-13, 8)
 # plt.xlabel('night')
 plt.title('Cumulative tail rotation')
 plt.legend(['tail A', 'tail B', 'tail C'])
-plt.yticks(np.arange(-8,13))
+plt.yticks(np.arange(-13,8))
 plt.xticks(np.arange(1,7), datetick[1:])
 # plt.xlabel('rotation end date')

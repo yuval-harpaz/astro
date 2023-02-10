@@ -7,8 +7,8 @@ from dart_tools import ridges, sorty
 # from astro_fill_holes import *
 import os
 from cv2 import circle, line
-from sympy import symbols, Eq, solve
-import pickle
+# from sympy import symbols, Eq, solve
+# import pickle
 
 os.chdir('/home/innereye/Dropbox/Moris_20220926-20221002/')
 stuff = '/home/innereye/astro/dart/'
@@ -21,12 +21,7 @@ zoom = False
 clim1 = 1
 height = 0.01
 tang_smooth = 10
-
 data = np.load(stuff + 'per_day_smooth'+ver+'.pkl', allow_pickle=True)
-
-
-
-
 plot = False
 pix_size = [6.323, 6.223, 6.1399, 6.06786, 6.007,  5.9626, 5.929]
 ##  check light per day to correct Sep 30
@@ -54,7 +49,7 @@ for day in range(7):
                 layer[jj,kk] = np.nanmean(layer[jj-1:jj+2, kk-1:kk+2])
     data[:, :, day] = layer
 
-
+center = [302, 307]
 ## loop
 
 # select = [[[3, 8], [-1, 8]],[[-1, -1], [4, -1]]]  # rad, day, tail
@@ -66,7 +61,6 @@ for day in range(7):
 # LL = [[], []]
 # PP = [[], []]
 # XY = [[], []]
-center = [302, 307]
 # showAll = True
 # # plt.figure()
 # for day in [1,2]:
