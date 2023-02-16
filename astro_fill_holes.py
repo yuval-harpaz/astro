@@ -183,6 +183,7 @@ def hole_disk_fill(img, xy, size, larger_than=2, allowed=1/3):
                     filled[xy[ii, 0]-sz:xy[ii, 0]+sz+1, xy[ii, 1]-sz:xy[ii, 1]+sz+1] = fill
     return filled
 
+
 def hole_conv_fill(img, n_pixels_around=4, ringsize=15, clean_below_local=0.75, clean_below=1):
     """
     fill (small) holes with local mean. local mean is computed after ignoring zeros.
