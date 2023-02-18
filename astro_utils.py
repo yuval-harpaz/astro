@@ -16,6 +16,9 @@ from astroquery.mast import Observations
 # from skimage.morphology import disk
 from astropy.wcs import WCS
 from astropy.nddata import Cutout2D
+from bot_grabber import level_adjust
+import pickle
+from skimage import transform
 # root = __file__[:-14]
 # root = list_files.__code__.co_filename[:-14]
 root = os.environ['HOME']+'/astro/'
@@ -471,24 +474,6 @@ def crop_fits(hdu1, center, sizes):
     return hdu1, pos, pix
 
 
-
-if __name__ == '__main__':
-    path = list_files('/home/innereye/JWST/Ori/', search='*.fits')
-    # hdu = fits.open(path[8])
-    hdu = fits.open(path[8])
-    # img = hdu[1].data[3800:5000, 5600:7000]
-    img = hdu[1].data[1800:2400, 2800:3800]
-    xy = hole_xy(img)
-    size = hole_size(img, xy, plot=True)
-    filled = hole_circle_fill(img, xy, size)
-
-    fix = fill_craters(img, method='gaus')
-    # fix = fill_holes(img, pad=1)
-    plt.figure();plt.imshow(img[200:400,100:300]);plt.show(block=False)
-    plt.figure();plt.imshow(fix[200:400,100:300]);plt.show(block=False)
-    print('tada')
-
-
 def movmean(data, win):
     #  smooth data with a moving average. win should be an odd number of samples.
     #  data is np.ndarray with samples by channels shape
@@ -514,3 +499,174 @@ def movmean(data, win):
         else:
             smooth[:, iChannel] = sm
     return smooth
+
+
+def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
+              core=False, factor=4):
+    # TODO: clean small holes fast without conv, remove red background
+    if not os.path.isdir(folder):
+        try:
+            os.chdir('/home/innereye/JWST/')
+            if not os.path.isdir(folder):
+                raise Exception('cannot find '+folder)
+        except:
+            raise Exception('cannot find ' + folder)
+
+    path = list_files(os.getcwd()+'/'+folder, exp)
+    filt = filt_num(path)
+    order = np.argsort(filt)
+    path = np.asarray(path)[order]
+
+    def make_rgb(prc=0):
+        rgb = np.zeros((layers.shape[0], layers.shape[1], 3), float)
+        for ll in range(3):
+            lay = np.mean(layers[:, :, iii[ll]], axis=2)
+            lay = lay ** pow[ll] * 255
+            rgb[:, :, ll] = lay
+        if prc > 0:  # subtract 1 percentile to remove red after **0.5
+            vec = rgb[:, :, 0].copy().flatten()
+            vec[vec == 0] = np.nan
+            rgb[:, :, 0] = rgb[:, :, 0] - np.nanpercentile(vec, 1)
+            rgb[rgb < 0] = 0
+            rgb[:, :, 0] = rgb[:, :, 0] / np.nanmax(rgb[:, :, 0]) * 255
+        rgb = rgb.astype('uint8')
+        return rgb
+
+    pkl_name = folder + '.pkl'
+    if os.path.isfile(pkl_name) and pkl:
+        layers = np.load(pkl_name, allow_pickle=True)
+    else:
+        for ii in range(len(path)):
+            if ii == 0:
+                hdu0 = fits.open(path[ii])
+                img = hdu0[1].data
+                if resize:# make rescale size for wallpaper 1920 x 1080
+                    rat = np.max(img.shape)/np.min(img.shape)
+                    if rat*9 > 16:
+                        h = 1080
+                        w = int(np.ceil(h*rat))
+                    else:
+                        w = 1920
+                        h = int(np.ceil(w*(1/rat)))
+                    if img.shape[0] > img.shape[1]:
+                        wh = [w, h]
+                    else:
+                        wh = [h, w]  # rotate later
+                    img = transform.resize(img, wh)
+                layers = np.zeros((img.shape[0], img.shape[1], len(path)))
+                hdr0 = hdu0[1].header
+                hdu0.close()
+            else:
+                hdu = fits.open(path[ii])
+                img, _ = reproject_interp(hdu[1], hdr0)
+                if resize:
+                    img = transform.resize(img, wh)
+            layers[:, :, ii] = img
+        if pkl:
+            with open(pkl_name, 'wb') as f:
+                pickle.dump(layers, f)
+    if core:
+        parts = 2
+        upix = np.array(layers.shape[:2])/25
+        degrade_shape = np.ceil(upix).astype('int')
+        max_xy = np.zeros((layers.shape[2], 2))
+        for lay in range(layers.shape[2]):
+            dgd = transform.resize(layers[:,:,lay], degrade_shape)
+            max_xy[lay,:] = np.unravel_index(np.nanargmax(dgd), degrade_shape)
+        max_xy = np.mean(max_xy, axis=0) * 25.5
+        max_xy = max_xy.astype(int)
+        half = int(np.min(upix)*parts)
+        layers = layers[max_xy[0] - half:max_xy[0] + half, max_xy[1] - half:max_xy[1] + half, :]
+        core_str = '_core'
+    else:
+        core_str = ''
+    for lay in range(layers.shape[2]):
+        tmp = layers[:, :, lay].copy()
+        mask = np.isnan(tmp)
+        tmp[mask] = 0
+        tmp = level_adjust(tmp, factor=factor)
+        tmp[mask] = np.nan
+        layers[:, :, lay] = tmp
+    if method == 'rrgggbb':
+        ncol = np.floor(layers.shape[-1] / 3)
+        ib = np.arange(0, ncol).astype(int)
+        ir = np.arange(layers.shape[-1] - ncol, layers.shape[-1]).astype(int)
+        ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
+        iii = [ir, ig, ib]
+        rgb = make_rgb()
+        plt.figure()
+        plt.imshow(rgb)
+        plt.show()
+    elif method == 'mnn':  # Miri Nircam Nircam
+        ismiri = ['miri' in x for x in path]
+        ir = np.where(ismiri)[0]
+        inircam = np.where(~np.asarray(ismiri))[0]
+        nb = np.ceil(len(inircam)/2)
+        ib = np.arange(0, nb).astype(int)
+        ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
+        iii = [ir, ig, ib]
+        rgb = make_rgb(prc=1)
+        plt.figure()
+        plt.imshow(rgb)
+        plt.show(block=False)
+    if png:
+        if type(png) == str:
+            png_name = png
+        else:
+            png_name = folder+core_str+'.png'
+        plt.imsave(png_name, rgb, origin='lower')
+if __name__ == '__main__':
+    # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
+    print('start')
+    auto_plot('ngc1512', '*_i2d.fits', png=True, pow=[0.5, 1, 1], resize=True)
+    auto_plot('ngc1672', '*_i2d.fits', png='core1.png', pow=[1, 1, 1], core=True)
+    auto_plot('ngc1672', '*_i2d.fits', png='core05.png', pow=[0.5, 1, 1], core=True)
+    auto_plot('ngc1672', '*_i2d.fits', png='red_sqrt.png', method='mnn', pow=[0.5, 1, 1], pkl=True, factor=2)
+    # auto_plot('ngc1672', '*_i2d.fits', png=False)
+    print('tada')
+
+# total = np.zeros(layers.shape[:2])
+# c = 0
+# b = []
+# for ii in range(layers.shape[-1]):  # range(layers.shape[2]):
+#     c += 1
+#     img = layers[:, :, ii]
+#     if b == []:
+#         b = img
+#     total += img
+# r = img
+# total = total / c
+#
+# rgbt = np.zeros((total.shape[1], total.shape[0], 3))
+# rgbt[..., 0] = r.T * 255
+# rgbt[..., 1] = total.T * 255  # *3-r-b
+# rgbt[..., 2] = b.T * 255
+#
+# rgbt = rgbt.astype('uint8')
+# # rgbt = rgbt[margins:-margins, margins:-margins,:]
+# plt.figure()
+# plt.imshow(rgbt)
+# plt.show()
+#
+#
+#
+# ncol = np.floor(layers.shape[-1] / 3)
+# ib = np.arange(0, ncol).astype(int)
+# ir = np.arange(layers.shape[-1] - ncol, layers.shape[-1]).astype(int)
+# ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
+# iii = [ir, ig, ib]
+# rgbt = np.zeros((layers.shape[1], layers.shape[0], 3))
+# for ll in range(3):
+#     lay = np.zeros((layers.shape[0], layers.shape[1]))
+#     for mm in range(layers.shape[0]):
+#         for nn in range(layers.shape[1]):
+#             lay[mm, nn] = np.nanmean(layers[mm, nn, iii[ll]])
+#     lay = lay * 255
+#     rgbt[:, :, ll] = lay.T
+# rgbt = rgbt.astype('uint8')
+# plt.figure()
+# plt.imshow(rgbt)
+# plt.show()
+# # plt.imsave('right_finger_tot.png', np.flipud(np.fliplr(rgbt)), origin='lower')
+#
+#

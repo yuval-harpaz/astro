@@ -23,7 +23,7 @@ def image_histogram_equalization(image, number_bins=10000):
     return image_equalized.reshape(image.shape)
 
 
-def level_adjust(fits_arr):
+def level_adjust(fits_arr, factor=4.0):
     hist_dat = fits_arr.flatten()
     hist_dat = hist_dat[np.nonzero(hist_dat)]
     zeros = np.abs(np.sign(fits_arr))
@@ -33,7 +33,7 @@ def level_adjust(fits_arr):
     rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
     rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
     img_eqd = image_histogram_equalization(rescaled_no_outliers)
-    img_eqd = (pow(img_eqd, 4.0) + pow(img_eqd, 8.0) + pow(img_eqd, 16.0)) / 3.0
+    img_eqd = (pow(img_eqd, factor) + pow(img_eqd, factor*2) + pow(img_eqd, factor*4)) / 3.0
     adjusted = expand_highs((img_eqd + to1(rescaled)) * 0.5)
     return np.clip(adjusted * zeros, 0.0, 1.0)
 
