@@ -595,7 +595,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         iii = [ir, ig, ib]
         rgb = make_rgb()
         plt.figure()
-        plt.imshow(rgb)
+        plt.imshow(rgb, origin='lower')
         plt.show()
     elif method == 'mnn':  # Miri Nircam Nircam
         ismiri = ['miri' in x for x in path]
@@ -607,7 +607,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         iii = [ir, ig, ib]
         rgb = make_rgb(prc=1)
         plt.figure()
-        plt.imshow(rgb)
+        plt.imshow(rgb, origin='lower')
         plt.show(block=False)
     if png:
         if type(png) == str:
