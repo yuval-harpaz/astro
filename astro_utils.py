@@ -19,6 +19,8 @@ from astropy.nddata import Cutout2D
 from bot_grabber import level_adjust
 import pickle
 from skimage import transform
+from scipy.ndimage.measurements import label
+from scipy.spatial import KDTree
 # root = __file__[:-14]
 # root = list_files.__code__.co_filename[:-14]
 root = os.environ['HOME']+'/astro/'
@@ -185,10 +187,15 @@ def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False):
         plt.show(block=False)
     return canvas
 
-def optimize_xy(layers, square_size=100, tests=9, plot=False):
-    szx05 = int(layers.shape[0]/2-square_size/2)
-    szy05 = int(layers.shape[1]/2-square_size/2)
-    square0 = layers[szx05:szx05+square_size, szy05:szy05+square_size, 0]
+def optimize_xy(layers, square_size=[100, 100], tests=9, plot=False):
+    if square_size is None:
+        szx05 = int(np.ceil(tests/2))
+        szy05 = int(np.ceil(tests/2))
+        square_size = np.array(layers.shape[:2]).astype(int) - tests
+    else:
+        szx05 = int(layers.shape[0]/2-square_size/2)
+        szy05 = int(layers.shape[1]/2-square_size/2)
+    square0 = layers[szx05:szx05+square_size[0], szy05:szy05+square_size[1], 0]
     # ring = Ring2DKernel(9, 3)
     # square0 = median_filter(square0, footprint=ring.array)
     square0 = median_filter(square0, footprint=np.ones((2, 2)))
@@ -203,16 +210,9 @@ def optimize_xy(layers, square_size=100, tests=9, plot=False):
             jitter = int(jj-(tests-1)/2)
             for kk in range(tests):
                 kitter = int(kk-(tests-1)/2)
-                square = layers[jitter + szx05:jitter + szx05 + square_size,
-                                kitter + szy05:kitter + szy05 + square_size, ii]
+                square = layers[jitter + szx05:jitter + szx05 + square_size[0],
+                                kitter + szy05:kitter + szy05 + square_size[1], ii]
                 square = median_filter(square, footprint=np.ones((2, 2)))
-                if jj == 2 and kk == 2:
-                    plt.figure()
-                    plt.imshow(square, cmap='hot')
-                    plt.axis('equal')
-                    plt.clim(7.45, 10)
-                    plt.axis('off')
-                    plt.show(block=False)
                 data_vec = square.flatten()
                 col2 = np.asarray([data_vec0, data_vec]).T
                 nans = np.isnan(col2).any(axis=1)
@@ -230,7 +230,7 @@ def optimize_xy(layers, square_size=100, tests=9, plot=False):
         plt.figure()
         plt.imshow(np.nanmean(layers, axis=2), cmap='hot')
         plt.axis('equal')
-        plt.clim(7.45, 10)
+        # plt.clim(7.45, 10)
         plt.axis('off')
         plt.show(block=False)
     return bestx, besty, layers
@@ -615,58 +615,99 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         else:
             png_name = folder+core_str+'.png'
         plt.imsave(png_name, rgb, origin='lower')
+
+
+def maxima_gpt(image, neighborhood_size=10):
+    '''
+    find objects as local maxima after smoothing and clustering light around star centers.
+    suggested by chatGBT, modified
+    Parameters
+    ----------
+    image : ndarray
+        2D image
+    neighborhood_size :
+        rejects starts that are 10pix from other stars
+    Returns
+    -------
+    maxima_image : ndarray
+        2D boolean array with True for local maxima
+    '''
+    # find objects as clusters
+    kernel = Gaussian2DKernel(3)
+    smoothed_image = convolve(image, kernel)
+    # Compute the Hessian matrix
+    dx, dy = np.gradient(smoothed_image)
+    dxx, dxy = np.gradient(dx)
+    _, dyy = np.gradient(dy)
+    hessian = np.stack((np.stack((dxx, dxy), axis=-1), np.stack((dxy, dyy), axis=-1)), axis=-1)
+    # Compute the eigenvalues of the Hessian matrix
+    eigvals = np.linalg.eigvalsh(hessian)
+    # Find candidate maxima
+    threshold = 0.5  # adjust as needed
+    candidate_maxima = np.zeros(image.shape, dtype=bool)
+    candidate_maxima[(eigvals[..., 0] < 0) & (eigvals[..., 1] < 0) & (image > threshold)] = True
+
+    # Cluster candidate maxima
+    clustered_maxima, num_clusters = label(candidate_maxima)
+    maxima_locations = np.array(np.where(candidate_maxima))
+    maxima_intensities = image[candidate_maxima]
+
+    # Keep only highest intensity maximum in each cluster
+    filtered_maxima = np.zeros(image.shape, dtype=bool)
+    for i in range(1, num_clusters + 1):
+        cluster_mask = (clustered_maxima == i)
+        cluster_intensities = np.zeros(image.shape)
+        cluster_intensities[cluster_mask] = smoothed_image[cluster_mask]  # maxima_intensities[cluster_mask]
+        max_index = np.argmax(cluster_intensities)
+        max_location = np.unravel_index(max_index, image.shape)
+        filtered_maxima[max_location[0], max_location[1]] = True
+
+    # Filter out maxima closer than 10 pixels apart
+    if neighborhood_size is None:
+        maxima_image = filtered_maxima
+    else:
+        maxima_image = np.zeros(image.shape, dtype=bool)
+        maxima_coords = np.argwhere(filtered_maxima)
+        for coord in maxima_coords:
+            y, x = coord
+            neighborhood = filtered_maxima[max(0, y - neighborhood_size):min(image.shape[0], y + neighborhood_size + 1),
+                           max(0, x - neighborhood_size):min(image.shape[1], x + neighborhood_size + 1)]
+            if np.sum(neighborhood) == 1:
+                maxima_image[y, x] = True
+    return maxima_image
+
+
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
-    print('start')
-    auto_plot('ngc1512', '*_i2d.fits', png=True, pow=[0.5, 1, 1], resize=True)
-    auto_plot('ngc1672', '*_i2d.fits', png='core1.png', pow=[1, 1, 1], core=True)
-    auto_plot('ngc1672', '*_i2d.fits', png='core05.png', pow=[0.5, 1, 1], core=True)
-    auto_plot('ngc1672', '*_i2d.fits', png='red_sqrt.png', method='mnn', pow=[0.5, 1, 1], pkl=True, factor=2)
+
+    os.chdir('/home/innereye/JWST/')
+    rut = '/home/innereye/JWST/SDSSJ1723+3411/MAST_2022-08-31T1707/JWST/'
+    path = [rut+'/jw01355-o010_t009_miri_f560w/jw01355-o010_t009_miri_f560w_i2d.fits',
+            rut+'/jw01355-o009_t009_nircam_clear-f444w/jw01355-o009_t009_nircam_clear-f444w_i2d.fits',
+            rut+'jw01355-o009_t009_nircam_clear-f277w/jw01355-o009_t009_nircam_clear-f277w_i2d.fits']
+    layers = reproject(path, project_to=0)
+    for lay in range(3):
+        layer = layers[:,:,lay]
+        mask = np.isnan(layer)
+        layer[mask] = 0
+        layer = level_adjust(layer)
+        layer[mask] = np.nan
+        layers[:, :, lay] = layer
+    layers = layers**2  # hide background noise
+    layers[:,:,1:] = layers[:,:,1:]**2  # stronger red
+    layers = layers[165:, 385:-35, :]
+    plt.figure()
+    plt.subplot(1, 2, 1)
+    plt.imshow(layers)
+    # layers.orig = layers.copy()
+    # plt.imshow(layers)
+    bestx, besty, layers = optimize_xy(layers, square_size=None, tests=9, plot=False)
+    plt.subplot(1, 2, 2)
+    plt.imshow(layers)
+    # print('start')
+    # auto_plot('ngc1512', '*_i2d.fits', png=True, pow=[0.5, 1, 1], resize=True)
+    # auto_plot('ngc1672', '*_i2d.fits', png='core1.png', pow=[1, 1, 1], core=True)
+    # auto_plot('ngc1672', '*_i2d.fits', png='core05.png', pow=[0.5, 1, 1], core=True)
+    # auto_plot('ngc1672', '*_i2d.fits', png='red_sqrt.png', method='mnn', pow=[0.5, 1, 1], pkl=True, factor=2)
     # auto_plot('ngc1672', '*_i2d.fits', png=False)
     print('tada')
-
-# total = np.zeros(layers.shape[:2])
-# c = 0
-# b = []
-# for ii in range(layers.shape[-1]):  # range(layers.shape[2]):
-#     c += 1
-#     img = layers[:, :, ii]
-#     if b == []:
-#         b = img
-#     total += img
-# r = img
-# total = total / c
-#
-# rgbt = np.zeros((total.shape[1], total.shape[0], 3))
-# rgbt[..., 0] = r.T * 255
-# rgbt[..., 1] = total.T * 255  # *3-r-b
-# rgbt[..., 2] = b.T * 255
-#
-# rgbt = rgbt.astype('uint8')
-# # rgbt = rgbt[margins:-margins, margins:-margins,:]
-# plt.figure()
-# plt.imshow(rgbt)
-# plt.show()
-#
-#
-#
-# ncol = np.floor(layers.shape[-1] / 3)
-# ib = np.arange(0, ncol).astype(int)
-# ir = np.arange(layers.shape[-1] - ncol, layers.shape[-1]).astype(int)
-# ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
-# iii = [ir, ig, ib]
-# rgbt = np.zeros((layers.shape[1], layers.shape[0], 3))
-# for ll in range(3):
-#     lay = np.zeros((layers.shape[0], layers.shape[1]))
-#     for mm in range(layers.shape[0]):
-#         for nn in range(layers.shape[1]):
-#             lay[mm, nn] = np.nanmean(layers[mm, nn, iii[ll]])
-#     lay = lay * 255
-#     rgbt[:, :, ll] = lay.T
-# rgbt = rgbt.astype('uint8')
-# plt.figure()
-# plt.imshow(rgbt)
-# plt.show()
-# # plt.imsave('right_finger_tot.png', np.flipud(np.fliplr(rgbt)), origin='lower')
-#
-#
