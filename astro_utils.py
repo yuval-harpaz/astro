@@ -677,6 +677,29 @@ def maxima_gpt(image, neighborhood_size=10):
     return maxima_image
 
 
+def optimize_xy_clust(layers):
+    maxima_xy = []
+    for lay in range(3):
+        max_image = maxima_gpt(layers[:, :, lay])
+        maxima_xy.append(np.array(np.where(max_image)).T)
+    bestx = [0]
+    besty = [0]
+    for ii in range(1, layers.shape[2]):
+        tree = KDTree(maxima_xy[ii])
+        distances, closest_points = tree.query(maxima_xy[0])
+        # d = plt.hist(distances, np.arange(100))
+        count, bins = np.histogram(distances, np.arange(100))  # , normed=True)
+        common = np.argmax(count)   # common distance between stars in layer a and b
+        # Find nearest neighbor in second set for each point in first set
+        bestx.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 0] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 0])))
+        besty.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 1] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 1])))
+        if bestx[ii] != 0:
+            layers[:, :, ii] = np.roll(layers[:, :, ii], -bestx[ii], axis=0)
+        if besty[ii] != 0:
+            layers[:, :, ii] = np.roll(layers[:, :, ii], -besty[ii], axis=1)
+    return bestx, besty, layers
+
+
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
 
