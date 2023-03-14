@@ -68,3 +68,7 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/NGC346.png" download>
   <img title="NGC 346" src="thumb/NGC346.png">
 </a>
+#### [BubbaJessArt](https://www.flickr.com/photos/bubbajess/sets/72177720302364673/)
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/ngc_5068_BubbaJessArt.jpg" download>
+  <img title="NGC 5068" src="thumb/ngc_5068_BubbaJessArt.jpg">
+</a>

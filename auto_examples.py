@@ -19,6 +19,8 @@ auto_plot('ngc3627', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=
 auto_plot('ngc1300', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True, resize=True)
 auto_plot('ngc1300', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True, core=True)
 
+
+
 auto_plot('ngc1566', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True, resize=True)
 
 auto_plot('ngc1385', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True, resize=True)

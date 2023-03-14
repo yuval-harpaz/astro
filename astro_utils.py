@@ -617,7 +617,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         plt.imsave(png_name, rgb, origin='lower')
 
 
-def maxima_gpt(image, neighborhood_size=10):
+def maxima_gpt(image, neighborhood_size=10, smooth=True):
     '''
     find objects as local maxima after smoothing and clustering light around star centers.
     suggested by chatGBT, modified
@@ -634,7 +634,10 @@ def maxima_gpt(image, neighborhood_size=10):
     '''
     # find objects as clusters
     kernel = Gaussian2DKernel(3)
-    smoothed_image = convolve(image, kernel)
+    if smooth:
+        smoothed_image = convolve(image, kernel)
+    else:
+        smoothed_image = image
     # Compute the Hessian matrix
     dx, dy = np.gradient(smoothed_image)
     dxx, dxy = np.gradient(dx)
@@ -643,7 +646,8 @@ def maxima_gpt(image, neighborhood_size=10):
     # Compute the eigenvalues of the Hessian matrix
     eigvals = np.linalg.eigvalsh(hessian)
     # Find candidate maxima
-    threshold = 0.5  # adjust as needed
+    # threshold = 0.5  # adjust as needed
+    threshold = np.nanpercentile(image,99.3)
     candidate_maxima = np.zeros(image.shape, dtype=bool)
     candidate_maxima[(eigvals[..., 0] < 0) & (eigvals[..., 1] < 0) & (image > threshold)] = True
 
@@ -651,7 +655,10 @@ def maxima_gpt(image, neighborhood_size=10):
     clustered_maxima, num_clusters = label(candidate_maxima)
     maxima_locations = np.array(np.where(candidate_maxima))
     maxima_intensities = image[candidate_maxima]
-
+    if num_clusters > 5000:
+        raise Exception(f'{num_clusters} clusters!')
+    else:
+        print(f'{num_clusters} clusters')
     # Keep only highest intensity maximum in each cluster
     filtered_maxima = np.zeros(image.shape, dtype=bool)
     for i in range(1, num_clusters + 1):
@@ -677,9 +684,9 @@ def maxima_gpt(image, neighborhood_size=10):
     return maxima_image
 
 
-def optimize_xy_clust(layers):
+def optimize_xy_clust(layers, smooth=True):
     maxima_xy = []
-    for lay in range(3):
+    for lay in range(layers.shape[2]):
         max_image = maxima_gpt(layers[:, :, lay])
         maxima_xy.append(np.array(np.where(max_image)).T)
     bestx = [0]
@@ -691,8 +698,14 @@ def optimize_xy_clust(layers):
         count, bins = np.histogram(distances, np.arange(100))  # , normed=True)
         common = np.argmax(count)   # common distance between stars in layer a and b
         # Find nearest neighbor in second set for each point in first set
-        bestx.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 0] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 0])))
-        besty.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 1] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 1])))
+        try:
+            bestx.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 0] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 0])))
+        except:
+            bestx.append(999)
+        try:
+            besty.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 1] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 1])))
+        except:
+            besty.append(999)
         if bestx[ii] != 0:
             layers[:, :, ii] = np.roll(layers[:, :, ii], -bestx[ii], axis=0)
         if besty[ii] != 0:
@@ -724,6 +737,7 @@ if __name__ == '__main__':
     plt.imshow(layers)
     # layers.orig = layers.copy()
     # plt.imshow(layers)
+    bestx, besty, layers = optimize_xy_clust(layers)
     bestx, besty, layers = optimize_xy(layers, square_size=None, tests=9, plot=False)
     plt.subplot(1, 2, 2)
     plt.imshow(layers)
