@@ -5,7 +5,8 @@ from reproject import reproject_interp
 import os
 # import glob
 import matplotlib
-matplotlib.use('Qt5Agg')
+# matplotlib.use('Qt5Agg')
+matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
@@ -19,8 +20,9 @@ from astropy.nddata import Cutout2D
 from bot_grabber import level_adjust
 import pickle
 from skimage import transform
-from scipy.ndimage.measurements import label
+from scipy.ndimage import label
 from scipy.spatial import KDTree
+
 # root = __file__[:-14]
 # root = list_files.__code__.co_filename[:-14]
 root = os.environ['HOME']+'/astro/'
@@ -226,6 +228,7 @@ def optimize_xy(layers, square_size=[100, 100], tests=9, plot=False):
         besty.append(int(testy[maxr]))
         layers[:,:,ii] = np.roll(layers[:,:,ii], -bestx[ii], axis=0)
         layers[:,:,ii] = np.roll(layers[:,:,ii], -besty[ii], axis=1)
+        print(f'done {ii}')
     if plot:
         plt.figure()
         plt.imshow(np.nanmean(layers, axis=2), cmap='hot')
@@ -617,7 +620,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         plt.imsave(png_name, rgb, origin='lower')
 
 
-def maxima_gpt(image, neighborhood_size=10, smooth=True):
+def maxima_gpt(image, neighborhood_size=10, thr=99.3, smooth=True):
     '''
     find objects as local maxima after smoothing and clustering light around star centers.
     suggested by chatGBT, modified
@@ -627,6 +630,8 @@ def maxima_gpt(image, neighborhood_size=10, smooth=True):
         2D image
     neighborhood_size :
         rejects starts that are 10pix from other stars
+    thr: float
+        threshold for brightness to consider, in percentile units
     Returns
     -------
     maxima_image : ndarray
@@ -647,7 +652,7 @@ def maxima_gpt(image, neighborhood_size=10, smooth=True):
     eigvals = np.linalg.eigvalsh(hessian)
     # Find candidate maxima
     # threshold = 0.5  # adjust as needed
-    threshold = np.nanpercentile(image,99.3)
+    threshold = np.nanpercentile(image, thr)
     candidate_maxima = np.zeros(image.shape, dtype=bool)
     candidate_maxima[(eigvals[..., 0] < 0) & (eigvals[..., 1] < 0) & (image > threshold)] = True
 
@@ -684,67 +689,95 @@ def maxima_gpt(image, neighborhood_size=10, smooth=True):
     return maxima_image
 
 
-def optimize_xy_clust(layers, smooth=True):
+def optimize_xy_clust(layers, smooth=True, neighborhood_size=10, thr=99.3, plot=False):
+
     maxima_xy = []
     for lay in range(layers.shape[2]):
-        max_image = maxima_gpt(layers[:, :, lay])
+        max_image = maxima_gpt(layers[:, :, lay], smooth=smooth, neighborhood_size=neighborhood_size, thr=thr)
         maxima_xy.append(np.array(np.where(max_image)).T)
-    bestx = [0]
-    besty = [0]
-    for ii in range(1, layers.shape[2]):
+    # bestx = [0]
+    # besty = [0]
+    order = np.argsort([len(x) for x in maxima_xy])
+    bestx = [[]]*len(maxima_xy)
+    besty = [[]]*len(maxima_xy)
+    bestx[order[0]] = 0
+    besty[order[0]] = 0
+    for ii in order[1:]:  # range(1, layers.shape[2]):
         tree = KDTree(maxima_xy[ii])
-        distances, closest_points = tree.query(maxima_xy[0])
+        distances, closest_points = tree.query(maxima_xy[order[0]])
+        if plot:
+            from cv2 import line  # conflict with %matplotlib qt, import only if used
+            plt.figure()
+            tmp = layers.copy()
+            for jj in range(len(maxima_xy[order[0]])):
+                y1, x1 = maxima_xy[ii][closest_points[jj], :]
+                y2, x2 = maxima_xy[order[0]][jj, :]
+                line(tmp, (x1, y1), (x2, y2), (0, layers.max(), 0), thickness=1)
+            plt.imshow(tmp)
+            del tmp
         # d = plt.hist(distances, np.arange(100))
         count, bins = np.histogram(distances, np.arange(100))  # , normed=True)
         common = np.argmax(count)   # common distance between stars in layer a and b
         # Find nearest neighbor in second set for each point in first set
+        xx = maxima_xy[order[0]][:, 0]
+        xshifts = maxima_xy[ii][closest_points, 0] - xx
+        yy = maxima_xy[order[0]][:, 1]
+        yshifts = maxima_xy[ii][closest_points, 1] - yy
         try:
-            bestx.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 0] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 0])))
+            bestx[ii] = int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 0] - maxima_xy[order[0]][(common-2 < distances) & (distances < common+2), 0]))
         except:
-            bestx.append(999)
+            bestx[ii] = 999
         try:
-            besty.append(int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 1] - maxima_xy[0][(common-2 < distances) & (distances < common+2), 1])))
+            besty[ii] = int(np.median(maxima_xy[ii][closest_points[(common-2 < distances) & (distances < common+2)], 1] - maxima_xy[order[0]][(common-2 < distances) & (distances < common+2), 1]))
         except:
-            besty.append(999)
-        if bestx[ii] != 0:
+            besty[ii] = 999
+        if (bestx[ii] != 0) and (bestx[ii] != 999):
             layers[:, :, ii] = np.roll(layers[:, :, ii], -bestx[ii], axis=0)
-        if besty[ii] != 0:
+        if (besty[ii] != 0) and (besty[ii] != 999):
             layers[:, :, ii] = np.roll(layers[:, :, ii], -besty[ii], axis=1)
     return bestx, besty, layers
 
 
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
-
-    os.chdir('/home/innereye/JWST/')
-    rut = '/home/innereye/JWST/SDSSJ1723+3411/MAST_2022-08-31T1707/JWST/'
-    path = [rut+'/jw01355-o010_t009_miri_f560w/jw01355-o010_t009_miri_f560w_i2d.fits',
-            rut+'/jw01355-o009_t009_nircam_clear-f444w/jw01355-o009_t009_nircam_clear-f444w_i2d.fits',
-            rut+'jw01355-o009_t009_nircam_clear-f277w/jw01355-o009_t009_nircam_clear-f277w_i2d.fits']
-    layers = reproject(path, project_to=0)
+    os.chdir('/home/innereye/JWST/ngc5068/')
+    layers = np.load('ngc5068.pkl', allow_pickle=True)
+    xstart = 3820
+    ystart = 3300
+    crop = layers.copy()[xstart:xstart + 500, ystart:ystart + 500, :3]
     for lay in range(3):
-        layer = layers[:,:,lay]
-        mask = np.isnan(layer)
-        layer[mask] = 0
-        layer = level_adjust(layer)
-        layer[mask] = np.nan
-        layers[:, :, lay] = layer
-    layers = layers**2  # hide background noise
-    layers[:,:,1:] = layers[:,:,1:]**2  # stronger red
-    layers = layers[165:, 385:-35, :]
-    plt.figure()
-    plt.subplot(1, 2, 1)
-    plt.imshow(layers)
-    # layers.orig = layers.copy()
+        crop[:,:,lay] = level_adjust(crop[:,:,lay])
+    bestx, besty, _ = optimize_xy_clust(crop, smooth=True, plot=True, neighborhood_size=None, thr=90)
+
+    # os.chdir('/home/innereye/JWST/')
+    # rut = '/home/innereye/JWST/SDSSJ1723+3411/MAST_2022-08-31T1707/JWST/'
+    # path = [rut+'/jw01355-o010_t009_miri_f560w/jw01355-o010_t009_miri_f560w_i2d.fits',
+    #         rut+'/jw01355-o009_t009_nircam_clear-f444w/jw01355-o009_t009_nircam_clear-f444w_i2d.fits',
+    #         rut+'jw01355-o009_t009_nircam_clear-f277w/jw01355-o009_t009_nircam_clear-f277w_i2d.fits']
+    # layers = reproject(path, project_to=0)
+    # for lay in range(3):
+    #     layer = layers[:,:,lay]
+    #     mask = np.isnan(layer)
+    #     layer[mask] = 0
+    #     layer = level_adjust(layer)
+    #     layer[mask] = np.nan
+    #     layers[:, :, lay] = layer
+    # layers = layers**2  # hide background noise
+    # layers[:,:,1:] = layers[:,:,1:]**2  # stronger red
+    # layers = layers[165:, 385:-35, :]
+    # plt.figure()
+    # plt.subplot(1, 2, 1)
     # plt.imshow(layers)
-    bestx, besty, layers = optimize_xy_clust(layers)
-    bestx, besty, layers = optimize_xy(layers, square_size=None, tests=9, plot=False)
-    plt.subplot(1, 2, 2)
-    plt.imshow(layers)
-    # print('start')
-    # auto_plot('ngc1512', '*_i2d.fits', png=True, pow=[0.5, 1, 1], resize=True)
-    # auto_plot('ngc1672', '*_i2d.fits', png='core1.png', pow=[1, 1, 1], core=True)
-    # auto_plot('ngc1672', '*_i2d.fits', png='core05.png', pow=[0.5, 1, 1], core=True)
-    # auto_plot('ngc1672', '*_i2d.fits', png='red_sqrt.png', method='mnn', pow=[0.5, 1, 1], pkl=True, factor=2)
-    # auto_plot('ngc1672', '*_i2d.fits', png=False)
-    print('tada')
+    # # layers.orig = layers.copy()
+    # # plt.imshow(layers)
+    # bestx, besty, layers = optimize_xy_clust(layers)
+    # bestx, besty, layers = optimize_xy(layers, square_size=None, tests=9, plot=False)
+    # plt.subplot(1, 2, 2)
+    # plt.imshow(layers)
+    # # print('start')
+    # # auto_plot('ngc1512', '*_i2d.fits', png=True, pow=[0.5, 1, 1], resize=True)
+    # # auto_plot('ngc1672', '*_i2d.fits', png='core1.png', pow=[1, 1, 1], core=True)
+    # # auto_plot('ngc1672', '*_i2d.fits', png='core05.png', pow=[0.5, 1, 1], core=True)
+    # # auto_plot('ngc1672', '*_i2d.fits', png='red_sqrt.png', method='mnn', pow=[0.5, 1, 1], pkl=True, factor=2)
+    # # auto_plot('ngc1672', '*_i2d.fits', png=False)
+    # print('tada')

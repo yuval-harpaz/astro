@@ -60,6 +60,9 @@ Right-click and ***save link as***.<br>Atlernatively, Click on images to view hi
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/collage.png" download>
   <img title="A collage of galaxies" src="thumb/collage.png">
 </a>
+<a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/WR124.png" download>
+  <img title="WR 124" src="thumb/WR124.png">
+</a>
 #### NASA images
 [M16, Eagle Nebula (pillars of creation)](https://webbtelescope.org/contents/media/images/2022/052/01GF423GBQSK6ANC89NTFJW8VM). See the capybara?<br>
 <a href="https://github.com/yuval-harpaz/astro/raw/main/pics/wallpaper/pillars.png" download>

@@ -17,7 +17,7 @@ auto_plot('ngc3627', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=
 # auto_plot('ngc3627', '*nircam*_i2d.fits', png=True, pow=[0.5, 1, 1], core=True)
 
 auto_plot('ngc1300', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True, resize=True)
-auto_plot('ngc1300', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True, core=True)
+auto_plot('WR124', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True)
 
 
 
@@ -32,3 +32,5 @@ auto_plot('ngc2070', '*_i2d.fits', png=True, pow=[0.5, 1, 1], pkl=True, resize=F
 auto_plot('vv114', '*_i2d.fits', png=True, pow=[1,1.5,1], factor=4, pkl=True)
 
 auto_plot('ngc7496', '*_i2d.fits', png=True, pow=[0.5,1,1], factor=4, pkl=True, method='mnn', resize=True)
+
+auto_plot('WR124', '*_i2d.fits', png=True, pow=[0.5,1,1], factor=4, pkl=True, method='mnn', resize=True)
