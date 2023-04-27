@@ -31,7 +31,7 @@ def list_files(parent, search='*_cal.fits', exclude='', include=''):
     """
     List all fits files in subfolders of path.
     """
-    os.chdir(root+'data')
+    # os.chdir(root+'data')
     os.chdir(parent)
     path = []
     for found in Path('./').rglob(search):
