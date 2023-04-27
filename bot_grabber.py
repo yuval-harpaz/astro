@@ -22,8 +22,15 @@ def image_histogram_equalization(image, number_bins=10000):
     image_equalized = np.interp(image.flatten(), bins[:-1], cdf)
     return image_equalized.reshape(image.shape)
 
-
+def nanmask(arr):
+    mask = np.isnan(arr)
+    if np.sum(mask) > 0:
+        arr[mask] = 0
+    else:
+        mask = None
+    return arr, mask
 def level_adjust(fits_arr, factor=4.0):
+    fits_arr, mask = nanmask(fits_arr)
     hist_dat = fits_arr.flatten()
     hist_dat = hist_dat[np.nonzero(hist_dat)]
     zeros = np.abs(np.sign(fits_arr))
@@ -35,6 +42,8 @@ def level_adjust(fits_arr, factor=4.0):
     img_eqd = image_histogram_equalization(rescaled_no_outliers)
     img_eqd = (pow(img_eqd, factor) + pow(img_eqd, factor*2) + pow(img_eqd, factor*4)) / 3.0
     adjusted = expand_highs((img_eqd + to1(rescaled)) * 0.5)
+    if mask is not None:
+        adjusted[mask] = np.nan
     return np.clip(adjusted * zeros, 0.0, 1.0)
 
 

@@ -12,12 +12,12 @@ import numpy as np
 from pathlib import Path
 from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
 from scipy.ndimage import median_filter, maximum_filter
-from scipy.signal import find_peaks
+from scipy.signal import find_peaks, medfilt
 from astroquery.mast import Observations
 # from skimage.morphology import disk
 from astropy.wcs import WCS
 from astropy.nddata import Cutout2D
-from bot_grabber import level_adjust
+from bot_grabber import level_adjust, nanmask
 import pickle
 from skimage import transform
 from scipy.ndimage import label
@@ -195,8 +195,8 @@ def optimize_xy(layers, square_size=[100, 100], tests=9, plot=False):
         szy05 = int(np.ceil(tests/2))
         square_size = np.array(layers.shape[:2]).astype(int) - tests
     else:
-        szx05 = int(layers.shape[0]/2-square_size/2)
-        szy05 = int(layers.shape[1]/2-square_size/2)
+        szx05 = int(layers.shape[0]/2-square_size[0]/2)
+        szy05 = int(layers.shape[1]/2-square_size[1]/2)
     square0 = layers[szx05:szx05+square_size[0], szy05:szy05+square_size[1], 0]
     # ring = Ring2DKernel(9, 3)
     # square0 = median_filter(square0, footprint=ring.array)
@@ -505,7 +505,41 @@ def movmean(data, win):
 
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              core=False, factor=4):
+              core=False, plot=True, factor=4, smooth=False):
+    '''
+    finds fits files in path according to expression exp, and combine them to one RGB image.
+    Parameters
+    ----------
+    folder: str
+        All fits files in this directory and subdirectories will be combined, presuming they fit exp
+    exp: str | list
+        regexp expression to filter files by their name. by default, take all *_i2d.fits
+        if exp is a list, it takes it as path to specific fits files inside "folder"
+    method: str
+        the method for combining many filters into 3 RGB layers
+        'rrgggbb': try divide the filters to three equal size groups. The middle group might be bigger
+        'mnn': red is averaged MIRI, NIRCam images are split between green and blue
+        'mtn': red is MIRI, green is total light, blue is NirCam
+        'filt': assign colors from jet colormap according to filter frequency.
+    pow: [float, float, float]
+        A list of 3 numbers by which to rise power of the rgb image. Power is computed for rgb between 0 and 1, so
+        using [0.5, 1,  1] will increase visibility of low light red pixels. [1,1,1] means no action.
+    pkl: bool
+        True for save nd array of all data as pickle first time this directory is processed, and read it if it exists next times
+    png: bool | str
+        False - don't save png. True - save png according to folder name. str - specify png name to save.
+    resize: bool
+        try resize to fit a 1920 by 1080 image. no cropping or aspect artio chabges. meant to reduce RAM and time.
+    core: bool
+        True to try focus on the core of the galaxy, in order to stretch the colors differently.
+    factor: int
+        this got to do with color stretching, usually should't be touched
+
+    Returns
+    -------
+    rgb: np.ndarray
+
+    '''
     # TODO: clean small holes fast without conv, remove red background
     if not os.path.isdir(folder):
         try:
@@ -514,12 +548,15 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 raise Exception('cannot find '+folder)
         except:
             raise Exception('cannot find ' + folder)
-
-    path = list_files(os.getcwd()+'/'+folder, exp)
+    if type(exp) == str:
+        path = list_files(os.getcwd()+'/'+folder, exp)
+    else:
+        path = exp
+        os.chdir(folder)
     filt = filt_num(path)
     order = np.argsort(filt)
     path = np.asarray(path)[order]
-
+    filt = filt[order]
     def make_rgb(prc=0):
         rgb = np.zeros((layers.shape[0], layers.shape[1], 3), float)
         for ll in range(3):
@@ -535,26 +572,43 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         rgb = rgb.astype('uint8')
         return rgb
 
+    def resize_wh(shape):
+        rat = np.max(shape) / np.min(shape)
+        if rat * 9 > 16:
+            h = 1080
+            w = int(np.ceil(h * rat))
+        else:
+            w = 1920
+            h = int(np.ceil(w * (1 / rat)))
+        if shape[0] > shape[1]:
+            wh = [w, h]
+        else:
+            wh = [h, w]  # rotate later
+        return wh
     pkl_name = folder + '.pkl'
     if os.path.isfile(pkl_name) and pkl:
         layers = np.load(pkl_name, allow_pickle=True)
+        if len(path) < layers.shape[2]:
+            os.chdir('/home/innereye/JWST/')
+            path_full = list_files(os.getcwd()+'/'+folder, '*_i2d.fits')
+            if len(path_full) == layers.shape[2]:
+                filt_full = filt_num(path_full)
+                order_full = np.argsort(filt_full)
+                path_full = np.asarray(path_full)[order_full]
+                include = [int(np.where(path_full == x)[0][0]) for x in path]
+                layers = layers[:,:,include]
+            else:
+                raise Exception('which layer is which file?')
+        if resize:
+            wh = resize_wh(layers.shape[:2])
+            layers = transform.resize(layers, wh)
     else:
         for ii in range(len(path)):
             if ii == 0:
                 hdu0 = fits.open(path[ii])
                 img = hdu0[1].data
                 if resize:# make rescale size for wallpaper 1920 x 1080
-                    rat = np.max(img.shape)/np.min(img.shape)
-                    if rat*9 > 16:
-                        h = 1080
-                        w = int(np.ceil(h*rat))
-                    else:
-                        w = 1920
-                        h = int(np.ceil(w*(1/rat)))
-                    if img.shape[0] > img.shape[1]:
-                        wh = [w, h]
-                    else:
-                        wh = [h, w]  # rotate later
+                    wh = resize_wh(img.shape)
                     img = transform.resize(img, wh)
                 layers = np.zeros((img.shape[0], img.shape[1], len(path)))
                 hdr0 = hdu0[1].header
@@ -566,8 +620,11 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     img = transform.resize(img, wh)
             layers[:, :, ii] = img
         if pkl:
-            with open(pkl_name, 'wb') as f:
-                pickle.dump(layers, f)
+            if os.path.isfile(pkl_name):
+                print('not saving pickle')
+            else:
+                with open(pkl_name, 'wb') as f:
+                    pickle.dump(layers, f)
     if core:
         parts = 2
         upix = np.array(layers.shape[:2])/25
@@ -584,22 +641,17 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     else:
         core_str = ''
     for lay in range(layers.shape[2]):
-        tmp = layers[:, :, lay].copy()
-        mask = np.isnan(tmp)
-        tmp[mask] = 0
-        tmp = level_adjust(tmp, factor=factor)
-        tmp[mask] = np.nan
-        layers[:, :, lay] = tmp
+        layers[:, :, lay] = level_adjust(layers[:, :, lay], factor=factor)
+        if smooth:
+            layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
+    # combine colors by method
+    rgb = None
     if method == 'rrgggbb':
         ncol = np.floor(layers.shape[-1] / 3)
         ib = np.arange(0, ncol).astype(int)
         ir = np.arange(layers.shape[-1] - ncol, layers.shape[-1]).astype(int)
         ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
         iii = [ir, ig, ib]
-        rgb = make_rgb()
-        plt.figure()
-        plt.imshow(rgb, origin='lower')
-        plt.show()
     elif method == 'mnn':  # Miri Nircam Nircam
         ismiri = ['miri' in x for x in path]
         ir = np.where(ismiri)[0]
@@ -608,16 +660,38 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         ib = np.arange(0, nb).astype(int)
         ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
         iii = [ir, ig, ib]
-        rgb = make_rgb(prc=1)
+    elif method == 'mtn':  # Miri Total NirCam
+        ismiri = ['miri' in x for x in path]
+        ir = np.where(ismiri)[0]
+        ib = np.where(~np.asarray(ismiri))[0]
+        ig = np.arange(layers.shape[2]).astype(int)
+        iii = [ir, ig, ib]
+    elif method == 'filt':
+        col = matplotlib.cm.jet(filt / np.max(filt))[:, :3]  # [:, ::-1]
+        rgb = assign_colors(layers, col)
+        # rgb = np.zeros((layers.shape[0], layers.shape[1], 3))
+        # for lay in range(layers.shape[2]):
+        #     for ic in range(3):
+        #         rgb[:, :, ic] = np.nanmax(
+        #             np.array([rgb[:, :, ic], layers[:, :, lay] * col[lay, ic]]), 0)
+        #         # rgb[:, :, ic] = np.nansum(
+        #         #     np.array([rgb[:, :, ic], layers[:, :, lay] * (1 / layers.shape[2]) * col[lay, ic]]), 0)
+        for ic in range(3):
+            rgb[:, :, ic] = rgb[:, :, ic] ** pow[ic] * 255
+        rgb = rgb.astype('uint8')
+    if rgb is None:
+        rgb = make_rgb()
+    if plot:
         plt.figure()
         plt.imshow(rgb, origin='lower')
-        plt.show(block=False)
+        plt.show()
     if png:
         if type(png) == str:
             png_name = png
         else:
             png_name = folder+core_str+'.png'
         plt.imsave(png_name, rgb, origin='lower')
+    return rgb
 
 
 def maxima_gpt(image, neighborhood_size=10, thr=99.3, smooth=True):
@@ -738,6 +812,159 @@ def optimize_xy_clust(layers, smooth=True, neighborhood_size=10, thr=99.3, plot=
     return bestx, besty, layers
 
 
+def optimize_xy_manual(layers):
+    '''
+    A GUI for nudging images so they overlap well. after computing xy, use roll to align layers.
+    Exaample:
+    xy = optimize_xy_manual(crop)
+    shifted = roll(crop, xy, nan_edge=True)
+    Parameters
+    ----------
+    layers
+
+    Returns
+    -------
+
+    '''
+    img = np.zeros((layers.shape[0], layers.shape[1], 3))
+    xy = [[0, 0]]
+    fig = plt.figure()# first layer don't move
+    for cur in range(1, layers.shape[2]):
+        img[:, :, 2] = layers[:, :, 0]
+        orig = layers[:, :, cur].copy()
+        img[:, :, 0] = orig.copy()
+        subKey = ['']
+        def subname(event):
+            subKey[0] = event.key
+
+        # plt.pause(0.3)
+        connectID = fig.canvas.mpl_connect('key_press_event', subname)
+        im = plt.imshow(img, origin='lower')
+        xy.append([0, 0])
+        plt.title(f'push red with arrows\nlayer {cur}/{layers.shape[2]}, shift: {xy[-1]}', fontsize=18)
+        plt.draw()
+        keepTyping = True
+
+        while keepTyping:
+            plt.waitforbuttonpress()
+            if subKey[0] == 'enter':
+                keepTyping = False
+            else:
+                if subKey[0] == 'left':
+                    xy[-1][1] = xy[-1][1] - 1
+                    img[:, :, 0] = np.roll(img[:, :, 0], -1, axis=1)
+                elif subKey[0] == 'right':
+                    xy[-1][1] = xy[-1][1] + 1
+                    img[:, :, 0] = np.roll(img[:, :, 0], 1, axis=1)
+                elif subKey[0] == 'down':
+                    xy[-1][0] = xy[-1][0] - 1
+                    img[:, :, 0] = np.roll(img[:, :, 0], -1, axis=0)
+                elif subKey[0] == 'up':
+                    xy[-1][0] = xy[-1][0] + 1
+                    img[:, :, 0] = np.roll(img[:, :, 0], +1, axis=0)
+            print(subKey[0])
+            im.set_array(img)
+            plt.title(f'push red with arrows\nlayer {cur}/{layers.shape[2]}, shift: {xy[-1]}', fontsize=18)
+            plt.draw()
+    fig.canvas.mpl_disconnect(connectID)
+    xy = np.array(xy)
+    return xy
+
+
+def roll(a, shift, nan_edge=True):
+    '''
+    np.roll while filling nans for edge pixel overflow
+    should be used after optimize_xy_manual.
+    Parameters
+    ----------
+    a: 2D or 3D np.ndarray
+    shift: how much to roll for x and y, per layer
+    nan_edge: True to fill nans where pixels were shifted from
+
+    Returns
+    -------
+    a: the shifted np.array
+    '''
+    shift = shift
+    if len(a.shape) == 2:
+        a = a[..., np.newaxis]
+    for lay in range(a.shape[2]):
+        a[..., lay] = np.roll(a[..., lay], shift[lay, :], axis=[0, 1])
+        if nan_edge:
+            if shift[lay, 1] > 0:
+                a[:, :shift[lay, 1], lay] = np.nan
+            elif shift[lay, 1] < 0:
+                a[:, shift[lay, 1]:, lay] = np.nan
+            if shift[lay, 0] > 0:
+                a[:shift[lay, 0], :, lay] = np.nan
+            elif shift[lay, 0] < 0:
+                a[shift[lay, 0]:, :, lay] = np.nan
+    a = np.squeeze(a)
+    return a
+
+def assign_colors(images, colors):
+    """
+    Combine a list of grayscale images into a single RGB image by assigning each image a color from the provided list.
+    Author - chatGPT
+
+    Args:
+        images (np.array): A 3D numpy array of grayscale images
+        colors (list): A list of RGB color values to assign to each image in the composite image. The length of this list must
+            match the number of images in the input `images` array.
+
+    Returns:
+        np.array: A 3D numpy array representing the composite RGB image.
+    """
+    images, _ = nanmask(images)
+    # Create an empty array for the combined RGB image
+    rgb_arr = np.zeros((images.shape[0], images.shape[1], 3))
+    # Assign colors to each pixel of the combined RGB image based on the grayscale values of the input images
+    for i in range(images.shape[2]):
+        rgb_arr[:, :, 0] += images[:, :, i] * colors[i][0]
+        rgb_arr[:, :, 1] += images[:, :, i] * colors[i][1]
+        rgb_arr[:, :, 2] += images[:, :, i] * colors[i][2]
+    # Normalize the RGB values to the range [0, 1]
+    rgb_arr /= np.max(rgb_arr)
+    return rgb_arr
+
+
+def smooth_yx(img, win=5, passes=2):
+    '''
+    smooth image by running medfilt on y axsis, then on x.
+    Parameters
+    ----------
+    img : 2D ndarray
+    win : odd integer
+        window for median filter
+    passes : int
+       number of smoothing to do
+
+    Returns
+    -------
+    smooth : 2D ndarray
+    '''
+    if type(passes) == int:
+        passes = list(range(passes))
+    smooth = img.copy()
+    for pas in passes:
+        imgx = smooth.copy()
+        for ii in range(img.shape[1]):
+            vec = medfilt(imgx[:, ii], win)
+            imgx[:, ii] = vec
+        imgyx = imgx.copy()
+        for ii in range(img.shape[0]):
+            vec = medfilt(imgyx[ii, :], win)
+            imgyx[ii, :] = vec
+        imgy = smooth.copy()
+        for ii in range(img.shape[0]):
+            vec = medfilt(imgy[ii, :], win)
+            imgy[ii, :] = vec
+        img2 = np.array([imgx, imgy]).min(0)
+        smooth = img2
+    return smooth
+
+
+
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
     os.chdir('/home/innereye/JWST/ngc5068/')
@@ -747,37 +974,12 @@ if __name__ == '__main__':
     crop = layers.copy()[xstart:xstart + 500, ystart:ystart + 500, :3]
     for lay in range(3):
         crop[:,:,lay] = level_adjust(crop[:,:,lay])
+    before = crop.copy()
+    xy = optimize_xy_manual(crop)
+    shifted = roll(crop, xy, nan_edge=True)
+    plt.figure()
+    plt.subplot(1,2,1)
+    plt.imshow(before[..., ::-1], origin='lower')
+    plt.subplot(1, 2, 2)
+    plt.imshow(shifted[..., ::-1], origin='lower')
     bestx, besty, _ = optimize_xy_clust(crop, smooth=True, plot=True, neighborhood_size=None, thr=90)
-
-    # os.chdir('/home/innereye/JWST/')
-    # rut = '/home/innereye/JWST/SDSSJ1723+3411/MAST_2022-08-31T1707/JWST/'
-    # path = [rut+'/jw01355-o010_t009_miri_f560w/jw01355-o010_t009_miri_f560w_i2d.fits',
-    #         rut+'/jw01355-o009_t009_nircam_clear-f444w/jw01355-o009_t009_nircam_clear-f444w_i2d.fits',
-    #         rut+'jw01355-o009_t009_nircam_clear-f277w/jw01355-o009_t009_nircam_clear-f277w_i2d.fits']
-    # layers = reproject(path, project_to=0)
-    # for lay in range(3):
-    #     layer = layers[:,:,lay]
-    #     mask = np.isnan(layer)
-    #     layer[mask] = 0
-    #     layer = level_adjust(layer)
-    #     layer[mask] = np.nan
-    #     layers[:, :, lay] = layer
-    # layers = layers**2  # hide background noise
-    # layers[:,:,1:] = layers[:,:,1:]**2  # stronger red
-    # layers = layers[165:, 385:-35, :]
-    # plt.figure()
-    # plt.subplot(1, 2, 1)
-    # plt.imshow(layers)
-    # # layers.orig = layers.copy()
-    # # plt.imshow(layers)
-    # bestx, besty, layers = optimize_xy_clust(layers)
-    # bestx, besty, layers = optimize_xy(layers, square_size=None, tests=9, plot=False)
-    # plt.subplot(1, 2, 2)
-    # plt.imshow(layers)
-    # # print('start')
-    # # auto_plot('ngc1512', '*_i2d.fits', png=True, pow=[0.5, 1, 1], resize=True)
-    # # auto_plot('ngc1672', '*_i2d.fits', png='core1.png', pow=[1, 1, 1], core=True)
-    # # auto_plot('ngc1672', '*_i2d.fits', png='core05.png', pow=[0.5, 1, 1], core=True)
-    # # auto_plot('ngc1672', '*_i2d.fits', png='red_sqrt.png', method='mnn', pow=[0.5, 1, 1], pkl=True, factor=2)
-    # # auto_plot('ngc1672', '*_i2d.fits', png=False)
-    # print('tada')

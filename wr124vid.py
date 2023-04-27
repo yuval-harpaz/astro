@@ -1,77 +1,63 @@
-import matplotlib.pyplot as plt
-
-from astro_utils import *
-
+import os
+from matplotlib import pyplot as plt
+from skimage import transform
+import numpy as np
 os.chdir('/home/innereye/JWST/WR124/')
-path = np.asarray(list_files('/home/innereye/JWST/WR124/', '*.fits'))
-filt = filt_num(path)
-order = np.argsort(filt)
-filt = filt[order]
-path = path[order]
 
-auto_plot('WR124', '*_i2d.fits', png=False, pow=[0.5, 1, 1], pkl=True, resize=True, method='filt')
+big = plt.imread('WR124_0511.png')[:,:,:3]
+center0 = [2250, 950]
+center1 = [1888, 2420]
+length = int(((2250-1888)**2+(2420-1950)**2)**0.5)
+c0 = np.linspace(center0[0], center1[0], length).astype(int)
+c1 = np.linspace(center0[1], center1[1], length).astype(int)
+sq = np.linspace(750, 750/2, length).astype(int)
+# centers = np.zeros(
 
-plt.figure()
-for sp, method in enumerate(['rrgggbb', 'mnn', 'mtn', 'filt']):
-    img = auto_plot('WR124', '*_i2d.fits', png=False, pow=[1, 1, 1], pkl=True, resize=True, method=method, plot=False)
-    plt.subplot(2,4, sp+1)
-    plt.imshow(img)
-    plt.axis('off')
-    plt.title(method)
-for sp, method in enumerate(['rrgggbb', 'mnn', 'mtn', 'filt']):
-    img = auto_plot('WR124', '*_i2d.fits', png=False, pow=[0.5, 1, 1], pkl=True, resize=True, method=method, plot=False)
-    plt.subplot(2,4, sp+1+4)
-    plt.imshow(img)
-    plt.axis('off')
-    plt.title(method+', √red')
+# ii = 0
+# sqh = sq[ii]
+# cent = [c0[ii], c1[ii]]
+# frame = big[cent[0]-sqh:cent[0]+sqh, cent[1]-sqh:cent[1]+sqh, :]
+# frame = transform.resize(frame, (rs, rs))
+# fig = plt.imshow(frame)
+# plt.axis('off')
+rs = 500
+for ii in range(len(c0)):
+    sqh = sq[ii]
+    cent = [c0[ii], c1[ii]]
+    frame = big[cent[0]-sqh:cent[0]+sqh, cent[1]-sqh:cent[1]+sqh, :]
+    frame = transform.resize(frame, (rs, rs))
+    plt.imsave('vid/wr124_'+str(ii).zfill(5)+'.png', frame)
+    print(ii)
+    # fig.set_array(frame)
+    # plt.draw()
+    # plt.pause(0.001)
+while sqh < 1800:
+    ii += 1
+    sqh += 1
+    frame = big[cent[0]-sqh:cent[0]+sqh, cent[1]-sqh:cent[1]+sqh, :]
+    frame = transform.resize(frame, (rs, rs))
+    plt.imsave('vid/wr124_' + str(ii).zfill(5)+'.png', frame)
+    print(ii)
+for ii in range(ii, ii+25):
+    plt.imsave('vid/wr124_' + str(ii).zfill(5)+'.png', frame)
+    print(ii)
 
-
-
+# from astro_utils import *
 # auto_plot('WR124', '*miri*_i2d.fits', png='WR_124_miri.png', pow=[1,1,1], factor=4, pkl=True, resize=True)
 # auto_plot('WR124', '*nircam*_i2d.fits', png='WR_124_nircam.png', pow=[1,1,1], factor=4, pkl=True, resize=True)
-# from reproject import reproject_interp
-# import pickle
+# # from reproject import reproject_interp
+# # import pickle
 # import os
 # from astro_fill_holes import *
 
 # auto_plot('ngc5068', '*_i2d.fits', png=True, pow=[0.5, 1, 1], method='mnn', pkl=True, core=False)
 
-
-
-
+path = np.asarray(list_files('/home/innereye/JWST/WR124/', '*.fits'))
+filt = filt_num(path)
+order = np.argsort(filt)
+filt = filt[order]
+path = path[order]
 layers = np.load('WR124.pkl', allow_pickle=True)
-
-plt.figure()
-for ii in range(10):
-    img = level_adjust(layers[:,:,ii])
-    plt.subplot(2,5,ii+1)
-    plt.imshow(img)
-
-for ii in range(10):
-    layers[:,:,ii] = level_adjust(layers[:,:,ii])
-
-layers[np.isnan(layers)] = 0
-
-plt.figure()
-plt.imshow(layers[:, :, [0, 3, 6]][:, :, ::-1] ** 0.5)
-
-img = np.zeros((layers.shape[0], layers.shape[1], 4))
-img[:,:,:3] = layers[:, :, [0, 3, 6]][:, :, ::-1] ** 0.5  # alpha by total
-img[:,:,-1] = np.nanmean(layers,2) ** 0.5
-plt.figure()
-plt.imshow(img)
-
-auto_plot('WR124', '*_i2d.fits', png=False, pow=[0.5,0.5,0.5], pkl=True, resize=True, method='mtn')
-
-
-colors = matplotlib.cm.jet(filt / np.max(filt))[:, :3]
-
-
-rgb = combine_images(layers, colors)
-img = rgb.copy()
-for ii in range(3):
-    img[:, :, ii] = img[:, :, ii] ** 0.5
-plt.imshow(img)
 # layers = np.load('WR124filled.pkl', allow_pickle=True)
 # for ii in [6, 7, 8, 9]:
 #     layers[:,:,ii] = np.roll(layers[:,:,ii], 23, axis=0)
@@ -97,7 +83,7 @@ plt.imshow(img)
 
 
 
-# auto_plot('WR124', '*_i2d.fits', png=True, pow=[0.5,1,1], factor=4, pkl=True, method='mnn', resize=True)
+auto_plot('WR124', '*_i2d.fits', png=True, pow=[0.5,1,1], factor=4, pkl=True, method='mnn', resize=True)
 
 # plt.figure()
 # plt.subplot(1,2,1)

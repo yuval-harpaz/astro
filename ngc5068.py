@@ -33,138 +33,30 @@ for xstart in xs:
 plt.subplot(1,2,2)
 plt.imshow(layers[250:750,250:750,[0,1,3]])
 
+
+
+## methods test
+from astro_utils import *
+from scipy import ndimage
+os.chdir('/home/innereye/JWST/ngc5068/')
+path = np.asarray(list_files('/home/innereye/JWST/ngc5068/', '*.fits'))
+filt = filt_num(path)
+order = np.argsort(filt)
+filt = filt[order]
+path = path[order]
+
+plt.figure()
+for sp, method in enumerate(['rrgggbb', 'mnn', 'mtn', 'filt']):
+    img = auto_plot('ngc5068', '*_i2d.fits', png=False, pow=[1, 1, 1], pkl=True, resize=True, method=method, plot=False)
+    plt.subplot(2,4, sp+1)
+    plt.imshow(ndimage.rotate(img,90))
+    plt.axis('off')
+    plt.title(method)
+for sp, method in enumerate(['rrgggbb', 'mnn', 'mtn', 'filt']):
+    img = auto_plot('ngc5068', '*_i2d.fits', png=False, pow=[0.5, 1, 1], pkl=True, resize=True, method=method, plot=False)
+    plt.subplot(2,4, sp+1+4)
+    plt.imshow(ndimage.rotate(img,90))
+    plt.axis('off')
+    plt.title(method+', √red')
 # with open('ngc5068.pkl', 'wb') as f: pickle.dump(layers, f)
 
-# layers = layers[20:6000,300:4500,:]
-
-#
-# # crop = [3800,5000,5600,6800]
-# margins = 100
-# coord = [9700, 3500]
-#
-# layers = np.zeros((1080 + margins, 1920 + margins, len(path)))
-# for ii in range(len(path)):
-#     print('start :' + str(ii))
-#     if ii == 0:
-#         hdu0 = fits.open(path[ii])
-#         # ref, ref_pos, ref_pix = crop_fits(hdu0[1], [6200, 4400], [1200, 1200])  # [4400, 6200]
-#         orig = hdu0[1].copy()
-#         ref, ref_pos, ref_pix = crop_fits(orig, coord, [1080+margins, 1920+margins])  # [4400, 6200]
-#         img = ref.data
-#         xy = hole_xy(img, x_stddev=6)
-#         size = hole_size(img, xy, plot=False)
-#         img = hole_disk_fill(img, xy, size, larger_than=2, allowed=0.5)
-#         # img = hole_conv_fill(img, n_pixels_around=6, ringsize=15, clean_below=1)
-#         hdr0 = ref.header
-#         del hdu0
-#     else:
-#         hdu = fits.open(path[ii])
-#
-#         wcs = WCS(hdu[1].header)
-#         pix = wcs.wcs_world2pix(ref_pos, 0)
-#         pix = np.round(np.asarray(pix))
-#         size = 2 * (pix[1, :] - pix[0, :])
-#         hdu[1], _, _ = crop_fits(hdu[1], pix[1, :], size)
-#         img = hdu[1].data
-#         xy = hole_xy(img, x_stddev=6)
-#         size = hole_size(img, xy, plot=False)
-#         print('area = '+str(hdu[1].header['PIXAR_A2']))
-#         print('prct 95 = '+str(np.round(np.percentile(np.nanmax(size, axis=1), 95), 1)))
-#         img = hole_disk_fill(img, xy, size, larger_than=2, allowed=0.5)
-#         # img = hole_conv_fill(img, n_pixels_around=3, ringsize=15, clean_below_local=0.75, clean_below=0.75)
-#         # plt.figure();plt.imshow(img, origin='lower');plt.clim(0,1000);plt.show(block=False)
-#         hdu[1].data = img
-#         img, _ = reproject_interp(hdu[1], hdr0)
-#         # img = img[crop[0]:crop[1],crop[2]:crop[3]]
-#
-#     if img.shape[0] == 0:
-#         raise Exception('bad zero')
-#     # img[img == 0] = np.nan
-#     # med = np.nanmedian(img)
-#     # img[np.isnan(img)] = 0
-#     layers[:,:,ii] = img
-#
-#
-# # layers = np.load('crop.pkl', allow_pickle=True)
-# # layers = optimize_xy(layers)[2]
-# ng = 2
-# nudged = layers.copy()
-# nudged[ng:,ng:,1] = nudged[:-ng,:-ng,1]
-# nudged[ng:,ng:,0] = nudged[:-ng,:-ng,0]
-# meds = 3.5
-# # total = np.zeros(layers.shape[:2])
-# rgbt = np.zeros((layers.shape[0], layers.shape[1], 3))
-# c = 0
-# b = []
-# for ii in [0, 1, 2]:  # range(layers.shape[2]):
-#     c += 1
-#     img = nudged[:, :, ii]
-#     img[img == 0] = np.nan
-#     med = np.nanmedian(img)
-#     img[np.isnan(img)] = 0
-#     img = img - (med / meds)
-#     if ii == 0:
-#         img = img*2
-#     elif ii == 2:
-#         img = img*0.8
-#     else:
-#         img = img*1.3
-#     img = img / (med * meds) * 255
-#     img[img > 255] = 255
-#     img[img < 0] = 0
-#     # plt.subplot(2, 3, ii+1)
-#     # plt.imshow(img, cmap='gray', origin='lower')
-#     # plt.title(path[ii][-14:-9])
-#     # plt.axis('off')
-#     rgbt[..., 2-ii] = img
-#
-# rgbt = rgbt.astype('uint8')
-# rgbt = rgbt[50:-50, 50:-50,:]
-#
-# plt.figure()
-# plt.imshow(np.flipud(np.fliplr(rgbt)), origin='lower')
-# plt.show()
-#
-#
-# plt.imsave('capy_rgb.png', np.flipud(np.fliplr(rgbt)), origin='lower')
-#
-# ##
-# # meds = 3
-# total = np.zeros(layers.shape[:2])
-# c = 0
-# b = []
-# for ii in [0,1,2]:  # range(layers.shape[2]):
-#     c += 1
-#     img = layers[:, :, ii]
-#     img[img == 0] = np.nan
-#     med = np.nanmedian(img)
-#     img[np.isnan(img)] = 0
-#     img = img - (med / meds)
-#     img = img / (med * meds) * 255
-#     img[img > 255] = 255
-#     img[img < 0] = 0
-#     # plt.subplot(2, 3, ii+1)
-#     # plt.imshow(img, cmap='gray', origin='lower')
-#     # plt.title(path[ii][-14:-9])
-#     # plt.axis('off')
-#     if b == []:
-#         b = img
-#     total += img
-# r = img
-#
-#
-# total = total / c
-# # layers = mosaic(path,method='layers')
-# rgbt = np.zeros((total.shape[0], total.shape[1], 3))
-# rgbt[..., 0] = r
-# rgbt[..., 1] = total  # *3-r-b
-# rgbt[..., 2] = b
-#
-# rgbt = rgbt.astype('uint8')
-# rgbt = rgbt[50:-50, 50:-50,:]
-# plt.figure()
-# plt.imshow(np.flipud(np.fliplr(rgbt)), origin='lower')
-# plt.show()
-# # plt.imsave('right_finger_tot.png', np.flipud(np.fliplr(rgbt)), origin='lower')
-#
-#

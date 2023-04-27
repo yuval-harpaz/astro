@@ -2,14 +2,15 @@ from astropy.io import fits
 import os
 import matplotlib
 
-matplotlib.use('Qt5Agg')
+# matplotlib.use('Qt5Agg')
+matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
 from scipy.signal import find_peaks
 from skimage.morphology import disk
 # from scipy.ndimage import median_filter
-from tqdm import tqdm
+# from tqdm import tqdm
 
 root = os.environ['HOME']+'/astro/'
 
