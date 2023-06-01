@@ -23,7 +23,7 @@ jobs:
         pip install -r requirements_preview.txt
     - name: run script
       run: |
-        python code/astro_jwst_news_ndays.py
+        python astro_jwst_news_ndays.py
     - name: check news
       #env:
       #  NEWS: ${{ false }}
