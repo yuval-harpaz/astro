@@ -2,9 +2,27 @@ from astro_utils import *
 # from astropy.io import ascii
 # table = ascii.read('tmp.csv')
 # table = table.sort(keys='t_obs_release')
-n = 7
+n = 14
 print(f'reading {n} days')
 table = last_n_days(n=n, html=False, products=False)
+
+end_time = Time.now().mjd
+start_time = end_time - n
+table = Observations.query_criteria(obs_collection="JWST",
+                                                t_obs_release=[start_time, end_time],
+                                                calib_level=3,
+                                                dataproduct_type="image")
+if len(table) > 0:
+    table = table[table['intentType'] == 'science']
+    if len(table) > 0:
+        table = table[table['dataRights'] == 'PUBLIC']
+        if len(table) > 0:
+            tdf = table.to_pandas()
+            table = table[list(~tdf['obs_title'].str.contains("alibration"))]
+
+
+if len(table) == 0:
+    raise Exception('no new images')
 table = table.to_pandas()
 table = table.sort_values('t_obs_release', ascending=False, ignore_index=True)
 page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Image Display Example</title>\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
