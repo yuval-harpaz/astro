@@ -1,12 +1,14 @@
-from astro_utils import *
+import astropy
+from astroquery.mast import Observations
+# from astro_utils import *
 # from astropy.io import ascii
 # table = ascii.read('tmp.csv')
 # table = table.sort(keys='t_obs_release')
 n = 14
 print(f'reading {n} days')
-table = last_n_days(n=n, html=False, products=False)
+# table = last_n_days(n=n, html=False, products=False)
 
-end_time = Time.now().mjd
+end_time = astropy.time.Time.now().mjd
 start_time = end_time - n
 table = Observations.query_criteria(obs_collection="JWST",
                                                 t_obs_release=[start_time, end_time],
@@ -30,7 +32,7 @@ page += '<h1>JWST science images by release date (' + str(n)+ ' days)</h1><h2>by
 date_prev = ''
 print('making html')
 for iimg in range(len(table)):  # min([len(table), n])):
-    time = Time(table['t_obs_release'][iimg], format='mjd').utc.iso
+    time = astropy.time.Time(table['t_obs_release'][iimg], format='mjd').utc.iso
     date = time[:10]
     if date != date_prev:
         page = page + '\n<br>' +date + '<br>\n'
