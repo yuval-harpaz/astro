@@ -1,5 +1,6 @@
 '''
 The code reates a web page to view the latest JWST images
+https://yuval-harpaz.github.io/astro/news_by_date.html
 @Author: Yuval Harpaz
 '''
 # requires pandas as well, no need to import
