@@ -11,13 +11,14 @@ from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
 from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
+from astropy.time import Time
+from astropy.wcs import WCS
+from astropy.nddata import Cutout2D
 from scipy.ndimage import median_filter, maximum_filter
 from scipy.signal import find_peaks, medfilt
 from astroquery.mast import Observations
 # from skimage.morphology import disk
-from astropy.wcs import WCS
-from astropy.nddata import Cutout2D
-from bot_grabber import level_adjust, nanmask
+from bot_grabber import level_adjust, nanmask, get_JWST_products_from
 import pickle
 from skimage import transform
 from scipy.ndimage import label
@@ -524,8 +525,9 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     pow: [float, float, float]
         A list of 3 numbers by which to rise power of the rgb image. Power is computed for rgb between 0 and 1, so
         using [0.5, 1,  1] will increase visibility of low light red pixels. [1,1,1] means no action.
-    pkl: bool
+    pkl: bool | str
         True for save nd array of all data as pickle first time this directory is processed, and read it if it exists next times
+        str means True + pkl filename to read / save
     png: bool | str
         False - don't save png. True - save png according to folder name. str - specify png name to save.
     resize: bool
@@ -586,6 +588,9 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             wh = [h, w]  # rotate later
         return wh
     pkl_name = folder + '.pkl'
+    if type(pkl) == str:
+        pkl_name = pkl
+        pkl = True
     if os.path.isfile(pkl_name) and pkl:
         layers = np.load(pkl_name, allow_pickle=True)
         if len(path) < layers.shape[2]:
@@ -963,6 +968,124 @@ def smooth_yx(img, win=5, passes=2):
         smooth = img2
     return smooth
 
+def smooth_colors(img):
+    shift = 0.000000000001
+    # img = np.swapaxes(img, 0,1)
+    for row in range(img.shape[0]):
+        vec = img[row, :, :].copy()
+        vec[np.isnan(vec)] = 0
+        vec = vec + shift  # prevent nans
+        rank = np.argsort(-vec, 1)
+        bad_rank = [vec[ii, rank[ii, 0]] / vec[ii, rank[ii, 1]] for ii in range(len(vec))]
+        bad_rank = np.array(bad_rank)
+        large_peak = np.ones(len(vec))
+        for ii in range(1, len(vec) - 1):
+            large_peak[ii] = vec[ii, rank[ii, 0]] / np.max([vec[ii - 1, rank[ii, 0]] + vec[ii + 1, rank[ii, 0]]])
+        vecc = vec.copy()
+        for jj in np.where(bad_rank > 1.5)[0]:
+            if jj < len(vec)-1:
+                # vecc[jj, rank[jj, 0]] = (vec[jj - 1, rank[jj, 0]] + vec[jj + 1, rank[jj, 0]]) / 2
+                # vecc[jj, rank[jj, 0]] = vec[jj - 1, rank[jj, 1]]
+                vecc[jj, rank[jj, 0]] = np.median(vec[jj - 1, :])
+        img[row,:,:] = vecc - shift
+        # print(row)
+    return img
+
+
+def rgb2cmyk(rgb):
+    cmyk_scale = 255
+    if rgb.max() > 1:
+        rgb = rgb.astype(float) / 255.
+    K = 1 - np.max(rgb, axis=2)
+    C = (1 - rgb[..., 0] - K) / (1 - K)
+    M = (1 - rgb[..., 1] - K) / (1 - K)
+    Y = (1 - rgb[..., 2] - K) / (1 - K)
+    cmyk = (np.dstack((C, M, Y, K)) * cmyk_scale)
+    return cmyk
+
+def cmyk2rgb(cmyk, cmyk_scale=255, rgb_scale=255):
+    rgb = np.zeros((cmyk.shape[0], cmyk.shape[1], 3))
+    for lay in range(3):
+        rgb[..., lay] = rgb_scale * (1.0 - cmyk[..., lay] / float(cmyk_scale)) * (1.0 - cmyk[..., 3] / float(cmyk_scale))
+    return rgb
+
+
+def last_n_days(n=3, html=True, products=False):
+    end_time = Time.now().mjd
+    start_time = end_time - n
+    if products:
+        table = get_JWST_products_from(start_time=start_time, end_time=end_time)
+        suf = '_products'
+    else:
+        # table = Observations.query_criteria(obs_collection="JWST",
+        #                                         instrument_name=["NIRCAM", "MIRI", "NIRCAM/IMAGE", "MIRI/IMAGE", "NIRISS/IMAGE"],
+        #                                         t_min=[start_time, end_time],
+        #                                         calib_level=3,
+        #                                         dataproduct_type="image")
+        table = Observations.query_criteria(obs_collection="JWST",
+                                                t_obs_release=[start_time, end_time],
+                                                calib_level=3,
+                                                dataproduct_type="image")
+        if len(table) > 0:
+            table = table[table['intentType'] == 'science']
+            if len(table) > 0:
+                table = table[table['dataRights'] == 'PUBLIC']
+                if len(table) > 0:
+                    tdf = table.to_pandas()
+                    table = table[list(~tdf['obs_title'].str.contains("alibration"))]
+        suf = ''
+    if html:
+        if len(table) > 0:
+            page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Image Display Example</title>\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
+            for iimg in range(len(table)):
+                if products:
+                    jpg = table['productFilename'][iimg].replace('_i2d.fits', '_i2d.jpg')
+                    desc = table['description'][iimg]
+                else:
+                    jpg = table['jpegURL'][iimg].replace('mast:JWST/product/', '')
+                    desc = 'title: '+table['obs_title'][iimg]+'\n'+'proposal: '+table['proposal_id'][iimg]+'\n'+jpg
+                page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + \
+                              jpg + f'" title="{desc}">'
+        else:
+            page = page + '\n<img src="https://hiredhandshomecare.com/wp-content/uploads/2016/10/iStock_87766021_sad-face_600px-wide.jpg" title="nothing new">'
+        page = page + '\n</body>\n</html>\n'
+        with open('docs/news'+suf+'.html', "w") as text_file:
+            text_file.write(page)
+    return table
+
+def last_100(html=True, products=False):
+    end_time = Time.now().mjd
+    start_time = end_time - n
+    table = Observations.query_criteria(obs_collection="JWST",
+                                            t_obs_release=[start_time, end_time],
+                                            calib_level=3,
+                                            dataproduct_type=["image"])
+    if len(table) > 0:
+        table = table[table['intentType'] == 'science']
+        if len(table) > 0:
+            table = table[table['dataRights'] == 'PUBLIC']
+            if len(table) > 0:
+                tdf = table.to_pandas()
+                table = table[list(~tdf['obs_title'].str.contains("alibration"))]
+
+    if html:
+        if len(table) > 0:
+            page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Image Display Example</title>\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
+            for iimg in range(len(table)):
+                if products:
+                    jpg = table['productFilename'][iimg].replace('_i2d.fits', '_i2d.jpg')
+                    desc = table['description'][iimg]
+                else:
+                    jpg = table['jpegURL'][iimg].replace('mast:JWST/product/', '')
+                    desc = 'title: '+table['obs_title'][iimg]+'\n'+'proposal: '+table['proposal_id'][iimg]+'\n'+jpg
+                page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + \
+                              jpg + f'" title="{desc}">'
+        else:
+            page = page + '\n<img src="https://hiredhandshomecare.com/wp-content/uploads/2016/10/iStock_87766021_sad-face_600px-wide.jpg" title="nothing new">'
+        page = page + '\n</body>\n</html>\n'
+        with open('docs/news'+suf+'.html', "w") as text_file:
+            text_file.write(page)
+    return table
 
 
 if __name__ == '__main__':

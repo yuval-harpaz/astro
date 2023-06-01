@@ -5,6 +5,14 @@ from astro_utils import *
 # from scipy.ndimage import rotate
 # from scipy.signal import medfilt
 # from scipy.ndimage.filters import maximum_filter
+# download_fits('SDSSJ1723+3411', extension='_i2d.fits', mrp=True, include='miri', ptype='image')
+# from astroquery.mast import Observations
+# obs_table = Observations.query_object('SDSSJ1723+3411')
+# obs_table = obs_table[obs_table["dataRights"] == "PUBLIC"]
+# obs_table = obs_table[obs_table["dataproduct_type"] == 'image']
+# obs_table = obs_table[obs_table["obs_collection"] == "JWST"]
+# all = Observations.get_product_list(obs_table)
+# Observations.download_products(all[9])
 ##
 # %matplotlib tk
 ##
@@ -25,3 +33,7 @@ plt.imshow(layers[..., 0], origin='lower', cmap='gray')
 plt.plot(layers[:, 480, 0] * 100 + 480, range(1000), 'r')
 plt.plot(range(1000), layers[510, :, 0] * 100 + 510, 'c')
 plt.axis('off')
+
+##
+os.chdir(os.environ['HOME']+'/JWST/SDSSJ1723+3411')
+layers = np.load('SDSSJ1723+3411_adjusted.pkl', allow_pickle=True)
