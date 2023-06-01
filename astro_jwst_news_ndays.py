@@ -28,7 +28,7 @@ if len(table) == 0:
 table = table.to_pandas()
 table = table.sort_values('t_obs_release', ascending=False, ignore_index=True)
 page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>Image Display Example</title>\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
-page += '<h1>JWST science images by release date (' + str(n)+ ' days)</h1><h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a><br>'
+page += '<h1>JWST science images by release date (' + str(n) + ' days)</h1><h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>, <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_jwst_news_ndays.py" target="_blank"> code</a><br>'
 date_prev = ''
 print('making html')
 for iimg in range(len(table)):  # min([len(table), n])):
