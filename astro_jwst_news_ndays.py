@@ -42,27 +42,30 @@ calibration = np.asarray((table['obs_title'].str.contains("alibration")) | (tabl
 
 for calib in [False, True]:
     if calib:
-        suf = 'calib'
+        suf = '_calib'
         tit = 'calibration'
         tbl = table[calibration]
+        other = '. see also <a href="https://yuval-harpaz.github.io/astro/news_by_date.html" target="_blank">science images</a>'
     else:
         suf = ''
         tit = 'science'
         tbl = table[~calibration]
+        other = '. see also <a href="https://yuval-harpaz.github.io/astro/news_by_date_calib.html" target="_blank">science images</a>'
     if len(tbl) > 0:
         page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST latest release</title>\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
-        page += '<h1>JWST ' + tit + ' images by release date (' + str(n) + ' days)</h1><h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>, <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_jwst_news_ndays.py" target="_blank"> code</a><br>'
+        page = page + '<h1>JWST ' + tit + ' images by release date (' + str(n) + \
+                ' days)</h1><h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>, <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_jwst_news_ndays.py" target="_blank"> code</a>' + other + '<br>'
         date_prev = ''
         # print('making html')
         for iimg in range(len(tbl)):  # min([len(tbl), n])):
-            time = astropy.time.Time(tbl['t_obs_release'][iimg], format='mjd').utc.iso
+            time = astropy.time.Time(tbl['t_obs_release'].iloc[iimg], format='mjd').utc.iso
             date = time[:10]
             if date != date_prev:
                 page = page + '\n<br>' +date + '<br>\n'
-            jpg = tbl['jpegURL'][iimg].replace('mast:JWST/product/', '')
-            desc = 'title: ' + tbl['obs_title'][iimg] + '\n' + \
-                   'target: ' + tbl['target_name'][iimg] + '\n' + \
-                   'proposal: ' + str(tbl['proposal_id'][iimg]) + '\n' + \
+            jpg = tbl['jpegURL'].iloc[iimg].replace('mast:JWST/product/', '')
+            desc = 'title: ' + tbl['obs_title'].iloc[iimg] + '\n' + \
+                   'target: ' + tbl['target_name'].iloc[iimg] + '\n' + \
+                   'proposal: ' + str(tbl['proposal_id'].iloc[iimg]) + '\n' + \
                    jpg + '\n' + time[:16]
             date_prev = date
             page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">'
