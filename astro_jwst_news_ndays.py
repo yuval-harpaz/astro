@@ -50,7 +50,7 @@ for calib in [False, True]:
         suf = ''
         tit = 'science'
         tbl = table[~calibration]
-        other = '. see also <a href="https://yuval-harpaz.github.io/astro/news_by_date_calib.html" target="_blank">science images</a>'
+        other = '. see also <a href="https://yuval-harpaz.github.io/astro/news_by_date_calib.html" target="_blank">calibration images</a>'
     if len(tbl) > 0:
         page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST latest release</title>\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
         page = page + '<h1>JWST ' + tit + ' images by release date (' + str(n) + \
