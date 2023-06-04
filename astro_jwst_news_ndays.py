@@ -66,6 +66,7 @@ for calib in [False, True]:
         page = page + '\n</body>\n</html>\n'
         with open('docs/news_by_date'+suf+'.html', "w") as text_file:
             text_file.write(page)
+print('wrote image preview')
 ## create a list of download links
 for calib in [False, True]:
     if calib:
@@ -95,3 +96,4 @@ for calib in [False, True]:
         page = page + '\n</body>\n</html>\n'
         with open('docs/downloads_by_date'+suf+'.html', "w") as text_file:
             text_file.write(page)
+print('done')
