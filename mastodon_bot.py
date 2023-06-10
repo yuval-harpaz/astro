@@ -1,7 +1,6 @@
 from mastodon import Mastodon
 import os
-# import sys
-#   Set up Mastodon
+import sys
 
 
 def connect_bot():
