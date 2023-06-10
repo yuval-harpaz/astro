@@ -6,3 +6,4 @@ reproject
 numpy
 scipy
 matplotlib
+skimage
