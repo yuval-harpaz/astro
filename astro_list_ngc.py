@@ -1,9 +1,6 @@
-# import pandas as pd
 from astro_utils import *
 from astropy.time import Time
-# from astropy.io import ascii
-# table = ascii.read('tmp.csv')
-# table = table.sort(keys='t_obs_release')
+from mastodon_bot import connect_bot
 ##
 args = {'obs_collection': "JWST",
         'calib_level': 3,
@@ -69,8 +66,25 @@ for ii, tt in enumerate(target):
 df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg'])
 df = df.sort_values('release_date', ignore_index=True, ascending=False)
 ##
+df_prev = pd.read_csv('ngc.csv', sep=',')
 df.to_csv('ngc.csv', sep=',', index=False)
-# TODO: sort from new to old, make html
+if df.iloc[0]['release_date'] > df.iloc[0]['release_date']:
+    toot = 'A new NGC image at https://yuval-harpaz.github.io/astro/ngc.html'
+    masto = connect_bot()
+    masto.status_post(toot)
+    # a = os.system('wget -O tmp.jpg ' + page[first_image + 10:page.index('.jpg') + 4])
+    # if a == 0:
+    #     img = plt.imread('tmp.jpg')
+    #     size = os.path.getsize('tmp.jpg')
+    #     mb2 = 2 * 10 ** 6  # mastodon allows 2MB
+    #     if size >= mb2:
+    #         ratio = mb2 / size
+    #         img = resize(img, (int(ratio ** 0.5 * img.shape[0]), int(ratio ** 0.5 * img.shape[1])))
+    #         plt.imsave('tmp.jpg', img, cmap='gray')
+    #     metadata = masto.media_post("tmp.jpg", "image/jpeg")
+    #     masto.status_post(toot, media_ids=metadata["id"])
+    # else:
+    #     masto.status_post(toot)
 ##
 df = pd.read_csv('ngc.csv')
 page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title>\n  ' \
@@ -95,42 +109,3 @@ for iimg in range(len(df)):  # min([len(tbl), n])):
 page = page + '\n</div></body>\n</html>\n'
 with open('docs/ngc.html', "w") as text_file:
     text_file.write(page)
-#
-# inc = []
-# for jpg in table['jpegURL']:
-#     if jpg in tablem['jpegURL']:
-#         inc.append(True)
-#     else:
-#         inc.append(False)
-# print(np.mean(inc))
-#
-#
-# # mir = plt.imread('/home/innereye/JWST/ngc_2835/ngc2835_miri.png')
-# # nir = plt.imread('/home/innereye/JWST/ngc_2835/ngc2835_nircam.png')
-# # mir = rgb2cmyk(mir)
-# # nir = rgb2cmyk(nir)
-# # mix = np.clip(nir+mir, 0, 255)  # .astype('uint8')
-# # mix = cmyk2rgb(mix).astype('uint8')
-# # plt.imshow(mix)
-# #
-# # ##
-# # pow = 0.75
-# # r = np.zeros((100,100,3))
-# # r[40:60,40:60,0] = pow
-# # b = np.zeros((100,100,3))
-# # b[50:70,50:70,2] = pow
-# # mix = 1 - (((1-r)**2 + (1-b)**2)/2)**0.5
-# # # mix = 1 - (((1-r)**2 + (1-b)**2)/3)
-# # plt.imshow(mix)
-# # #
-# # # c = rgb2cmyk(r)
-# # # fill = 0
-# # # c[np.isnan(c)] = fill
-# # # y = rgb2cmyk(b)
-# # # y[np.isnan(y)] = fill
-# # # # miks = c
-# # # # miks[..., :3] = c[..., :3] + y[..., :3]
-# # # mix = cmyk2rgb(miks)
-# # mix = 255-y-c
-# # mix = np.clip(mix, 0, 255).astype('uint8')
-# #
