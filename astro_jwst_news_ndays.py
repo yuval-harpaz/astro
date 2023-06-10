@@ -5,8 +5,11 @@ https://yuval-harpaz.github.io/astro/news_by_date.html
 '''
 # requires pandas as well, no need to import
 import astropy
+import matplotlib.pyplot as plt
 from astroquery.mast import Observations
 import numpy as np
+from mastodon_bot import connect_bot
+from skimage.transform import resize
 
 # n days to look back for new releases
 n = 14
@@ -45,6 +48,11 @@ for calib in [False, True]:
         tbl = table[~calibration]
         other = '. see also <a href="https://yuval-harpaz.github.io/astro/news_by_date_calib.html" target="_blank">calibration images</a>'
         download = ', <a href="https://yuval-harpaz.github.io/astro/downloads_by_date.html" target="_blank">downloads</a>'
+    html_name = 'docs/news_by_date' + suf + '.html'
+    with open(html_name, 'r') as fid:
+        last = fid.read()
+    first_image = last.index('<img')
+    last_date = last[first_image-16:first_image-6]
     if len(tbl) > 0:
         page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST latest release</title>\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
         page = page + '<h1>JWST ' + tit + ' images by release date (' + str(n) + \
@@ -64,8 +72,26 @@ for calib in [False, True]:
             date_prev = date
             page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">'
         page = page + '\n</body>\n</html>\n'
-        with open('docs/news_by_date'+suf+'.html', "w") as text_file:
+        with open(html_name, "w") as text_file:
             text_file.write(page)
+        first_image = page.index('<img')
+        new_date = page[first_image - 16:first_image - 6]
+        if new_date > last_date:
+            toot = 'new images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
+            masto = connect_bot()
+            a = os.system('wget -O tmp.jpg '+page[first_image+10:page.index('.jpg')+4])
+            if a == 0:
+                img = plt.imread('tmp.jpg')
+                size = os.path.getsize('tmp.jpg')
+                mb2 = 2*10**6  # mastodon allows 2MB
+                if size >= mb2:
+                    ratio = mb2/size
+                    img = resize(img, (int(ratio**0.5*img.shape[0]), int(ratio**0.5*img.shape[1])))
+                    plt.imsave('tmp.jpg', img, cmap='gray')
+                metadata = masto.media_post("tmp.jpg", "image/jpeg")
+                masto.status_post(toot, media_ids=metadata["id"])
+            else:
+                masto.status_post(toot)
 print('wrote image preview')
 ## create a list of download links
 for calib in [False, True]:

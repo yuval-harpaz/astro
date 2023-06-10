@@ -1,13 +1,8 @@
-# download data and make figures as html using python
-
 name: auto update page 
-
 on:
   schedule:
     - cron: '0 */2 * * *'
 permissions: write-all
-  # contents: read
-
 jobs:
   astro-fig:
     runs-on: ubuntu-latest
@@ -22,6 +17,8 @@ jobs:
       run: |
         pip install -r requirements_ngc.txt
     - name: run script
+      env:
+          OAuth: ${{ secrets.MASTODON_BOT }}
       run: |
         python astro_jwst_news_ndays.py
     - name: check news
@@ -32,7 +29,7 @@ jobs:
         git config --global user.email "actions@github"
         if [ -n "$(git status --porcelain)" ]; then
           echo "IS_NEW=true" >> $GITHUB_ENV
-          python mastodon_bot.py "new images on https://yuval-harpaz.github.io/astro/news_by_date.html"
+#          python mastodon_bot.py "new images on https://yuval-harpaz.github.io/astro/news_by_date.html"
         else
           echo "no changes"
           echo "IS_NEW=false" >> $GITHUB_ENV
