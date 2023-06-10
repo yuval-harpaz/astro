@@ -1,0 +1,8 @@
+astropy
+astroquery
+pandas
+numpy
+reproject
+numpy
+scipy
+matplotlib
