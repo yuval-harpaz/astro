@@ -20,7 +20,7 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        pip install -r requirements_preview.txt
+        pip install -r requirements_ngc.txt
     - name: run script
       # env:
       #     OAuth: ${{ secrets.GOOMAP }}
