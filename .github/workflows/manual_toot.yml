@@ -5,6 +5,7 @@ permissions: write-all
 jobs:
   astro-fig:
     runs-on: ubuntu-latest
+    environment: mastodon
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
@@ -13,12 +14,15 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        pip install git+https://github.com/halcy/Mastodon.py.git
+        pip install git+https://github.com/halcy/Mastodon.py.git@1.8.1
     - name: tada
       run: |
-        echo tada
-#    - name: run script ngc
-#      run: |
+        echo "pip done"
+    - name: run script test
+      env:
+          OAuth: ${{ secrets.MASTODON_BOT }}
+      run: |
+         python mastodon_bot.py
 #        python astro_list_ngc.py
 #    - name: check news ngc
 #      run: |
