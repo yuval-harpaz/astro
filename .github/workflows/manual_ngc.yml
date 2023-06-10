@@ -1,15 +1,10 @@
-# download data and make figures as html using python
-
-name: manual jwst preview
-
+name: manual ngc
 on:
-  workflow_dispatch:
+    workflow_dispatch:
 permissions: write-all
-  # contents: read
 jobs:
-  update-page:
+  astro-fig:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
@@ -18,11 +13,11 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        pip install -r requirements_preview.txt
-    - name: run script
+        pip install -r requirements.txt
+    - name: run script ngc
       run: |
-        python astro_jwst_news_ndays.py
-    - name: check news
+        python astro_list_ngc.py
+    - name: check news ngc
       run: |
         git config --global user.name "actions"
         git config --global user.email "actions@github"
@@ -32,10 +27,10 @@ jobs:
           echo "no changes"
           echo "IS_NEW=false" >> $GITHUB_ENV
         fi
-    - name: commit files
+    - name: commit files ngc
       run: |
         git add -A
-        git commit -m "daily update"
+        git commit -m "auto update ngc"
         git pull
       if: ${{ env.IS_NEW == 'true' }}
     - name: push files

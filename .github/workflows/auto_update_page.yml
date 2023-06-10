@@ -1,6 +1,6 @@
 # download data and make figures as html using python
 
-name: auto apdate page 
+name: auto update page 
 
 on:
   schedule:
