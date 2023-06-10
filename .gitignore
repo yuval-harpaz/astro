@@ -6,4 +6,4 @@ png
 old
 tails
 tmp*
-token.secret
+*.secret
