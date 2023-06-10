@@ -16,6 +16,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements_ngc.txt
+        pip install git+https://github.com/halcy/Mastodon.py.git@1.8.1
     - name: run script
       env:
           OAuth: ${{ secrets.MASTODON_BOT }}
@@ -29,7 +30,7 @@ jobs:
         git config --global user.email "actions@github"
         if [ -n "$(git status --porcelain)" ]; then
           echo "IS_NEW=true" >> $GITHUB_ENV
-#          python mastodon_bot.py "new images on https://yuval-harpaz.github.io/astro/news_by_date.html"
+          # python mastodon_bot.py "new images on https://yuval-harpaz.github.io/astro/news_by_date.html"
         else
           echo "no changes"
           echo "IS_NEW=false" >> $GITHUB_ENV
