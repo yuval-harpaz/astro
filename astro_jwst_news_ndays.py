@@ -78,7 +78,7 @@ for calib in [False, True]:
         new_date = page[first_image - 16:first_image - 6]
         if new_date > last_date:
             toot = 'new images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
-            masto = connect_bot()
+            masto, _ = connect_bot()
             a = os.system('wget -O tmp.jpg '+page[first_image+10:page.index('.jpg')+4])
             if a == 0:
                 img = plt.imread('tmp.jpg')

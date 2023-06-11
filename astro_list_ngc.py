@@ -70,7 +70,7 @@ df_prev = pd.read_csv('ngc.csv', sep=',')
 df.to_csv('ngc.csv', sep=',', index=False)
 if df.iloc[0]['release_date'] > df.iloc[0]['release_date']:
     toot = 'A new NGC image at https://yuval-harpaz.github.io/astro/ngc.html'
-    masto = connect_bot()
+    masto, _ = connect_bot()
     masto.status_post(toot)
     # a = os.system('wget -O tmp.jpg ' + page[first_image + 10:page.index('.jpg') + 4])
     # if a == 0:
