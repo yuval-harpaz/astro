@@ -10,6 +10,7 @@ from astroquery.mast import Observations
 import numpy as np
 from mastodon_bot import connect_bot
 from skimage.transform import resize
+import os
 
 # n days to look back for new releases
 n = 14
