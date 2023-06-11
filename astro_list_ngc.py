@@ -87,7 +87,7 @@ if df.iloc[0]['release_date'] > df.iloc[0]['release_date']:
     #     masto.status_post(toot)
 ##
 df = pd.read_csv('ngc.csv')
-page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title>\n  ' \
+page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
        '<style>\n   img {\n      ' \
        'max-width: 35vw; /* Limit image width to P% of viewport width */\n      ' \
        'height: auto; /* Maintain aspect ratio */\n    }\n    ' \
