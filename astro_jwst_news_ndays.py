@@ -53,9 +53,10 @@ for calib in [False, True]:
     with open(html_name, 'r') as fid:
         last = fid.read()
     first_image = last.index('<img')
-    last_date = last[first_image-16:first_image-6]
+    last_date = last[last.index('newest:')+10:last.index('\n')-1]
     if len(tbl) > 0:
-        page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST latest release</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
+        new_date =  astropy.time.Time(tbl['t_obs_release'].iloc[0], format='mjd').utc.iso
+        page = '<!DOCTYPE html><!newest: '+new_date+'>\n<html>\n<head>\n  <title>JWST latest release</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
         page = page + '<h1>JWST ' + tit + ' images by release date (' + str(n) + \
                 ' days)</h1><h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>, <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_jwst_news_ndays.py" target="_blank"> code</a>' + download + other + '<br>'
         date_prev = ''
@@ -76,7 +77,7 @@ for calib in [False, True]:
         with open(html_name, "w") as text_file:
             text_file.write(page)
         first_image = page.index('<img')
-        new_date = page[first_image - 16:first_image - 6]
+        # new_date = page[first_image - 16:first_image - 6]
         if new_date > last_date:
             toot = 'new images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
             masto, _ = connect_bot()
