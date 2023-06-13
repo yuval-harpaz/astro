@@ -29,9 +29,9 @@ target = np.unique(target_name)
 ngc = []
 for tt in target:
     if tt[0] == 'M':
-        m = ongc.get(tm['target_name'][ii].replace('-', ''))
+        m = ongc.get(tt.replace('-', ''))
         if m is None:
-            raise Exception('unable to find which ngc is: '+tm['target_name'][ii])
+            raise Exception('unable to find which ngc is: '+tt)
         else:
             ngc.append(int(m.name[3:]))
     elif tt[:3] == 'NGC':
@@ -63,11 +63,11 @@ for ii, tt in enumerate(target):
     else:
         session = [np.arange(gap[0]+1)]
         for iss in range(1, len(gap)):
-            session.append(np.arange(gap[iss-1], gap[iss]+1))
+            session.append(np.arange(gap[iss-1]+1, gap[iss]+1))
         session.append(np.arange(gap[-1]+1, len(df1)))
-    if len(session) > 2:
-        print(session)
-        raise Exception('make sure sessions are fit')
+    # if len(session) > 2:
+    #     print(session)
+    #     raise Exception('make sure sessions are fit')
     for ses in session:
         df2 = df1.iloc[ses]
         df2 = df2.reset_index(drop=True)
