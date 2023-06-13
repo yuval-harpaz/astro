@@ -53,7 +53,7 @@ for calib in [False, True]:
     with open(html_name, 'r') as fid:
         last = fid.read()
     first_image = last.index('<img')
-    last_date = last[last.index('newest:')+10:last.index('\n')-1]
+    last_date = last[last.index('newest:')+8:last.index('\n')-1]
     if len(tbl) > 0:
         new_date =  astropy.time.Time(tbl['t_obs_release'].iloc[0], format='mjd').utc.iso
         page = '<!DOCTYPE html><!newest: '+new_date+'>\n<html>\n<head>\n  <title>JWST latest release</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
@@ -92,8 +92,10 @@ for calib in [False, True]:
                     plt.imsave('tmp.jpg', img, cmap='gray')
                 metadata = masto.media_post("tmp.jpg", "image/jpeg")
                 masto.status_post(toot, media_ids=metadata["id"])
+                print('toot image')
             else:
                 masto.status_post(toot)
+                print('toot')
 print('wrote image preview')
 ## create a list of download links
 for calib in [False, True]:
