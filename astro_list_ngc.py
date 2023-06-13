@@ -1,6 +1,7 @@
 from astro_utils import *
 from astropy.time import Time
 from mastodon_bot import connect_bot
+from pyongc import ongc
 ##
 args = {'obs_collection': "JWST",
         'calib_level': 3,
@@ -13,24 +14,42 @@ table = Observations.query_criteria(**args)
 isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
 table = table[isnotnirspec]
 isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
-table = table[isngc]
+isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
+ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
+# tm = table[ism].to_pandas()
+# m_ngc = []
+# for ii in range(len(tm)):
+#     m_ngc.append(ongc.get(tm['target_name'][ii].replace('-','')).name)
+
+
+table = table[np.array(isngc) | np.array(ism) | np.array(isori)]
 target_name = np.asarray(table['target_name'])
 target = np.unique(target_name)
+##
 ngc = []
 for tt in target:
-    nn = tt[3:]
-    for ii, ll in enumerate(nn):
-        if ll.isnumeric():
-            break
-    if ii > 1:
-        raise Exception('expected numbers')
-    nn = nn[ii:]
-    for ii, ll in enumerate(nn):
-        if not ll.isnumeric():
-            break
-    if ii == len(nn)-1:
-        ii += 1
-    ngc.append(int(nn[:ii]))
+    if tt[0] == 'M':
+        m = ongc.get(tm['target_name'][ii].replace('-', ''))
+        if m is None:
+            raise Exception('unable to find which ngc is: '+tm['target_name'][ii])
+        else:
+            ngc.append(int(m.name[3:]))
+    elif tt[:3] == 'NGC':
+        nn = tt[3:]
+        for ii, ll in enumerate(nn):
+            if ll.isnumeric():
+                break
+        if ii > 1:
+            raise Exception('expected numbers')
+        nn = nn[ii:]
+        for ii, ll in enumerate(nn):
+            if not ll.isnumeric():
+                break
+        if ii == len(nn)-1:
+            ii += 1
+        ngc.append(int(nn[:ii]))
+    elif tt[:3] == 'ORI':
+        ngc.append(1976)
 ##
 row = []
 for ii, tt in enumerate(target):
