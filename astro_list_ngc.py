@@ -101,19 +101,7 @@ if df.iloc[0]['release_date'] > df.iloc[0]['release_date']:
     toot = 'A new NGC image at https://yuval-harpaz.github.io/astro/ngc.html'
     masto, _ = connect_bot()
     masto.status_post(toot)
-    # a = os.system('wget -O tmp.jpg ' + page[first_image + 10:page.index('.jpg') + 4])
-    # if a == 0:
-    #     img = plt.imread('tmp.jpg')
-    #     size = os.path.getsize('tmp.jpg')
-    #     mb2 = 2 * 10 ** 6  # mastodon allows 2MB
-    #     if size >= mb2:
-    #         ratio = mb2 / size
-    #         img = resize(img, (int(ratio ** 0.5 * img.shape[0]), int(ratio ** 0.5 * img.shape[1])))
-    #         plt.imsave('tmp.jpg', img, cmap='gray')
-    #     metadata = masto.media_post("tmp.jpg", "image/jpeg")
-    #     masto.status_post(toot, media_ids=metadata["id"])
-    # else:
-    #     masto.status_post(toot)
+
 ##
 df = pd.read_csv('ngc.csv')
 page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
