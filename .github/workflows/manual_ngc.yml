@@ -19,5 +19,5 @@ jobs:
       env:
           OAuth: ${{ secrets.MASTODON_BOT }}
       run: |
-        python astro_toot_ngc.py
+        python astro_toot_colors.py
         echo tada
