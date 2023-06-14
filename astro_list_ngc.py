@@ -104,25 +104,40 @@ if df.iloc[0]['release_date'] > df.iloc[0]['release_date']:
 
 ##
 df = pd.read_csv('ngc.csv')
-page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
-       '<style>\n   img {\n      ' \
-       'max-width: 35vw; /* Limit image width to P% of viewport width */\n      ' \
-       'height: auto; /* Maintain aspect ratio */\n    }\n    ' \
-       '.container {\n      ' \
-       'margin-left: 5%;\n    }\n' \
-       '</style>\n</head>\n<body><div class="container">'
-page = page + '<h1>JWST images of NGC objects, from latest to oldest release</h1>' \
-              'Preview images are the bluest (shortest wavelength)<br>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>,' \
-              ' <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_list_ngc.py" target="_blank"> code,</a>' \
-              ' <a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table.</a><br><br>'
-for iimg in range(len(df)):  # min([len(tbl), n])):
-    date = df.iloc[iimg]['release_date']
-    # ngc = df.iloc[iimg]['NGC']
-    tgt = df.iloc[iimg]['target_name']
-    flt = df.iloc[iimg]['filters']
-    page = page + f'\n<h3>{date} {tgt}, filters: [{flt}]</h3>'
-    jpg = df['jpeg'].iloc[iimg].replace('mast:JWST/product/', '')
-    page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'""><br>'
-page = page + '\n</div></body>\n</html>\n'
-with open('docs/ngc.html', "w") as text_file:
-    text_file.write(page)
+
+for ii in [0, 1]:
+    if ii == 0:
+        vw = str(70)
+        img_br = '<br>'
+        grid = ''
+        other = '<a href="https://yuval-harpaz.github.io/astro/ngc_grid.html" target="_blank">grid view</a>'
+    else:
+        vw = str(35)
+        img_br = ''
+        grid = '_grid'
+        other = '<a href="https://yuval-harpaz.github.io/astro/ngc.html" target="_blank">stream view</a>'
+    page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
+           '<style>\n   img {\n      ' \
+           'max-width: ' + vw + 'vmin; /* Limit image width to P% of viewport width */\n      ' \
+           'height: auto; /* Maintain aspect ratio */\n    }\n    ' \
+           '.container {\n      ' \
+           'margin-left: 5%;\n    }\n' \
+           '</style>\n</head>\n<body><div class="container">'
+    page = page + '<h1>JWST images of NGC objects, from latest to oldest release</h1>' \
+                  'Preview images are the bluest (shortest wavelength)<br>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>,' \
+                  ' <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_list_ngc.py" target="_blank"> code,</a>' \
+                  ' <a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>, ' \
+                  +other + '<br><br>'
+    for iimg in range(len(df)):  # min([len(tbl), n])):
+        date = df.iloc[iimg]['release_date']
+        # ngc = df.iloc[iimg]['NGC']
+        tgt = df.iloc[iimg]['target_name']
+        flt = df.iloc[iimg]['filters']
+        desc = f'{date} {tgt}, available filters: [{flt}]'
+        if ii == 0:
+            page = page + f'\n<h3>{desc}</h3>'
+        jpg = df['jpeg'].iloc[iimg].replace('mast:JWST/product/', '')
+        page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">{img_br}'
+    page = page + '\n</div></body>\n</html>\n'
+    with open(f'docs/ngc{grid}.html', "w") as text_file:
+        text_file.write(page)
