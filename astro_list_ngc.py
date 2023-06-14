@@ -16,13 +16,15 @@ table = table[isnotnirspec]
 isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
 isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
 ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
+isic = [x[:2].upper() == 'IC' for x in table['target_name']]
+
 # tm = table[ism].to_pandas()
 # m_ngc = []
 # for ii in range(len(tm)):
 #     m_ngc.append(ongc.get(tm['target_name'][ii].replace('-','')).name)
 
 
-table = table[np.array(isngc) | np.array(ism) | np.array(isori)]
+table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic)]
 target_name = np.asarray(table['target_name'])
 target = np.unique(target_name)
 ##
@@ -34,6 +36,14 @@ for tt in target:
             raise Exception('unable to find which ngc is: '+tt)
         else:
             ngc.append(int(m.name[3:]))
+    elif tt[:2] == 'IC':
+        ic = ongc.get(tt.replace('-', ''))
+        if ic is None:
+            raise Exception('unable to find which ngc is: ' + tt)
+        if ic.name[:3] == 'NGC':
+            ngc.append(int(ic.name[3:]))
+        else:
+            ngc.append(0)
     elif tt[:3] == 'NGC':
         nn = tt[3:]
         for ii, ll in enumerate(nn):
