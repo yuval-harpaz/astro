@@ -3,98 +3,102 @@ from astropy.time import Time
 from mastodon_bot import connect_bot
 from pyongc import ongc
 ##
-args = {'obs_collection': "JWST",
-        'calib_level': 3,
-        'dataRights': 'public',
-        'intentType': 'science',
-        'dataproduct_type': "image"}
 
-# search images by observation date and by release date
-table = Observations.query_criteria(**args)
-isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
-table = table[isnotnirspec]
-isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
-isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
-ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
-isic = [x[:2].upper() == 'IC' for x in table['target_name']]
+def list_ngc():
+    args = {'obs_collection': "JWST",
+            'calib_level': 3,
+            'dataRights': 'public',
+            'intentType': 'science',
+            'dataproduct_type': "image"}
 
-# tm = table[ism].to_pandas()
-# m_ngc = []
-# for ii in range(len(tm)):
-#     m_ngc.append(ongc.get(tm['target_name'][ii].replace('-','')).name)
+    # search images by observation date and by release date
+    table = Observations.query_criteria(**args)
+    isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
+    table = table[isnotnirspec]
+    isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
+    isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
+    ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
+    isic = [x[:2].upper() == 'IC' for x in table['target_name']]
+
+    # tm = table[ism].to_pandas()
+    # m_ngc = []
+    # for ii in range(len(tm)):
+    #     m_ngc.append(ongc.get(tm['target_name'][ii].replace('-','')).name)
 
 
-table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic)]
-target_name = np.asarray(table['target_name'])
-target = np.unique(target_name)
-##
-ngc = []
-for tt in target:
-    if tt[0] == 'M':
-        m = ongc.get(tt.replace('-', ''))
-        if m is None:
-            raise Exception('unable to find which ngc is: '+tt)
+    table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic)]
+    target_name = np.asarray(table['target_name'])
+    target = np.unique(target_name)
+    ##
+    ngc = []
+    for tt in target:
+        if tt[0] == 'M':
+            m = ongc.get(tt.replace('-', ''))
+            if m is None:
+                raise Exception('unable to find which ngc is: '+tt)
+            else:
+                ngc.append(int(m.name[3:]))
+        elif tt[:2] == 'IC':
+            ic = ongc.get(tt.replace('-', ''))
+            if ic is None:
+                raise Exception('unable to find which ngc is: ' + tt)
+            if ic.name[:3] == 'NGC':
+                ngc.append(int(ic.name[3:]))
+            else:
+                ngc.append(0)
+        elif tt[:3] == 'NGC':
+            nn = tt[3:]
+            for ii, ll in enumerate(nn):
+                if ll.isnumeric():
+                    break
+            if ii > 1:
+                raise Exception('expected numbers')
+            nn = nn[ii:]
+            for ii, ll in enumerate(nn):
+                if not ll.isnumeric():
+                    break
+            if ii == len(nn)-1:
+                ii += 1
+            ngc.append(int(nn[:ii]))
+        elif tt[:3] == 'ORI':
+            ngc.append(1976)
+    ##
+    row = []
+    for ii, tt in enumerate(target):
+        idx = np.where(target_name == tt)[0]
+        df1 = table[idx].to_pandas()
+        df1 = df1.sort_values('t_min', ignore_index=True)
+        gap = np.where(np.diff(df1['t_min']) > 4)[0]
+
+        if len(gap) == 0:
+            session = [np.arange(len(df1))]
         else:
-            ngc.append(int(m.name[3:]))
-    elif tt[:2] == 'IC':
-        ic = ongc.get(tt.replace('-', ''))
-        if ic is None:
-            raise Exception('unable to find which ngc is: ' + tt)
-        if ic.name[:3] == 'NGC':
-            ngc.append(int(ic.name[3:]))
-        else:
-            ngc.append(0)
-    elif tt[:3] == 'NGC':
-        nn = tt[3:]
-        for ii, ll in enumerate(nn):
-            if ll.isnumeric():
-                break
-        if ii > 1:
-            raise Exception('expected numbers')
-        nn = nn[ii:]
-        for ii, ll in enumerate(nn):
-            if not ll.isnumeric():
-                break
-        if ii == len(nn)-1:
-            ii += 1
-        ngc.append(int(nn[:ii]))
-    elif tt[:3] == 'ORI':
-        ngc.append(1976)
+            session = [np.arange(gap[0]+1)]
+            for iss in range(1, len(gap)):
+                session.append(np.arange(gap[iss-1]+1, gap[iss]+1))
+            session.append(np.arange(gap[-1]+1, len(df1)))
+        # if len(session) > 2:
+        #     print(session)
+        #     raise Exception('make sure sessions are fit')
+        for ses in session:
+            df2 = df1.iloc[ses]
+            df2 = df2.reset_index(drop=True)
+            filt = filt_num(df2['dataURL'])
+            bluer = np.argmin(filt)
+            filt = str(np.unique(filt).astype(int))
+            url = df2['jpegURL'][bluer]
+            t_min = Time(df2['t_min'].iloc[0], format='mjd').utc.iso
+            # t_min = t_min[:10]
+            t_max = Time(df2['t_max'].iloc[-1], format='mjd').utc.iso
+            # t_max = t_max[:10]
+            release = Time(df2['t_obs_release'].iloc[0], format='mjd').utc.iso
+            release = release[:10]
+            row.append([release, t_min, t_max, ngc[ii], tt, filt[1:-1], url])
+    df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg'])
+    df = df.sort_values('release_date', ignore_index=True, ascending=False)
+    return df
 ##
-row = []
-for ii, tt in enumerate(target):
-    idx = np.where(target_name == tt)[0]
-    df1 = table[idx].to_pandas()
-    df1 = df1.sort_values('t_min', ignore_index=True)
-    gap = np.where(np.diff(df1['t_min']) > 4)[0]
-
-    if len(gap) == 0:
-        session = [np.arange(len(df1))]
-    else:
-        session = [np.arange(gap[0]+1)]
-        for iss in range(1, len(gap)):
-            session.append(np.arange(gap[iss-1]+1, gap[iss]+1))
-        session.append(np.arange(gap[-1]+1, len(df1)))
-    # if len(session) > 2:
-    #     print(session)
-    #     raise Exception('make sure sessions are fit')
-    for ses in session:
-        df2 = df1.iloc[ses]
-        df2 = df2.reset_index(drop=True)
-        filt = filt_num(df2['dataURL'])
-        bluer = np.argmin(filt)
-        filt = str(np.unique(filt).astype(int))
-        url = df2['jpegURL'][bluer]
-        t_min = Time(df2['t_min'].iloc[0], format='mjd').utc.iso
-        # t_min = t_min[:10]
-        t_max = Time(df2['t_max'].iloc[-1], format='mjd').utc.iso
-        # t_max = t_max[:10]
-        release = Time(df2['t_obs_release'].iloc[0], format='mjd').utc.iso
-        release = release[:10]
-        row.append([release, t_min, t_max, ngc[ii], tt, filt[1:-1], url])
-df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg'])
-df = df.sort_values('release_date', ignore_index=True, ascending=False)
-##
+df = list_ngc()
 df_prev = pd.read_csv('ngc.csv', sep=',')
 df.to_csv('ngc.csv', sep=',', index=False)
 if df.iloc[0]['release_date'] > df.iloc[0]['release_date']:
