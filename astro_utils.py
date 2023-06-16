@@ -655,6 +655,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
     # combine colors by method
     layers = layers[..., ~empty]
+    path = path[~empty]
     rgb = None
     if method == 'rrgggbb':
         ncol = np.floor(layers.shape[-1] / 3)
