@@ -5,6 +5,7 @@ permissions: write-all
 jobs:
   astro-fig:
     runs-on: ubuntu-latest
+    environment: mastodon
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
@@ -14,27 +15,10 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements_ngc.txt
+        pip install git+https://github.com/halcy/Mastodon.py.git@1.8.1
     - name: run script ngc
+      env:
+          OAuth: ${{ secrets.MASTODON_BOT }}
       run: |
-        python astro_list_ngc.py
-    - name: check news ngc
-      run: |
-        git config --global user.name "actions"
-        git config --global user.email "actions@github"
-        if [ -n "$(git status --porcelain)" ]; then
-          echo "IS_NEW=true" >> $GITHUB_ENV
-        else
-          echo "no changes"
-          echo "IS_NEW=false" >> $GITHUB_ENV
-        fi
-    - name: commit files ngc
-      run: |
-        git add -A
-        git commit -m "auto update ngc"
-        git pull
-      if: ${{ env.IS_NEW == 'true' }}
-    - name: push files
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-      if: ${{ env.IS_NEW == 'true' }}
+        python astro_toot_colors.py
+        echo tada
