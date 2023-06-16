@@ -98,50 +98,52 @@ def list_ngc():
     df = df.sort_values('release_date', ignore_index=True, ascending=False)
     return df
 ##
-df = list_ngc()
-df_prev = pd.read_csv('ngc.csv', sep=',')
-df.to_csv('ngc.csv', sep=',', index=False)
-if df.iloc[0]['release_date'] > df.iloc[0]['release_date']:
-    toot = 'A new NGC image at https://yuval-harpaz.github.io/astro/ngc.html'
-    masto, _ = connect_bot()
-    masto.status_post(toot)
+def ngc_html():
+    df = pd.read_csv('ngc.csv')
 
-##
-df = pd.read_csv('ngc.csv')
-
-for ii in [0, 1]:
-    if ii == 0:
-        vw = str(70)
-        img_br = '<br>'
-        grid = ''
-        other = '<a href="https://yuval-harpaz.github.io/astro/ngc_grid.html" target="_blank">grid view</a>'
-    else:
-        vw = str(35)
-        img_br = ''
-        grid = '_grid'
-        other = '<a href="https://yuval-harpaz.github.io/astro/ngc.html" target="_blank">stream view</a>'
-    page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
-           '<style>\n   img {\n      ' \
-           'max-width: ' + vw + 'vmin; /* Limit image width to P% of viewport width */\n      ' \
-           'height: auto; /* Maintain aspect ratio */\n    }\n    ' \
-           '.container {\n      ' \
-           'margin-left: 5%;\n    }\n' \
-           '</style>\n</head>\n<body><div class="container">'
-    page = page + '<h1>JWST images of NGC objects, from latest to oldest release</h1>' \
-                  'Preview images are the bluest (shortest wavelength)<br>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>,' \
-                  ' <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_list_ngc.py" target="_blank"> code,</a>' \
-                  ' <a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>, ' \
-                  +other + '<br><br>'
-    for iimg in range(len(df)):  # min([len(tbl), n])):
-        date = df.iloc[iimg]['release_date']
-        # ngc = df.iloc[iimg]['NGC']
-        tgt = df.iloc[iimg]['target_name']
-        flt = df.iloc[iimg]['filters']
-        desc = f'{date} {tgt}, available filters: [{flt}]'
+    for ii in [0, 1]:
         if ii == 0:
-            page = page + f'\n<h3>{desc}</h3>'
-        jpg = df['jpeg'].iloc[iimg].replace('mast:JWST/product/', '')
-        page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">{img_br}'
-    page = page + '\n</div></body>\n</html>\n'
-    with open(f'docs/ngc{grid}.html', "w") as text_file:
-        text_file.write(page)
+            vw = str(70)
+            img_br = '<br>'
+            grid = ''
+            other = '<a href="https://yuval-harpaz.github.io/astro/ngc_grid.html" target="_blank">grid view</a>'
+        else:
+            vw = str(35)
+            img_br = ''
+            grid = '_grid'
+            other = '<a href="https://yuval-harpaz.github.io/astro/ngc.html" target="_blank">stream view</a>'
+        page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
+               '<style>\n   img {\n      ' \
+               'max-width: ' + vw + 'vmin; /* Limit image width to P% of viewport width */\n      ' \
+               'height: auto; /* Maintain aspect ratio */\n    }\n    ' \
+               '.container {\n      ' \
+               'margin-left: 5%;\n    }\n' \
+               '</style>\n</head>\n<body><div class="container">'
+        page = page + '<h1>JWST images of NGC objects, from latest to oldest release</h1>' \
+                      'Preview images are the bluest (shortest wavelength)<br>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>,' \
+                      ' <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_list_ngc.py" target="_blank"> code,</a>' \
+                      ' <a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>, ' \
+                      +other + '<br><br>'
+        for iimg in range(len(df)):  # min([len(tbl), n])):
+            date = df.iloc[iimg]['release_date']
+            # ngc = df.iloc[iimg]['NGC']
+            tgt = df.iloc[iimg]['target_name']
+            flt = df.iloc[iimg]['filters']
+            desc = f'{date} {tgt}, available filters: [{flt}]'
+            if ii == 0:
+                page = page + f'\n<h3>{desc}</h3>'
+            jpg = df['jpeg'].iloc[iimg].replace('mast:JWST/product/', '')
+            page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">{img_br}'
+        page = page + '\n</div></body>\n</html>\n'
+        with open(f'docs/ngc{grid}.html', "w") as text_file:
+            text_file.write(page)
+
+if __name__ == "__main__":
+    df = list_ngc()
+    df_prev = pd.read_csv('ngc.csv', sep=',')
+    df.to_csv('ngc.csv', sep=',', index=False)
+    ngc_html()
+    if df.iloc[0]['release_date'] > df_prev.iloc[0]['release_date']:
+        toot = 'A new NGC image at https://yuval-harpaz.github.io/astro/ngc.html'
+        masto, _ = connect_bot()
+        masto.status_post(toot)
