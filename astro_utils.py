@@ -543,13 +543,13 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
 
     '''
     # TODO: clean small holes fast without conv, remove red background
+    for search in ['',
+                   '/home/innereye/astro/data/',
+                   '/home/innereye/JWST/']:
+        if os.path.isdir(search+folder):
+            os.chdir(search)
     if not os.path.isdir(folder):
-        try:
-            os.chdir('/home/innereye/JWST/')
-            if not os.path.isdir(folder):
-                raise Exception('cannot find '+folder)
-        except:
-            raise Exception('cannot find ' + folder)
+        raise Exception('cannot find '+folder)
     if type(exp) == str:
         path = list_files(os.getcwd()+'/'+folder, exp)
     else:
@@ -645,11 +645,16 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         core_str = '_core'
     else:
         core_str = ''
+    empty = np.zeros(len(path), bool)
     for lay in range(layers.shape[2]):
-        layers[:, :, lay] = level_adjust(layers[:, :, lay], factor=factor)
-        if smooth:
-            layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
+        if np.mean(np.isnan(layers[:, :, lay])) == 1 or layers[:, :, lay].sum() == 0:
+            empty[lay] = True
+        else:
+            layers[:, :, lay] = level_adjust(layers[:, :, lay], factor=factor)
+            if smooth:
+                layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
     # combine colors by method
+    layers = layers[..., ~empty]
     rgb = None
     if method == 'rrgggbb':
         ncol = np.floor(layers.shape[-1] / 3)
@@ -1090,6 +1095,9 @@ def last_100(html=True, products=False):
 
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
+    auto_plot('NGC-1385', '*_i2d.fits', png=True, pow=[1, 1, 1], pkl=True, resize=True, method='rrgggbb', plot=False)
+
+
     os.chdir('/home/innereye/JWST/ngc5068/')
     layers = np.load('ngc5068.pkl', allow_pickle=True)
     xstart = 3820
