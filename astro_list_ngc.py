@@ -98,6 +98,28 @@ def list_ngc():
     df = df.sort_values('release_date', ignore_index=True, ascending=False)
     return df
 ##
+
+
+def social(add=''):
+    soc = '<div class="social-links"><h2>By yuval\n    ' \
+             '<a href="https://nerdculture.de/@yuvharpaz"><img src="mastodona.png" alt="nerdculture.de/@yuvharpaz" /></a>\n    ' \
+             '<a href="https://twitter.com/yuvharpaz"><img src="twitter-icon.png" alt="twitter.com/yuvharpaz" /></a>\n    ' \
+             '<a href="https://github.com/yuval-harpaz"><img src="github-mark.png" alt="github.com/yuval-harpaz" /></a>\n    ' \
+             + add + \
+             '.    For updates on new images follow the bot    ' \
+             '<a href="https://botsin.space/@astrobot_jwst"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>    ' \
+             '</h2>\n</div>'
+    return soc
+
+
+def credits():
+    cre = '<div class="social-links"><h2>background inamge from\n    ' \
+          '<a href="https://www.flickr.com/photos/nasawebbtelescope/52969542198/in/dateposted/">' \
+          '<img src="flickr.png" alt="NASA (JWST) on Flicker">' \
+          '</a>\n    </h2>\n</div>'
+    return cre
+
+
 def ngc_html():
     df = pd.read_csv('ngc.csv')
 
@@ -112,18 +134,19 @@ def ngc_html():
             img_br = ''
             grid = '_grid'
             other = '<a href="https://yuval-harpaz.github.io/astro/ngc.html" target="_blank">stream view</a>'
-        page = '<!DOCTYPE html>\n<html>\n<head>\n  <title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
-               '<style>\n   img {\n      ' \
-               'max-width: ' + vw + 'vmin; /* Limit image width to P% of viewport width */\n      ' \
-               'height: auto; /* Maintain aspect ratio */\n    }\n    ' \
-               '.container {\n      ' \
-               'margin-left: 5%;\n    }\n' \
+        page = '<!DOCTYPE html>\n<html>\n<head>\n  ' \
+               '<link rel="stylesheet" href="styles.css">' \
+               '<title>JWST NGC images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
+               '<style>\n' \
+               'img {\n      ' \
+                   'max-width: ' + vw + 'vmin;\n      ' \
+                   'height: auto;\n    }\n    ' \
                '</style>\n</head>\n<body><div class="container">'
         page = page + '<h1>JWST images of NGC objects, from latest to oldest release</h1>' \
-                      'Preview images are the bluest (shortest wavelength)<br>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>,' \
-                      ' <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_list_ngc.py" target="_blank"> code,</a>' \
-                      ' <a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>, ' \
-                      +other + '<br><br>'
+                      'Preview images are the bluest (shortest wavelength)<br>'
+        add = '<a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>\n    '
+        add = add + other
+        page = page + social(add=add)
         for iimg in range(len(df)):  # min([len(tbl), n])):
             date = df.iloc[iimg]['release_date']
             # ngc = df.iloc[iimg]['NGC']

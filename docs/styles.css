@@ -1,0 +1,21 @@
+.social-links {display: flex; justify-content: left}
+.social-links a {margin: 0 10px;}
+.social-links img {width: 30px; height: 30px}
+body {color: white; background-color: black; background-image: url("galaxies_o.png"); background-repeat: repeat}
+.container {
+      margin-left: 5%;
+    }
+    a:link {
+         color: deepskyblue;
+         background-color: transparent;
+         text-decoration: none;
+      }
+      a:visited {
+         color: deepskyblue;
+         background-color: transparent;
+         text-decoration: none;
+      }
+      a:active {
+         color: yellow;
+         background-color: transparent;
+      }

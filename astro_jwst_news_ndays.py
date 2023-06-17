@@ -11,7 +11,7 @@ import numpy as np
 from mastodon_bot import connect_bot
 from skimage.transform import resize
 import os
-
+from astro_list_ngc import social, credits
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -35,7 +35,7 @@ if len(table) == 0:
 # table = table.to_pandas()
 table = table.sort_values('t_obs_release', ascending=False, ignore_index=True)
 calibration = np.asarray((table['obs_title'].str.contains("alibration")) | (table['intentType'] != 'science'))
-
+cred = credits()
 for calib in [False, True]:
     if calib:
         suf = '_calib'
@@ -56,9 +56,14 @@ for calib in [False, True]:
     last_date = last[last.index('newest:')+8:last.index('\n')-1]
     if len(tbl) > 0:
         new_date =  astropy.time.Time(tbl['t_obs_release'].iloc[0], format='mjd').utc.iso
-        page = '<!DOCTYPE html><!newest: '+new_date+'>\n<html>\n<head>\n  <title>JWST latest release</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
-        page = page + '<h1>JWST ' + tit + ' images by release date (' + str(n) + \
-                ' days)</h1><h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>, <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_jwst_news_ndays.py" target="_blank"> code</a>' + download + other + '. Follow the <a href="https://botsin.space/@astrobot_jwst" target="_blank">bot</a>.<br>'
+        page = '<!DOCTYPE html><!newest: '+new_date+'>\n<html>\n<head>\n' \
+               '  <link rel="stylesheet" href="styles.css">' \
+               '  <title>JWST latest release</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
+        page = page + '<h1>JWST ' + tit + ' images by release date (' + str(n) + ' days)</h1>'
+        # add = '<a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>\n    '
+        add = download + other
+        page = page + social(add=add)
+        #<h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>, <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_jwst_news_ndays.py" target="_blank"> code</a>' + download + other + '. Follow the <a href="https://botsin.space/@astrobot_jwst" target="_blank">bot</a>.<br>'
         date_prev = ''
         # print('making html')
         for iimg in range(len(tbl)):  # min([len(tbl), n])):
@@ -73,7 +78,7 @@ for calib in [False, True]:
                    jpg + '\n' + time[:16]
             date_prev = date
             page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">'
-        page = page + '\n</body>\n</html>\n'
+        page = page + cred + '\n</body>\n</html>\n'
         with open(html_name, "w") as text_file:
             text_file.write(page)
         first_image = page.index('<img')
