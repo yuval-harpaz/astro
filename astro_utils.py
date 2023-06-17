@@ -6,7 +6,7 @@ import os
 # import glob
 import matplotlib
 # matplotlib.use('Qt5Agg')
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
