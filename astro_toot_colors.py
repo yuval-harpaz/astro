@@ -43,37 +43,35 @@ else:
             # check if data was saved locally
             if not os.path.isfile(url.replace('mast:JWST/product/', '')):
                 os.system('wget https://mast.stsci.edu/portal/Download/file/' + url[5:])
-    ##
+    ## make image
+    # read the files and for each filter, choose smaller and close to target images
     files = glob('*.fits')
     offset = np.zeros(len(files))
     size = np.zeros(len(files))
     for ifile in range(len(files)):
         hdu = fits.open(files[ifile])
         offset[ifile] = np.max(np.abs([hdu[0].header['XOFFSET'], hdu[0].header['YOFFSET']]))
-        size[ifile] = hdu[0].header['SUBSIZE1'] * hdu[0].header['SUBSIZE2']
+        # size[ifile] = hdu[0].header['SUBSIZE1'] * hdu[0].header['SUBSIZE2']
+        size[ifile] = hdu[1].data.shape[0] * hdu[1].data.shape[1]
         hdu.close()
-    order = np.argsort(size)
+    order = np.argsort(size)  # sort from small to large, prefer smaller, no background
     files = np.asarray(files)[order]
     offset = offset[order]
-    filt = filt_num(files)
+    filt = filt_num(files)  # get filter number
     filtu = np.unique(filt)
     use = np.ones(len(files), bool)
     if len(filtu) < len(files):
         for ii in range(len(filtu)):
             idx = np.where(filt == filtu[ii])[0]
-            selected = np.argmin(offset[idx])
+            selected = np.argmin(offset[idx])  # select the one closest to the target
             for jj in range(len(idx)):
                 if jj != selected:
                     use[idx[jj]] = False
-    # sp = 0
-    # for ii in range(16):
-    #     sp += 1
-    #     plt.subplot(4, 4, sp)
-    #     hdu = fits.open(files[ii])
-    #     plt.imshow(level_adjust(hdu[1].data))
-    #     plt.axis('off')
-    #     plt.title(str(filt[ii]) + ' ' + str(use[ii]))
-    # plt.show(block=False)
+    # remove unused files
+    todelete = files[~use]
+    for rm in todelete:
+        os.system('rm '+rm)
+    # see if we have both MIRI and NIRCam, choose RGB method accordingly
     files = files[use]
     filt = filt_num(files)
     files = files[np.argsort(filt)]
@@ -119,6 +117,7 @@ else:
         ' For the latest NGC images by JWST, see:\n https://yuval-harpaz.github.io/astro/ngc_grid.html'
     masto.status_post(toot, media_ids=metadata["id"])
     print('toot image')
+
 # search images by observation date and by release date
 
 # df.to_csv('ngc.csv', sep=',', index=False)

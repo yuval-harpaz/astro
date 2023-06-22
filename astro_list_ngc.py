@@ -19,7 +19,14 @@ def list_ngc():
     isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
     ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
-
+    misc = ['Andromeda', 'Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel',
+            'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool']
+    ismisc = np.zeros(len(isngc), bool)
+    for ix, x in enumerate(table['target_name']):
+        for msc in misc:
+            if msc.upper() in x.upper():
+                ismisc[ix] = True
+    # TODO: isCW = ['CARTWHEEL' in x.upper() for x in table['target_name']]
     # tm = table[ism].to_pandas()
     # m_ngc = []
     # for ii in range(len(tm)):

@@ -548,6 +548,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                    '/home/innereye/JWST/']:
         if os.path.isdir(search+folder):
             os.chdir(search)
+            break
     if not os.path.isdir(folder):
         raise Exception('cannot find '+folder)
     if type(exp) == str:
@@ -594,7 +595,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     if os.path.isfile(pkl_name) and pkl:
         layers = np.load(pkl_name, allow_pickle=True)
         if len(path) < layers.shape[2]:
-            os.chdir('/home/innereye/JWST/')
+            os.chdir(search)
             path_full = list_files(os.getcwd()+'/'+folder, '*_i2d.fits')
             if len(path_full) == layers.shape[2]:
                 filt_full = filt_num(path_full)
