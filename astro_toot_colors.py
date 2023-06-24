@@ -1,7 +1,7 @@
 from astro_utils import *
 from astropy.time import Time
 from mastodon_bot import connect_bot
-from astro_list_ngc import list_ngc, ngc_html
+from astro_list_ngc import list_ngc, ngc_html, choose_fits
 from glob import glob
 from skimage.transform import resize
 from pyongc import ongc
@@ -22,6 +22,7 @@ else:
         row = 0
         pkl = False
     tgt = df['target_name'][row]
+    log_csv = f'../../logs/{tgt}_{df["collected_from"][row][:10]}.csv'
     t_min = [np.floor(Time(df_prev['collected_from'][row]).mjd),
              np.ceil(Time(df_prev['collected_to'][row]).mjd)]
     args = {'target_name': tgt,
@@ -38,35 +39,43 @@ else:
         os.system('mkdir data/'+tgt)
     os.chdir('data/'+tgt)
     # check if pkl was saved locally
-    if len(glob('*.pkl')) == 0:
-        for url in table['dataURL']:
-            # check if data was saved locally
-            if not os.path.isfile(url.replace('mast:JWST/product/', '')):
-                os.system('wget https://mast.stsci.edu/portal/Download/file/' + url[5:])
+    download_fits_files(list(table['dataURL']))
+    # downloading = 0
+    # if len(glob('*.pkl')) == 0:
+    #     for url in table['dataURL']:
+    #         # check if data was saved locally
+    #         if not os.path.isfile(url.replace('mast:JWST/product/', '')):
+    #             os.system('wget https://mast.stsci.edu/portal/Download/file/' + url[5:] + '>/dev/null 2>&1')
+    #             downloading += 1
+    # if downloading > 0:
+    #     print(f'downloaded {downloading} fits files')
     ## make image
     # read the files and for each filter, choose smaller and close to target images
-    files = glob('*.fits')
-    offset = np.zeros(len(files))
-    size = np.zeros(len(files))
-    for ifile in range(len(files)):
-        hdu = fits.open(files[ifile])
-        offset[ifile] = np.max(np.abs([hdu[0].header['XOFFSET'], hdu[0].header['YOFFSET']]))
-        # size[ifile] = hdu[0].header['SUBSIZE1'] * hdu[0].header['SUBSIZE2']
-        size[ifile] = hdu[1].data.shape[0] * hdu[1].data.shape[1]
-        hdu.close()
-    order = np.argsort(size)  # sort from small to large, prefer smaller, no background
-    files = np.asarray(files)[order]
-    offset = offset[order]
-    filt = filt_num(files)  # get filter number
-    filtu = np.unique(filt)
-    use = np.ones(len(files), bool)
-    if len(filtu) < len(files):
-        for ii in range(len(filtu)):
-            idx = np.where(filt == filtu[ii])[0]
-            selected = np.argmin(offset[idx])  # select the one closest to the target
-            for jj in range(len(idx)):
-                if jj != selected:
-                    use[idx[jj]] = False
+    chosen_df = choose_fits()
+    chosen_df.to_csv(log_csv, index=False, sep=',')
+    use = chosen_df['chosen'].to_numpy()
+    files = np.asarray(chosen_df['file'])
+    # offset = np.zeros(len(files))
+    # size = np.zeros(len(files))
+    # for ifile in range(len(files)):
+    #     hdu = fits.open(files[ifile])
+    #     offset[ifile] = np.max(np.abs([hdu[0].header['XOFFSET'], hdu[0].header['YOFFSET']]))
+    #     # size[ifile] = hdu[0].header['SUBSIZE1'] * hdu[0].header['SUBSIZE2']
+    #     size[ifile] = hdu[1].data.shape[0] * hdu[1].data.shape[1]
+    #     hdu.close()
+    # order = np.argsort(size)  # sort from small to large, prefer smaller, no background
+    # files = np.asarray(files)[order]
+    # offset = offset[order]
+    # filt = filt_num(files)  # get filter number
+    # filtu = np.unique(filt)
+    # use = np.ones(len(files), bool)
+    # if len(filtu) < len(files):
+    #     for ii in range(len(filtu)):
+    #         idx = np.where(filt == filtu[ii])[0]
+    #         selected = np.argmin(offset[idx])  # select the one closest to the target
+    #         for jj in range(len(idx)):
+    #             if jj != selected:
+    #                 use[idx[jj]] = False
     # remove unused files
     todelete = files[~use]
     for rm in todelete:

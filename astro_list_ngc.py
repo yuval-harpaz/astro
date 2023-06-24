@@ -1,3 +1,5 @@
+import pandas as pd
+from glob import glob
 from astro_utils import *
 from astropy.time import Time
 from mastodon_bot import connect_bot
@@ -168,6 +170,44 @@ def ngc_html():
         page = page + '\n</div></body>\n</html>\n'
         with open(f'docs/ngc{grid}.html', "w") as text_file:
             text_file.write(page)
+
+
+def choose_fits(file_names=None, folder=''):
+    if len(folder) > 0 and folder[-1] not in '\/':
+        folder += '/'
+    if file_names is None:
+        file_names = glob('*.fits')
+    offset = np.zeros(len(file_names))
+    width = np.zeros(len(file_names))
+    height = np.zeros(len(file_names))
+    for ifile in range(len(file_names)):
+        hdu = fits.open(folder+file_names[ifile])
+        offset[ifile] = np.max(np.abs([hdu[0].header['XOFFSET'], hdu[0].header['YOFFSET']]))
+        # size[ifile] = hdu[0].header['SUBSIZE1'] * hdu[0].header['SUBSIZE2']
+        width[ifile] = hdu[1].data.shape[1]
+        height[ifile] = hdu[1].data.shape[0]
+        hdu.close()
+    size = width*height
+    order = np.argsort(size)  # sort from small to large, prefer smaller, no background
+    file_names_sorted = np.asarray(file_names)[order]
+    offset = offset[order]
+    filt = filt_num(file_names_sorted)  # get filter number
+    filtu = np.unique(filt)
+    use = np.ones(len(file_names_sorted), bool)
+    if len(filtu) < len(file_names_sorted):
+        for ii in range(len(filtu)):
+            idx = np.where(filt == filtu[ii])[0]
+            selected = np.argmin(offset[idx])  # select the one closest to the target
+            for jj in range(len(idx)):
+                if jj != selected:
+                    use[idx[jj]] = False
+    chosen = np.zeros(len(file_names), bool)
+    for ifn, fn in enumerate(file_names):
+        idx = np.where(file_names_sorted == fn)[0][0]
+        chosen[ifn] = use[idx]
+    df = pd.DataFrame(list(zip(file_names, width, height, offset, chosen)),
+                      columns=['file', 'width', 'height', 'offset', 'chosen'])
+    return df
 
 if __name__ == "__main__":
     df = list_ngc()

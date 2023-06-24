@@ -293,6 +293,21 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include='', ptyp
         print('abort')
     return manifest
 
+
+def download_fits_files(file_names, destination_folder='', overwrite=False):
+    if len(destination_folder) > 0 and destination_folder[-1] not in '\/':
+        destination_folder += '/'
+    mast = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
+    no_print = '>/dev/null 2>&1'
+    success = 0
+    for fn in file_names:
+        fn = fn.split('/')[-1]
+        if not os.path.isfile(destination_folder+fn) or overwrite:
+            a = os.system(f'wget -O {destination_folder+fn} {mast}{fn} {no_print}')
+            if a == 0:
+                success += 1
+    print(f'Downloaded {success} files to {destination_folder}')
+
 def reproject(path, project_to=0):
     # FIXME add support for exact and adaptive methods
     template = path[project_to]
@@ -544,6 +559,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     '''
     # TODO: clean small holes fast without conv, remove red background
     for search in ['./',
+                   '../',
+                   '/media/innereye/My Passport/Data/JWST/data/'
                    '/home/innereye/astro/data/',
                    '/home/innereye/JWST/']:
         if os.path.isdir(search+folder):
