@@ -55,7 +55,7 @@ for calib in [False, True]:
     first_image = last.index('<img')
     last_date = last[last.index('newest:')+8:last.index('\n')-1]
     if len(tbl) > 0:
-        new_date =  astropy.time.Time(tbl['t_obs_release'].iloc[0], format='mjd').utc.iso
+        new_date = astropy.time.Time(tbl['t_obs_release'].iloc[0], format='mjd').utc.iso
         page = '<!DOCTYPE html><!newest: '+new_date+'>\n<html>\n<head>\n' \
                '  <link rel="stylesheet" href="styles.css">' \
                '  <title>JWST latest release</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  <style>\n   img {\n      max-width: 19vw; /* Limit image width to P% of viewport width */\n      height: auto; /* Maintain aspect ratio */\n    }\n  </style>\n</head>\n<body>'
@@ -81,12 +81,12 @@ for calib in [False, True]:
         page = page + cred + '\n</body>\n</html>\n'
         with open(html_name, "w") as text_file:
             text_file.write(page)
-        first_image = page.index('<img')
+        first_image = page.index('https://mast')
         # new_date = page[first_image - 16:first_image - 6]
         if new_date > last_date:
             toot = 'new ' + tit + ' images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
             masto, _ = connect_bot()
-            a = os.system('wget -O tmp.jpg '+page[first_image+10:page.index('.jpg')+4])
+            a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
             if a == 0:
                 img = plt.imread('tmp.jpg')
                 size = os.path.getsize('tmp.jpg')
