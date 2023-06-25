@@ -1,5 +1,5 @@
 # import pandas as pd
-import os.path
+# import os.path
 
 from astro_utils import *
 from astropy.time import Time
@@ -7,7 +7,7 @@ from astropy.time import Time
 from astro_list_ngc import list_ngc, ngc_html, choose_fits
 from glob import glob
 from skimage.transform import resize
-from pyongc import ongc
+# from pyongc import ongc
 ##
 df = pd.read_csv('ngc.csv', sep=',')
 # df = list_ngc()
@@ -16,7 +16,7 @@ df = pd.read_csv('ngc.csv', sep=',')
 # masto, loc = connect_bot()
 ##
 # loc == 'local'
-for row in range(3):
+for row in range(25, len(df)):
     pkl = True
     tgt = df['target_name'][row]
     drive = '/media/innereye/My Passport/Data/JWST/'
@@ -113,5 +113,6 @@ for row in range(3):
             ratio = new_height / img.shape[0]
             imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
             plt.imsave('/home/innereye/astro/data/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
+        print('DONE '+date0+'_'+tgt)
 
 

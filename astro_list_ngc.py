@@ -132,7 +132,6 @@ def credits():
 
 def ngc_html():
     df = pd.read_csv('ngc.csv')
-
     for ii in [0, 1]:
         if ii == 0:
             vw = str(70)
@@ -171,7 +170,41 @@ def ngc_html():
         with open(f'docs/ngc{grid}.html', "w") as text_file:
             text_file.write(page)
 
-
+def ngc_html_thumb():
+    df = pd.read_csv('ngc.csv')
+    # other = '<a href="https://yuval-harpaz.github.io/astro/ngc_thumb.html" target="_blank">stream view</a>'
+    page = '<!DOCTYPE html>\n<html>\n<head>\n  ' \
+           '<link rel="stylesheet" href="blackstyle.css">' \
+           '<title>JWST NGC color images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
+           '<style>\n' \
+           '</style>\n</head>\n<body><div class="container">'
+    page = page + '<h1>A preview of JWST images of NGC objects, automatically colored using available filters</h1>' \
+                  'Image triplets are NIRCam, NIRCam+MIRI, MIRI.  For NIRCam+MIRI images red = MIRI. The point is to make a fast, automatic process with fixed parameters. No manual touch, so alignment issues are expected.<br>'
+    add = '<a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>\n    '
+    # add = add + other
+    page = page + social(add=add)
+    thumbs = np.sort(glob('/home/innereye/astro/data/thumb/*.png'))[::-1]
+    session_time = [x.split('/')[-1] for x in thumbs]
+    target_name = np.asarray([x.split('_')[1] for x in session_time])
+    instrument = np.asarray([x.split('_')[2][:-4] for x in session_time])
+    session_time = np.asarray([x.split('_')[0] for x in session_time])
+    for iimg in range(len(df)):  # min([len(tbl), n])):
+        date = df.iloc[iimg]['collected_from'][:10]
+        tgt = df.iloc[iimg]['target_name']
+        idx = np.where((session_time == date) & (target_name == tgt))[0]
+        if len(idx) > 0:
+            # ngc = df.iloc[iimg]['NGC']
+            flt = df.iloc[iimg]['filters']
+            desc = f'{date} {tgt}, available filters: [{flt}]'
+            page = page + f'\n<h3>{desc}</h3>'
+            for jdx in idx:
+                png = '../data/thumb/'+thumbs[jdx].split('/')[-1]
+                tit = tgt+' '+instrument[jdx]
+                page = page + '\n<img src="' + png + f'" title="{tit}">'
+            page += '<br>\n'
+    page = page + '\n</div></body>\n</html>\n'
+    with open(f'docs/ngc_thumb.html', "w") as text_file:
+        text_file.write(page)
 def choose_fits(file_names=None, folder=''):
     if len(folder) > 0 and folder[-1] not in '\/':
         folder += '/'
