@@ -192,9 +192,16 @@ def ngc_html_thumb():
         date = df.iloc[iimg]['collected_from'][:10]
         tgt = df.iloc[iimg]['target_name']
         idx = np.where((session_time == date) & (target_name == tgt))[0]
-        if len(idx) > 0:
-            # ngc = df.iloc[iimg]['NGC']
-            flt = df.iloc[iimg]['filters']
+        if date in ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30']:
+            avoid = True
+        else:
+            avoid = False
+        if len(idx) > 0 and not avoid:
+            if date == '2022-08-14':
+                date = '2022-08-14, 2022-08-30'
+                flt = '90 187 200 335 444 470 770 1130 1500'
+            else:
+                flt = df.iloc[iimg]['filters']
             desc = f'{date} {tgt}, available filters: [{flt}]'
             page = page + f'\n<h3>{desc}</h3>'
             for jdx in idx:
