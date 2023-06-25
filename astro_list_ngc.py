@@ -183,7 +183,7 @@ def ngc_html_thumb():
     add = '<a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>\n    '
     # add = add + other
     page = page + social(add=add)
-    thumbs = np.sort(glob('/home/innereye/astro/data/thumb/*.png'))[::-1]
+    thumbs = np.sort(glob('/home/innereye/astro/thumb/*.png'))[::-1]
     session_time = [x.split('/')[-1] for x in thumbs]
     target_name = np.asarray([x.split('_')[1] for x in session_time])
     instrument = np.asarray([x.split('_')[2][:-4] for x in session_time])
@@ -198,7 +198,7 @@ def ngc_html_thumb():
             desc = f'{date} {tgt}, available filters: [{flt}]'
             page = page + f'\n<h3>{desc}</h3>'
             for jdx in idx:
-                png = '../data/thumb/'+thumbs[jdx].split('/')[-1]
+                png = '../thumb/'+thumbs[jdx].split('/')[-1]
                 tit = tgt+' '+instrument[jdx]
                 page = page + '\n<img src="' + png + f'" title="{tit}">'
             page += '<br>\n'
