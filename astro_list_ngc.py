@@ -4,6 +4,7 @@ from astro_utils import *
 from astropy.time import Time
 from mastodon_bot import connect_bot
 from pyongc import ongc
+from skimage.transform import resize
 ##
 
 def list_ngc():
@@ -248,6 +249,54 @@ def choose_fits(file_names=None, folder=''):
     df = pd.DataFrame(list(zip(file_names, width, height, offset, chosen)),
                       columns=['file', 'width', 'height', 'offset', 'chosen'])
     return df
+
+def make_thumb(plotted, date0):
+    if type(plotted) == str or type(plotted) == np.str_:
+        plotted = [plotted]
+        date0 = [date0]
+    date0 = np.unique(date0)
+    if len(date0) == 1:
+        new_height = 300
+        if len(plotted) > 3:
+            raise Exception('only 3 images get flipped the same way, MIRI, NIRCam and MIRI+NIRCam')
+        for ii in range(len(plotted)):
+            img = plt.imread(plotted[ii])[..., :3]
+            if ii == 0:
+                if img.shape[0] > img.shape[1]*1.1:
+                    flip = True
+                else:
+                    flip = False
+            # edge = np.where(np.mean(np.mean(img, 2), 1))[0][0]
+            if flip:
+                img = np.rot90(img)
+            ratio = new_height / img.shape[0]
+            imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
+            fnnodate = plotted[ii].split('/')[-1].replace(date0[0] + '_', '')
+            plt.imsave('/home/innereye/astro/docs/thumb/' + date0[0] + '_' + fnnodate, imgrs, cmap='gray')
+    else:
+        raise Exception('too many dates')
+
+
+def remake_thumb():
+    data_path = '/media/innereye/My Passport/Data/JWST/data/'
+    if os.path.isdir(data_path):
+        os.chdir(data_path)
+    else:
+        raise Exception('no drive?')
+    existing = np.asarray(glob('/home/innereye/astro/docs/thumb/*.png'))
+    date = np.asarray([x[x.index('20'):x.index('20')+10] for x in existing])
+    target_name =np.asarray( [x[x.index('20')+11:].split('_')[0] for x in existing])
+    targetu = np.unique(target_name)
+    for tg0 in targetu:
+        idx = np.where(target_name == tg0)[0]
+        if len(idx) > 3:
+            print(f'skip {tg0}')
+        else:
+            idx = np.squeeze(idx)
+            plotted = existing[idx]
+            date0 = date[idx]
+            make_thumb(plotted, date0)
+
 
 if __name__ == "__main__":
     df = list_ngc()

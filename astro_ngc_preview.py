@@ -4,9 +4,9 @@
 from astro_utils import *
 from astropy.time import Time
 # from mastodon_bot import connect_bot
-from astro_list_ngc import list_ngc, ngc_html, choose_fits
+from astro_list_ngc import choose_fits, make_thumb
 from glob import glob
-from skimage.transform import resize
+
 # from pyongc import ongc
 ##
 df = pd.read_csv('ngc.csv', sep=',')
@@ -16,29 +16,36 @@ df = pd.read_csv('ngc.csv', sep=',')
 # masto, loc = connect_bot()
 ##
 # loc == 'local'
-for row in range(25, len(df)):
+for row in range(len(df)):
     pkl = True
     tgt = df['target_name'][row]
     drive = '/media/innereye/My Passport/Data/JWST/'
     if os.path.isdir(drive):
         os.chdir(drive)
-    if not os.path.isdir('data'):
-        raise Exception('where are we?')
+    else:
+        raise Exception('where is the drive?')
         # os.system('mkdir data')
     if not os.path.isdir('data/'+tgt):
         os.system('mkdir data/'+tgt)
     date0 = df["collected_from"][row][:10]
-    already = glob('/home/innereye/astro/data/thumb/'+date0+'_'+tgt+'*')
+    already = glob('/home/innereye/astro/docs/thumb/'+date0+'_'+tgt+'*')
     if len(already) > 0:
         msg = 'pictures exist:    '
         for alr in already:
             msg += '\n    ' + alr.split('/')[-1]
         print(msg)
+    elif date0+'_'+tgt == '2022-11-03_NGC2506G31':  # quintet too big
+        print('skipping 5GB data '+date0+'_'+tgt)
+    elif tgt == 'ORIBAR-IMAGING-MIRI':
+        print(tgt + ' too messy, two sessions with strage overlap + NIRCam')
+    elif 'background' in tgt.lower():
+        print('no background for now')
     else:
         log_csv = f'/home/innereye/astro/logs/{tgt}_{date0}.csv'
         if os.path.isfile(log_csv):
             chosen_df = pd.read_csv(log_csv)
             files = list(chosen_df['file'][chosen_df['chosen']])
+            print(f'[{row}] downloading {tgt} by log')
             download_fits_files(files, destination_folder='data/' + tgt)
         else:
             t_min = [np.floor(Time(df['collected_from'][row]).mjd),
@@ -53,6 +60,7 @@ for row in range(25, len(df)):
             table = Observations.query_criteria(**args)
             files = list(table['dataURL'])
             files = [x.split('/')[-1] for x in files]
+            print(f'[{row}] downloading {tgt} by query')
             download_fits_files(files, destination_folder='data/' + tgt)
             chosen_df = choose_fits(files, folder='data/' + tgt)
             chosen_df.to_csv(log_csv, index=False, sep=',')
@@ -96,23 +104,32 @@ for row in range(25, len(df)):
         os.chdir('data')# os.chdir('..')
         plotted = []
         # TODO decide if to use 0.5 1 1
-        if 'MIRI' in instrument:
+        made_png = False
+        if np.sum(mn[:,0]) > 2:
             auto_plot(tgt, exp=list(files[mn[:, 0]]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt+'_MIRI.png')
-        if 'NIRCam' in instrument:
+            made_png = True
+        if np.sum(mn[:,1]) > 2:
             auto_plot(tgt, exp=list(files[mn[:, 1]]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt + '_NIRCam.png')
-        if '+' in instrument:
+            made_png = True
+        if '+' in instrument and np.sum(mn) > 2:
             auto_plot(tgt, exp=list(files), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
             plotted.append(tgt+'_'+instrument+'.png')
+            made_png = True
         ##
-        for ii in range(len(plotted)):
-            img = plt.imread(plotted[ii])[..., :3]
-            # edge = np.where(np.mean(np.mean(img, 2), 1))[0][0]
-            new_height = 300
-            ratio = new_height / img.shape[0]
-            imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
-            plt.imsave('/home/innereye/astro/data/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
-        print('DONE '+date0+'_'+tgt)
+        if made_png:
+            make_thumb(plotted, date0)
+            print('DONE ' + date0 + '_' + tgt)
+        else:
+            print('no plots for '+ date0 + '_' + tgt)
+        # for ii in range(len(plotted)):
+        #     img = plt.imread(plotted[ii])[..., :3]
+        #     # edge = np.where(np.mean(np.mean(img, 2), 1))[0][0]
+        #     new_height = 300
+        #     ratio = new_height / img.shape[0]
+        #     imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
+        #     plt.imsave('/home/innereye/astro/docs/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
+
 
 
