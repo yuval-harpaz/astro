@@ -193,7 +193,9 @@ def ngc_html_thumb():
         date = df.iloc[iimg]['collected_from'][:10]
         tgt = df.iloc[iimg]['target_name']
         idx = np.where((session_time == date) & (target_name == tgt))[0]
-        if date in ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30']:
+        exclude = ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30', '2022-06-20',
+                   '2022-06-20', '2022-07-04', '2022-06-20']
+        if date in exclude:
             avoid = True
         else:
             avoid = False
