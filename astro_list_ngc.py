@@ -253,6 +253,12 @@ def choose_fits(file_names=None, folder=''):
     return df
 
 def make_thumb(plotted, date0):
+    '''
+    plotted:    str | list
+        which files to downsample
+    data0       str | list
+        a string with the date of the session. it can be a list with len=1 containing the str
+    '''
     if type(plotted) == str or type(plotted) == np.str_:
         plotted = [plotted]
         date0 = [date0]
@@ -280,6 +286,9 @@ def make_thumb(plotted, date0):
 
 
 def remake_thumb():
+    '''
+    change all thumb images according to presumably new make_thumb
+    '''
     data_path = '/media/innereye/My Passport/Data/JWST/data/'
     if os.path.isdir(data_path):
         os.chdir(data_path)

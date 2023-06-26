@@ -3,7 +3,7 @@ from astropy.io import fits
 from astropy import wcs
 from reproject import reproject_interp
 import os
-# import glob
+from glob import glob
 import matplotlib
 # matplotlib.use('Qt5Agg')
 # matplotlib.use('TkAgg')
@@ -558,9 +558,9 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
 
     '''
     # TODO: clean small holes fast without conv, remove red background
-    for search in ['./',
+    for search in ['/media/innereye/My Passport/Data/JWST/data/',
+                   './',
                    '../',
-                   '/media/innereye/My Passport/Data/JWST/data/'
                    '/home/innereye/astro/data/',
                    '/home/innereye/JWST/']:
         if os.path.isdir(search+folder):
@@ -569,7 +569,21 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     if not os.path.isdir(folder):
         raise Exception('cannot find '+folder)
     if type(exp) == str:
-        path = list_files(os.getcwd()+'/'+folder, exp)
+        if exp[:3] == 'log':
+            if len(exp) > 3:
+                logpath = os.environ['HOME'] + '/astro/logs/' + exp.replace('log','')
+                log = pd.read_csv(logpath)
+            else:
+                logpath = glob(os.environ['HOME'] + '/astro/logs/' + folder + '*')
+                if len(logpath) == 1:
+                    log = pd.read_csv(logpath[0])
+                else:
+                    print(logpath)
+                    raise Exception('expextec one log file')
+            path = list(log['file'][log['chosen']])
+            os.chdir(folder)
+        else:
+            path = list_files(os.getcwd()+'/'+folder, exp)
     else:
         path = exp
         os.chdir(folder)
@@ -1114,22 +1128,4 @@ def last_100(html=True, products=False):
 
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
-    auto_plot('NGC-1385', '*_i2d.fits', png=True, pow=[1, 1, 1], pkl=True, resize=True, method='rrgggbb', plot=False)
-
-
-    os.chdir('/home/innereye/JWST/ngc5068/')
-    layers = np.load('ngc5068.pkl', allow_pickle=True)
-    xstart = 3820
-    ystart = 3300
-    crop = layers.copy()[xstart:xstart + 500, ystart:ystart + 500, :3]
-    for lay in range(3):
-        crop[:,:,lay] = level_adjust(crop[:,:,lay])
-    before = crop.copy()
-    xy = optimize_xy_manual(crop)
-    shifted = roll(crop, xy, nan_edge=True)
-    plt.figure()
-    plt.subplot(1,2,1)
-    plt.imshow(before[..., ::-1], origin='lower')
-    plt.subplot(1, 2, 2)
-    plt.imshow(shifted[..., ::-1], origin='lower')
-    bestx, besty, _ = optimize_xy_clust(crop, smooth=True, plot=True, neighborhood_size=None, thr=90)
+    auto_plot('NGC-7469', exp='logNGC-7469_2022-07-01.csv', png=False, pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
