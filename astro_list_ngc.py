@@ -194,17 +194,29 @@ def ngc_html_thumb():
         tgt = df.iloc[iimg]['target_name']
         idx = np.where((session_time == date) & (target_name == tgt))[0]
         exclude = ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30', '2022-06-20',
-                   '2022-06-20', '2022-07-04', '2022-06-20']
-        if date in exclude:
+                   '2022-06-20', '2022-06-20', 'NGC-7469-BK', '2022-06-11', '2022-06-12']
+        if date in exclude or tgt in exclude:
             avoid = True
         else:
             avoid = False
         if len(idx) > 0 and not avoid:
             if date == '2022-08-14':
                 date = '2022-08-14, 2022-08-30'
-                flt = '90 187 200 335 444 470 770 1130 1500'
+                flt = ' 90 187 200 335 444 470 770 1130 1500'
+            elif (date == '2022-06-03') & (tgt == 'NGC-3324'):
+                date = '2022-06-03, 2022-06-11'
+                flt = ' 90 187 200 335 444 470 770 1130 1280 1800'
+                idx = [idx[0], np.where((session_time == '2022-06-11') & (target_name == tgt))[0][0]]
+            elif tgt == 'NGC-3132' and date == '2022-06-03':
+                date = '2022-06-03, 2022-06-12'
+                flt = ' 90 187 212 356 444 470 770 1130 1280 1800'
+                idx = list(idx)
+                new = np.where((session_time == '2022-06-12') & (target_name == 'NGC-3132'))[0][0]
+                idx.extend([new])
             else:
                 flt = df.iloc[iimg]['filters']
+            if tgt == 'NGC-7469-MRS':
+                tgt = tgt + ' (IC 5283)'
             desc = f'{date} {tgt}, available filters: [{flt}]'
             page = page + f'\n<h3>{desc}</h3>'
             for jdx in idx:

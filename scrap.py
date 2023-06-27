@@ -1,5 +1,12 @@
-from astro_list_ngc import remake_thumb
-remake_thumb()
+from astro_list_ngc import ngc_html_thumb
+ngc_html_thumb()
+#
+# from astro_list_ngc import make_thumb
+# import os
+# os.chdir('/media/innereye/My Passport/Data/JWST/data/NGC-7469-MRS/')
+# make_thumb('NGC-7469-MRS_MIRI.png', '2022-07-04')
+# from astro_list_ngc import remake_thumb
+# remake_thumb()
 #
 # from astro_utils import *
 # from glob import glob
