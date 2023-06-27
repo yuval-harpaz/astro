@@ -194,7 +194,7 @@ def ngc_html_thumb():
         tgt = df.iloc[iimg]['target_name']
         idx = np.where((session_time == date) & (target_name == tgt))[0]
         exclude = ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30', '2022-06-20',
-                   '2022-06-20', '2022-06-20', 'NGC-7469-BK', '2022-06-11', '2022-06-12']
+                   '2022-06-20', '2022-06-20', 'NGC-7469-BK', '2022-06-11', '2022-06-12', '2022-06-10']
         if date in exclude or tgt in exclude:
             avoid = True
         else:
@@ -213,6 +213,12 @@ def ngc_html_thumb():
                 idx = list(idx)
                 new = np.where((session_time == '2022-06-12') & (target_name == 'NGC-3132'))[0][0]
                 idx.extend([new])
+            elif tgt == 'NGC-7320' and date == '2022-06-30':
+               date = '2022-06-03, 2022-06-11'
+               flt = ' 90 150 200 277 356 444 770 1000 1500'
+               idx = list(idx)
+               new = np.where((session_time == '2022-06-11') & (target_name == 'NGC-7320'))[0]
+               idx.extend(new)
             else:
                 flt = df.iloc[iimg]['filters']
             if tgt == 'NGC-7469-MRS':
@@ -264,7 +270,8 @@ def choose_fits(file_names=None, folder=''):
                       columns=['file', 'width', 'height', 'offset', 'chosen'])
     return df
 
-def make_thumb(plotted, date0):
+
+def make_thumb(plotted, date0, flip=None):
     '''
     plotted:    str | list
         which files to downsample
@@ -282,10 +289,11 @@ def make_thumb(plotted, date0):
         for ii in range(len(plotted)):
             img = plt.imread(plotted[ii])[..., :3]
             if ii == 0:
-                if img.shape[0] > img.shape[1]*1.1:
-                    flip = True
-                else:
-                    flip = False
+                if flip is not None:
+                    if img.shape[0] > img.shape[1]*1.1:
+                        flip = True
+                    else:
+                        flip = False
             # edge = np.where(np.mean(np.mean(img, 2), 1))[0][0]
             if flip:
                 img = np.rot90(img)

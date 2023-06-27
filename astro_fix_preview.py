@@ -2,7 +2,7 @@ import pandas as pd
 
 from astro_list_ngc import make_thumb
 from astro_utils import *
-
+from glob import glob
 auto_plot('NGC3256-CENTERED', exp='*o029*.fits', png='NGC3256-CENTERED_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
 auto_plot('NGC3256-CENTERED', exp='log', png='NGC3256-CENTERED_NIRCam+MIRI.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
 make_thumb(glob('*MIRI*.png'), '2022-12-25')
@@ -48,6 +48,19 @@ auto_plot('NGC-3324', png='both.png', pow=[1, 1, 1], pkl=False, resize=True, met
 auto_plot('NGC-3132', png='both.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
 make_thumb('NGC-3132_NIRCam+MIRI.png', '2022-06-03')
 ngc_html_thumb()
+##
+df = pd.read_csv('logs/NGC-4321_2023-01-17.csv')
+# files = list(df['file'][df['offset'] < 100])
+files = list(df['file'])
+plt.figure()
+for ii in range(16):
+    plt.subplot(4,4,ii+1)
+    hdu = fits.open('/media/innereye/My Passport/Data/JWST/data/NGC-4321/' + files[ii])
+    plt.imshow(level_adjust(hdu[1].data))
+    plt.title(files[ii])
+os.chdir('/media/innereye/My Passport/Data/JWST/data/NGC-4321/')
+plotted = glob('*png')
+make_thumb(plotted, '2023-01-17', flip=False)
 ##
 # from astro_utils import *
 # from glob import glob
