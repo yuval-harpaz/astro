@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 from glob import glob
 from astro_utils import *
@@ -17,7 +19,10 @@ def list_ngc():
     # search images by observation date and by release date
     table = Observations.query_criteria(**args)
     isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
-    table = table[isnotnirspec]
+    isnotbackground = ['BACKGROUND' not in x.upper() for x in table['target_name']]
+    table = table[isnotnirspec and isnotbackground]
+    isnotbackground = ['BCKGND' not in x.upper() for x in table['target_name']]
+    table = table[isnotbackground]
     isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
     isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
     ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
@@ -305,7 +310,7 @@ def make_thumb(plotted, date0, flip=None):
         raise Exception('too many dates')
 
 
-def remake_thumb():
+def remake_thumb(collect_orig=False):
     '''
     change all thumb images according to presumably new make_thumb
     '''
@@ -314,6 +319,7 @@ def remake_thumb():
         os.chdir(data_path)
     else:
         raise Exception('no drive?')
+    pic_dir = '/media/innereye/My Passport/Data/JWST/pics/' # for collecting large images
     existing = np.asarray(glob('/home/innereye/astro/docs/thumb/*.png'))
     date = np.asarray([x[x.index('20'):x.index('20')+10] for x in existing])
     target_name =np.asarray( [x[x.index('20')+11:].split('_')[0] for x in existing])
@@ -326,7 +332,35 @@ def remake_thumb():
             idx = np.squeeze(idx)
             plotted = existing[idx]
             date0 = date[idx]
-            make_thumb(plotted, date0)
+            if collect_orig:
+                if idx.shape == ():
+                    idx = [idx]
+                for jdx in idx:
+                    thumb_png = existing[jdx].split('/')[-1]
+                    instr = thumb_png[12+len(tg0):-4]
+                    large_name = tg0+'/'+tg0+'_'+instr+'.png'
+                    if os.path.isfile(large_name):
+                        op = pic_dir+thumb_png
+                        if not os.path.isfile(op):
+                            os.system(f'cp {large_name} "{pic_dir}{thumb_png}"')
+                    else:
+                        print(large_name+ 'missing')
+            else:
+                make_thumb(plotted, date0)
+
+def DQ_list():
+    os.chdor('/media/innereye/My Passport/Data/JWST/')
+    files = glob('pics/*.png')
+    files = np.sort(files)[::-1]
+    files = [x[5:] for x in files]
+    df = pd.DataFrame(files, columns=['image'])
+    df['okay'] = 0
+    df['uploaded'] = 0
+    df_prev = pd.read_csv('data/quality.csv')
+    df = df[~df['image'].isin(df_prev['image'])]
+    df = pd.concat([df_prev, df])
+    df = df.sort_values('image', ascending=False, ignore_index=True)
+    df.to_csv('data/quality.csv', index=False, sep=',')
 
 
 if __name__ == "__main__":

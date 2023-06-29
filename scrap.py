@@ -1,5 +1,23 @@
-from astro_list_ngc import ngc_html_thumb
-ngc_html_thumb()
+import flickrapi
+with open('flickr.secret') as f:
+    lines = f.readlines()
+api_key = lines[0].split(' ')[-1][:-1]
+api_secret = lines[1].split(' ')[-1][:-1]
+flickr = flickrapi.FlickrAPI(api_key, api_secret)
+flickr.get_request_token(oauth_callback='oob')
+auth_url = flickr.auth_url(perms='write')
+flickr.get_access_token('967-609-138')
+
+photo_path = '/media/innereye/My Passport/Data/JWST/data/NGC-3324/NGC-3324_NIRCam.png'
+title = 'NGC-3324, NIRCam'
+description = 'Cosmic Cliffs in Carina Nebula'
+flickr.upload(filename=photo_path, title=title, description=description)
+# (token, frob) = flickr.get_token_part_one(perms='write')
+# auth_url = flickr.auth_url(token)
+
+
+# from astro_list_ngc import ngc_html_thumb
+# ngc_html_thumb()
 #
 # from astro_list_ngc import make_thumb
 # import os
@@ -7,57 +25,3 @@ ngc_html_thumb()
 # make_thumb('NGC-7469-MRS_MIRI.png', '2022-07-04')
 # from astro_list_ngc import remake_thumb
 # remake_thumb()
-#
-# from astro_utils import *
-# from glob import glob
-# os.chdir('/home/innereye/JWST/neptune/')
-# files = np.sort(glob('jw*s3d.fits'))
-# files1d = np.sort(glob('jw*x1d.fits'))
-#
-# data = []
-# for ii in [0, 1, 2, 3]:
-#     hdu = fits.open(files[ii])
-#     data.append(hdu[1].data.copy())
-#     hdu.close()
-# wavelength = []
-# for ii in [0, 1, 2, 3]:
-#     hdu = fits.open(files1d[ii])
-#     wavelength.append(hdu[1].data['WAVELENGTH'])
-#     hdu.close()
-#
-# plt.figure()
-# for ii in [0, 1, 2, 3]:
-#     plt.subplot(2,2,ii+1)
-#     med = np.nanmedian(data[ii], 0)
-#     if ii == 0:
-#         med[med < 0] = 0
-#         med[med > 200] = 0
-#     plt.imshow(med)
-#
-# center = [[22, 21], [20, 23], [25, 24], [12, 16]]
-# corner = [[13, 17], [15, 19], [21, 20], [10, 16]]
-# buldge = [[25, 25], [22, 24], [27, 25], [13, 18]]
-# plt.figure()
-# for ii in [0, 1, 2, 3]:
-#     plt.subplot(2,2,ii+1)
-#     med = np.nanmedian(data[ii], 0)
-#     if ii == 0:
-#         med[med < 0] = 0
-#         med[med > 200] = 0
-#     # med[center[ii][0], center[ii][1]] = 0
-#     med[buldge[ii][0], buldge[ii][1]] = 0
-#     plt.imshow(med)
-#
-# plt.figure()
-# for ii in [0, 1, 2, 3]:
-#     # plt.subplot(2,2,ii+1)
-#     plt.plot(wavelength[ii], data[ii][:, corner[ii][0], corner[ii][1]], 'g')
-#     plt.plot(wavelength[ii], data[ii][:, buldge[ii][0], buldge[ii][1]], 'b')
-#     plt.plot(wavelength[ii], data[ii][:, center[ii][0], center[ii][1]], 'r')
-# plt.title('Flux for Neptune at three spots')
-# plt.ylabel(hdu[1].header['TUNIT2'])
-# plt.xlabel('Wavelength (µm)')
-# plt.grid()
-#
-#
-#

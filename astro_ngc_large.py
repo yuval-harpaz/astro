@@ -1,5 +1,8 @@
 # import pandas as pd
 # import os.path
+import os
+
+import pandas as pd
 
 from astro_utils import *
 from astropy.time import Time
@@ -16,9 +19,12 @@ df = pd.read_csv('ngc.csv', sep=',')
 # masto, loc = connect_bot()
 ##
 # loc == 'local'
-for row in range(len(df)):
-    pkl = True
-    tgt = df['target_name'][row]
+logs = np.asarray(glob('logs/*.csv'))
+okay = np.zeros(len(logs))
+for ii in range(len(logs)):
+    log = pd.read_csv(logs[ii])
+    tgt = logs[ii].split('/')[1].split('_')[0]
+    date0 = logs[ii][-14:-4]
     drive = '/media/innereye/My Passport/Data/JWST/'
     if os.path.isdir(drive):
         os.chdir(drive)
@@ -26,9 +32,8 @@ for row in range(len(df)):
         raise Exception('where is the drive?')
         # os.system('mkdir data')
     if not os.path.isdir('data/'+tgt):
-        os.system('mkdir data/'+tgt)
-    date0 = df["collected_from"][row][:10]
-    already = glob('/home/innereye/astro/docs/thumb/'+date0+'_'+tgt+'*')
+        raise Exception('no data for '+tgt)
+    already = glob('/home/innereye/astro/docs/thumb/'+date0+'_'+tgt+'*_large.png')
     if len(already) > 0:
         msg = 'pictures exist:    '
         for alr in already:
@@ -41,44 +46,7 @@ for row in range(len(df)):
     elif 'background' in tgt.lower() or 'BKG' in tgt:
         print('no background for now '+tgt)
     else:
-        log_csv = f'/home/innereye/astro/logs/{tgt}_{date0}.csv'
-        if os.path.isfile(log_csv):
-            chosen_df = pd.read_csv(log_csv)
-            files = list(chosen_df['file'][chosen_df['chosen']])
-            print(f'[{row}] downloading {tgt} by log')
-            download_fits_files(files, destination_folder='data/' + tgt)
-        else:
-            t_min = [np.floor(Time(df['collected_from'][row]).mjd),
-                     np.ceil(Time(df['collected_to'][row]).mjd)]
-            args = {'target_name': tgt,
-                    't_min': t_min,
-                    'obs_collection': "JWST",
-                    'calib_level': 3,
-                    'dataRights': 'public',
-                    'intentType': 'science',
-                    'dataproduct_type': "image"}
-            table = Observations.query_criteria(**args)
-            files = list(table['dataURL'])
-            files = [x.split('/')[-1] for x in files]
-            print(f'[{row}] downloading {tgt} by query')
-            download_fits_files(files, destination_folder='data/' + tgt)
-            chosen_df = choose_fits(files, folder='data/' + tgt)
-            chosen_df.to_csv(log_csv, index=False, sep=',')
-
-            # os.chdir('data/'+tgt)
-        # check if pkl was saved locally
-
-
-        ## make image
-        # read the files and for each filter, choose smaller and close to target images
-
-        use = chosen_df['chosen'].to_numpy()
-        files = np.asarray(chosen_df['file'])
-        todelete = files[~use]
-        # for rm in todelete:
-        #     os.system('rm '+rm)
-        # see if we have both MIRI and NIRCam, choose RGB method accordingly
-        files = files[use]
+        files = np.asarray(list(log['file'][log['chosen']]))
         filt = filt_num(files)
         files = files[np.argsort(filt)]
         filt = np.sort(filt)
@@ -106,16 +74,19 @@ for row in range(len(df)):
         # TODO decide if to use 0.5 1 1
         made_png = False
         if np.sum(mn[:,0]) > 2:
-            auto_plot(tgt, exp=list(files[mn[:, 0]]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
+            auto_plot(tgt, exp=list(files[mn[:, 0]]), png=tgt+'_MIRI_large.png',
+                      pow=[1, 1, 1], pkl=False, resize=False, method='rrgggbb', plot=False)
             plotted.append(tgt+'_MIRI.png')
             made_png = True
         if np.sum(mn[:,1]) > 2:
-            auto_plot(tgt, exp=list(files[mn[:, 1]]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
-            plotted.append(tgt + '_NIRCam.png')
+            auto_plot(tgt, exp=list(files[mn[:, 1]]), png=tgt + '_NIRCam_large.png', pow=[1, 1, 1], pkl=False, resize=False, method='rrgggbb', plot=False)
+            plotted.append(tgt + '_NIRCam_large.png')
             made_png = True
         if '+' in instrument and np.sum(mn) > 2:
-            auto_plot(tgt, exp=list(files), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
-            plotted.append(tgt+'_'+instrument+'.png')
+            if os.path.isfile(tgt+'.pkl'):
+                os.system(f'mv {tgt}.pkl {tgt}_rs.pkl')
+            auto_plot(tgt, exp=list(files), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=False, method='mnn', plot=False)
+            plotted.append(tgt+'_'+instrument+'_large.png')
             made_png = True
         ##
         if made_png:
