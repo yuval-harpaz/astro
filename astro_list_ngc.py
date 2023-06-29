@@ -19,9 +19,14 @@ def list_ngc():
     # search images by observation date and by release date
     table = Observations.query_criteria(**args)
     isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
-    isnotbackground = ['BACKGROUND' not in x.upper() for x in table['target_name']]
-    table = table[isnotnirspec and isnotbackground]
-    isnotbackground = ['BCKGND' not in x.upper() for x in table['target_name']]
+    table = table[isnotnirspec]
+    isnotbackground = []
+    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET']
+    for x in table['target_name']:
+        isnotbackground.append(True)
+        for bg in background:
+            if bg in x.upper():
+                isnotbackground[-1] = False
     table = table[isnotbackground]
     isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
     isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
@@ -34,12 +39,6 @@ def list_ngc():
         for msc in misc:
             if msc.upper() in x.upper():
                 ismisc[ix] = True
-    # tm = table[ism].to_pandas()
-    # m_ngc = []
-    # for ii in range(len(tm)):
-    #     m_ngc.append(ongc.get(tm['target_name'][ii].replace('-','')).name)
-
-
     table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic) | np.array(ismisc)]
     target_name = np.asarray(table['target_name'])
     target = np.unique(target_name)
