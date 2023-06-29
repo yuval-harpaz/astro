@@ -83,7 +83,7 @@ for calib in [False, True]:
             text_file.write(page)
         first_image = page.index('https://mast')
         # new_date = page[first_image - 16:first_image - 6]
-        if new_date > last_date:
+        if new_date > last_date and not calib:
             toot = 'new ' + tit + ' images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
             masto, _ = connect_bot()
             a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
