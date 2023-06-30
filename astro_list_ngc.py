@@ -108,8 +108,8 @@ def list_ngc():
             # t_max = t_max[:10]
             release = Time(df2['t_obs_release'].iloc[0], format='mjd').utc.iso
             release = release[:10]
-            row.append([release, t_min, t_max, ngc[ii], tt, filt[1:-1], url])
-    df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg'])
+            row.append([release, t_min, t_max, ngc[ii], tt, filt[1:-1], url, int(df2['proposal_id'][bluer])])
+    df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg','proposal'])
     df = df.sort_values('release_date', ignore_index=True, ascending=False)
     return df
 ##
