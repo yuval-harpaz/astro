@@ -12,7 +12,7 @@ df.to_csv('ngc.csv', sep=',', index=False)
 ngc_html()
 masto, loc = connect_bot()
 ##
-if (df.iloc[0]['collected_to'] >= df_prev.iloc[0]['collected_to']) and (loc == 'github'):
+if (df.iloc[0]['collected_to'] <= df_prev.iloc[0]['collected_to']) and (loc == 'github'):
     print('no new NGC')
 else:
     if loc == 'local':
