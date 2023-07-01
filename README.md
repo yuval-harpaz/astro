@@ -14,8 +14,9 @@ This is also a news page, showing level 3 releases. This is split to science and
  updates them every two hours but only notifies wheen there are new science images. For level 2 images see [JWST Feed](https://jwstfeed.com/Home/ApplyChoice?choiceID=3) 
 [![Alt science images captured by JWST](science.png)](https://yuval-harpaz.github.io/astro/news_by_date.html)
 [![Alt calibration images captured by JWST](calib.png)](https://yuval-harpaz.github.io/astro/news_by_date_calib.html)
-## Gallery
-See more images at [GALLERY.md](https://github.com/yuval-harpaz/astro/blob/main/GALLERY.md)<br>
+## Galleries
+See a [gallery](https://github.com/yuval-harpaz/astro/blob/main/GALLERY.md) with some work, or a [wallpaper gallery](https://github.com/yuval-harpaz/astro/blob/main/pics/wallpaper/wallpapers.md) with images cropped to fit a standard 16:9 computer screen <br>
+<img src="pics/wallpaper/collage.png" title="Nine galaxies captured by JWST, NIRCam + MIRI" alt="Nine galaxies captured by JWST, NIRCam + MIRI"/>
 Some examples below:
 ### Cartwheel Galaxy
 get_cartwheel.py<br>
