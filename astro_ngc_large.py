@@ -71,7 +71,6 @@ for ii in range(len(logs)):
             method = 'mnn'
         os.chdir('data')# os.chdir('..')
         plotted = []
-        # TODO decide if to use 0.5 1 1
         made_png = False
         if np.sum(mn[:,0]) > 2:
             auto_plot(tgt, exp=list(files[mn[:, 0]]), png=tgt+'_MIRI_large.png',
