@@ -1,5 +1,5 @@
-# astro                                             [![Alt @yuvharpaz@nerdculture.de](docs/mastodona.png)](https://nerdculture.de/@yuvharpaz)[![Alt twitter](docs/twitter-icon.png)](https://twitter.com/yuvharpaz)[![Alt mastodon bot](docs/camelfav.ico)](https://botsin.space/@astrobot_jwst)
-imaging astronomy data from JWST. Python code to download and do some post-processing for *.fits files, coming from James Webb Space Telescope (JWST) via [mast](https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html).
+# astro  [<img src="docs/mastodona.png" alt="@yuvharpaz@nerdculture.de" width="25"/>](https://nerdculture.de/@yuvharpaz)[<img src="docs/twitter-icon.png" alt="@yuvharpaz" width="25"/>](https://twitter.com/yuvharpaz)[<img src="docs/camelfav.ico" alt="@astrobot_jwst@botsin.space" width="25"/>](https://botsin.space/@astrobot_jwst)
+Imaging astronomy data from JWST. Python code to download and do some post-processing for *.fits files, coming from James Webb Space Telescope (JWST) via [mast](https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html).
 ## NGC color preview images
 NGC objects cover many galaxies and nebula, so here it just means interesting stuff. I allowed some objects that are not in the NGC catalogue to slip in.<br>
 Images here were automatically created from the data. They are saved with low resolution, and meant to allow us to see what data has been collected. For high resolution images I still need to overcome coregistration issues, and fill holes. With code. 
