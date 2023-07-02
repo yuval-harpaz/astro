@@ -10,10 +10,10 @@ mastodon bot [@astrobot_jwst@botsin.space](https://botsin.space/@astrobot_jwst).
 [![Alt a stream preview of NGC objects](ngc_stream.png)](https://yuval-harpaz.github.io/astro/ngc.html)
 [![Alt a grid preview of NGC objects](ngc_grid.png)](https://yuval-harpaz.github.io/astro/ngc_grid.html)
 ## Level 3 images from the last 7 days
-This is also a news page, showing level 3 releases. This is split to science and calibration images in seperate web pages. My [bot](https://botsin.space/@astrobot_jwst)
+This is also a news page, showing level 3 releases. This is split to [science](https://yuval-harpaz.github.io/astro/news_by_date.html) and [calibration](https://yuval-harpaz.github.io/astro/news_by_date_calib.html) images in seperate web pages. My [bot](https://botsin.space/@astrobot_jwst)
  updates them every two hours but only notifies wheen there are new science images. For level 2 images see [JWST Feed](https://jwstfeed.com/Home/ApplyChoice?choiceID=3) 
-[![Alt science images captured by JWST](science.png)](https://yuval-harpaz.github.io/astro/news_by_date.html)
-[![Alt calibration images captured by JWST](calib.png)](https://yuval-harpaz.github.io/astro/news_by_date_calib.html)
+[<img src="science.png" alt="Science images from the last 7 days" title="Science images from the last 7 days">>](https://yuval-harpaz.github.io/astro/news_by_date.html)
+[<img src="calib.png" alt="Calibration images from the last 7 days" title="Calibration images from the last 7 days">>](https://yuval-harpaz.github.io/astro/news_by_date_calib.html)
 ## Galleries
 See a [gallery](https://github.com/yuval-harpaz/astro/blob/main/GALLERY.md) with some work, or a [wallpaper gallery](https://github.com/yuval-harpaz/astro/blob/main/pics/wallpaper/wallpapers.md) with images cropped to fit a standard 16:9 computer screen <br>
 <img src="pics/wallpaper/collage.png" title="Nine galaxies captured by JWST, NIRCam + MIRI" alt="Nine galaxies captured by JWST, NIRCam + MIRI"/>
