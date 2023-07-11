@@ -119,7 +119,7 @@ def social(add=''):
     soc = '<div class="social-links"><h2>By yuval\n    ' \
              '<a href="https://nerdculture.de/@yuvharpaz"><img src="mastodona.png" alt="nerdculture.de/@yuvharpaz" /></a>\n    ' \
              '<a href="https://twitter.com/yuvharpaz"><img src="twitter-icon.png" alt="twitter.com/yuvharpaz" /></a>\n    ' \
-             '<a href="https://github.com/yuval-harpaz"><img src="github-mark.png" alt="github.com/yuval-harpaz" /></a>\n    ' \
+             '<a href="https://github.com/yuval-harpaz/astro/blob/main/README.md"><img src="github-mark.png" alt="github.com/yuval-harpaz" /></a>\n    ' \
              + add + \
              '.    For updates on new images follow the bot    ' \
              '<a href="https://botsin.space/@astrobot_jwst"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>    ' \
