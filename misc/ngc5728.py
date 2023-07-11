@@ -4,13 +4,27 @@ import os
 
 os.chdir('/media/innereye/My Passport/Data/JWST/data/')
 path = list_files('NGC-5728', 'hst*.fits')
-
+##
 plt.figure()
 for ii in range(len(path)):
     plt.subplot(2,3,ii+1)
     hdu = fits.open(path[ii])
     # try:
+    if ii == 2:
+        plt.imshow(level_adjust(hdu[min(1, len(hdu) - 1)].data[0, ...]))
+    else:
+        plt.imshow(level_adjust(hdu[min(1, len(hdu)-1)].data))
+    print(hdu[min(1, len(hdu)-1)].data)
+##
+pathjw = glob('jw*.fits')
+filt = filt_num(pathjw)
+plt.figure()
+for ii in range(len(path)):
+    plt.subplot(2,3,ii+1)
+    hdu = fits.open(pathjw[ii])
     plt.imshow(level_adjust(hdu[1].data))
+    plt.title(filt[ii])
+##
     # except:
     #     plt.imshow(level_adjust(hdu[0].data.swapaxes((1,2,0))))
     # hdu.close()
@@ -46,6 +60,26 @@ for ii in range(3):
     data[..., ii] = level_adjust(hdu[1].data)*255
 plt.imsave('hst1.png', data)
 ##
+
+fn = 'hst_13755_09_wfc3_uvis_f814w_f438w.fits'
+hdu = fits.open(fn)
+hdu_temp = fits.open(path[2])
+# hdu[0].data
+#
+layers = np.zeros((hdu[0].data.shape[1], hdu[0].data.shape[2], 3))
+data = layers.copy()
+for lay in range(3):
+    data[..., lay] = hdu[0].data[lay, ...]
+    vec = data[..., lay].flatten()
+    med = np.median(vec[vec > 0])
+    medfac = med * 1.25
+    layer = data[..., lay].copy()
+    layer[layer < medfac] = medfac
+    layers[..., lay] = level_adjust(layer)
+
+hdujw = fits.open('jw02064-c1018_t007_miri_f1000w-sub256_i2d.fits')
+reproj, _ = reproject_interp(hdujw[1], hdu_temp[0].header)
+layers[:, :, ii] = reproj
 #
 #
 # filt = filt_num(path)

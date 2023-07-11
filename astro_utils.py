@@ -521,7 +521,7 @@ def movmean(data, win):
 
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              core=False, plot=True, factor=4, smooth=False):
+              core=False, plot=True, factor=4, smooth=False, crop=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -675,6 +675,45 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         half = int(np.min(upix)*parts)
         layers = layers[max_xy[0] - half:max_xy[0] + half, max_xy[1] - half:max_xy[1] + half, :]
         core_str = '_core'
+    elif crop:
+        if type(crop) == str:
+            if 'y1' in crop:
+                ldict = {}
+                exec(crop, globals(), ldict)
+                x1 = ldict['x1']
+                x2 = ldict['x2']
+                y1 = ldict['y1']
+                y2 = ldict['y2']
+                print(y1)
+            else:
+                raise Exception('I expect string to be like "y1=1003; y2=2248; x1=949; x2=1926"')
+        else:
+            lay3 = [0, int(layers.shape[2]/2), layers.shape[2]-1]
+            imtochoose = layers[..., lay3].copy()
+            for i3 in range(3):
+                imtochoose[..., i3] = level_adjust(imtochoose[..., i3])
+            plt.figure()
+            plt.imshow(level_adjust(imtochoose))
+            plt.axis('off')
+            click_coordinates = []
+            def onclick(event):
+                if len(click_coordinates) < 2:
+                    # Append the coordinates of the clicked point to the list
+                    click_coordinates.append((event.xdata, event.ydata))
+                    # Plot a red dot at the clicked point
+                    plt.plot(event.xdata, event.ydata, 'ro')
+                    plt.draw()
+                    if len(click_coordinates) == 2:
+                        # After collecting two points, close the figure to proceed
+                        plt.close()
+            plt.connect('button_press_event', onclick)
+            plt.show()
+            p1, p2 = click_coordinates
+            x1, y1 = int(min(p1[0], p2[0])), int(min(p1[1], p2[1]))
+            x2, y2 = int(max(p1[0], p2[0])), int(max(p1[1], p2[1]))
+            print(f'y1={y1}; y2={y2}; x1={x1}; x2={x2}')
+        layers = layers[y1:y2, x1:x2]
+        core_str = '_crop'
     else:
         core_str = ''
     empty = np.zeros(len(path), bool)
