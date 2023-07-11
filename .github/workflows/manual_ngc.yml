@@ -1,4 +1,4 @@
-name: manual ngc
+name: manual toot colors
 on:
     workflow_dispatch:
 permissions: write-all
