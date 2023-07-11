@@ -125,8 +125,9 @@ for calib in [False, True]:
             if date != date_prev:
                 page = page + '\n<br>' +date + '<br>\n'
             target = tbl['dataURL'].iloc[iimg].replace('mast:JWST/product/', '')
+            tname = tbl['target_name'].iloc[iimg]
             date_prev = date
-            page = page + f'\n<a href="https://mast.stsci.edu/portal/Download/file/JWST/product/{target}"' \
+            page = page + f'\n{tname} <a href="https://mast.stsci.edu/portal/Download/file/JWST/product/{target}"' \
                           f' target="_blank">{target}</a><br>'
         page = page + '\n</body>\n</html>\n'
         with open('docs/downloads_by_date'+suf+'.html', "w") as text_file:
