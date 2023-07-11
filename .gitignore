@@ -6,3 +6,4 @@ old
 tails
 tmp*
 *.secret
+*.fits
