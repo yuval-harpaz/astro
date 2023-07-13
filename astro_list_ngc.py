@@ -195,7 +195,7 @@ def ngc_html_thumb():
     session_time = np.asarray([x.split('_')[0] for x in session_time])
     exclude = ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30', '2022-06-20',
                '2022-06-20', '2022-06-20', 'NGC-7469-BK', '2022-06-11', '2022-06-12', '2022-06-10',
-               '2022-07-06', '2022-07-05']
+               '2022-07-06', '2022-07-05', '2023-03-23']
     for iimg in range(len(df)):  # min([len(tbl), n])):
         date = df.iloc[iimg]['collected_from'][:10]
         tgt = df.iloc[iimg]['target_name']
