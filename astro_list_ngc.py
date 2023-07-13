@@ -193,20 +193,24 @@ def ngc_html_thumb():
     target_name = np.asarray([x.split('_')[1] for x in session_time])
     instrument = np.asarray([x.split('_')[2][:-4] for x in session_time])
     session_time = np.asarray([x.split('_')[0] for x in session_time])
+    exclude = ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30', '2022-06-20',
+               '2022-06-20', '2022-06-20', 'NGC-7469-BK', '2022-06-11', '2022-06-12', '2022-06-10',
+               '2022-07-06', '2022-07-05']
     for iimg in range(len(df)):  # min([len(tbl), n])):
         date = df.iloc[iimg]['collected_from'][:10]
         tgt = df.iloc[iimg]['target_name']
         idx = np.where((session_time == date) & (target_name == tgt))[0]
-        exclude = ['2022-11-01', '2022-08-30', '2022-12-27', '2023-01-31', '2023-01-30', '2022-06-20',
-                   '2022-06-20', '2022-06-20', 'NGC-7469-BK', '2022-06-11', '2022-06-12', '2022-06-10']
         if date in exclude or tgt in exclude:
             avoid = True
         else:
             avoid = False
         if len(idx) > 0 and not avoid:
+            flt = df.iloc[iimg]['filters']
             if date == '2022-08-14':
                 date = '2022-08-14, 2022-08-30'
                 flt = ' 90 187 200 335 444 470 770 1130 1500'
+            elif date == '2023-07-11':
+                date += ', 2022-07-06'
             elif (date == '2022-06-03') & (tgt == 'NGC-3324'):
                 date = '2022-06-03, 2022-06-11'
                 flt = ' 90 187 200 335 444 470 770 1130 1280 1800'
@@ -223,8 +227,6 @@ def ngc_html_thumb():
                idx = list(idx)
                new = np.where((session_time == '2022-06-11') & (target_name == 'NGC-7320'))[0]
                idx.extend(new)
-            else:
-                flt = df.iloc[iimg]['filters']
             if tgt == 'NGC-7469-MRS':
                 tgt = tgt + ' (IC 5283)'
             desc = f'{date} {tgt}, available filters: [{flt}]'
@@ -237,6 +239,7 @@ def ngc_html_thumb():
     page = page + '\n</div></body>\n</html>\n'
     with open(f'docs/ngc_thumb.html', "w") as text_file:
         text_file.write(page)
+    print('wrote docs/ngc_thumb.html')
 def choose_fits(file_names=None, folder=''):
     if len(folder) > 0 and folder[-1] not in '\/':
         folder += '/'
