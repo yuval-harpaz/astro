@@ -1167,4 +1167,6 @@ def last_100(html=True, products=False):
 
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
+    auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
+              method='rrgggbb')
     auto_plot('NGC-7469', exp='logNGC-7469_2022-07-01.csv', png=False, pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
