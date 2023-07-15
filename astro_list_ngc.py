@@ -184,10 +184,10 @@ def ngc_html_thumb():
            '    <meta property="og:type" content="image/PNG" />\n' \
            '    <meta property="og:url" content="https://yuval-harpaz.github.io/astro/ngc_thumb.html" />\n' \
            '    <meta property="og:image" content="https://github.com/yuval-harpaz/astro/raw/main/docs/thumb/2022-07-11_WESTERLUND2-DIST-CORE-FULL_NIRCam.png"/>\n'
-    page = '<!DOCTYPE html>\n<html>\n<head>\n  ' \
-           '<link rel="stylesheet" href="blackstyle.css">' \
-           '<title>JWST NGC color images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  '
+    page = '<!DOCTYPE html>\n<html>\n<head>\n'
     page += meta
+    page = page + '<link rel="stylesheet" href="blackstyle.css">' \
+           '<title>JWST NGC color images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  '
     page += '\n</head>\n<body><div class="container">'
     page = page + '<h1>A preview of JWST images of NGC objects, automatically colored using available filters</h1>' \
                   'Image triplets are NIRCam, NIRCam+MIRI, MIRI.  For NIRCam+MIRI images red = MIRI. The point is to make a fast, automatic process with fixed parameters. No manual touch, so alignment issues are expected.<br>'
