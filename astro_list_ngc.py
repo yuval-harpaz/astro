@@ -21,7 +21,7 @@ def list_ngc():
     isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
     table = table[isnotnirspec]
     isnotbackground = []
-    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET']
+    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF']
     for x in table['target_name']:
         isnotbackground.append(True)
         for bg in background:
@@ -177,6 +177,7 @@ def ngc_html():
             text_file.write(page)
 
 def ngc_html_thumb():
+    os.chdir('/home/innereye/astro/')
     df = pd.read_csv('ngc.csv')
     # other = '<a href="https://yuval-harpaz.github.io/astro/ngc_thumb.html" target="_blank">stream view</a>'
     page = '<!DOCTYPE html>\n<html>\n<head>\n  ' \
