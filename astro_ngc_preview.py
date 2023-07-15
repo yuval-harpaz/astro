@@ -4,7 +4,7 @@
 from astro_utils import *
 from astropy.time import Time
 # from mastodon_bot import connect_bot
-from astro_list_ngc import choose_fits, make_thumb
+from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
 from glob import glob
 
 # from pyongc import ongc
@@ -131,5 +131,5 @@ for row in range(len(df)):
         #     imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
         #     plt.imsave('/home/innereye/astro/docs/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
 
-
+ngc_html_thumb()
 

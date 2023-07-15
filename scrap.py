@@ -1,4 +1,5 @@
 from astro_utils import *
+from astro_list_ngc import
 auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_f*.fits', png='f.png', pow=[1, 1, 1], pkl=False, crop=True, method='rrgggbb')
 
 

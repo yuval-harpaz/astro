@@ -521,7 +521,7 @@ def movmean(data, win):
 
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              core=False, plot=True, factor=4, smooth=False, crop=False):
+              core=False, plot=True, factor=4, smooth=False, crop=False, max_color=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -591,10 +591,15 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     order = np.argsort(filt)
     path = np.asarray(path)[order]
     filt = filt[order]
-    def make_rgb(prc=0):
+
+    def make_rgb(prc=0, max_color=False):
         rgb = np.zeros((layers.shape[0], layers.shape[1], 3), float)
         for ll in range(3):
-            lay = np.mean(layers[:, :, iii[ll]], axis=2)
+            if max_color:  # convert zeros to nans
+                # lay = np.nanmean(layers[:, :, iii[ll]], axis=2)
+                lay = np.max(layers[:, :, iii[ll]], axis=2)
+            else:
+                lay = np.mean(layers[:, :, iii[ll]], axis=2)
             lay = lay ** pow[ll] * 255
             rgb[:, :, ll] = lay
         if prc > 0:  # subtract 1 percentile to remove red after **0.5
@@ -707,7 +712,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                         # After collecting two points, close the figure to proceed
                         plt.close()
             plt.connect('button_press_event', onclick)
-            plt.show()
+            plt.show(block=True)
             p1, p2 = click_coordinates
             x1, y1 = int(min(p1[0], p2[0])), int(min(p1[1], p2[1]))
             x2, y2 = int(max(p1[0], p2[0])), int(max(p1[1], p2[1]))
@@ -762,7 +767,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             rgb[:, :, ic] = rgb[:, :, ic] ** pow[ic] * 255
         rgb = rgb.astype('uint8')
     if rgb is None:
-        rgb = make_rgb()
+        rgb = make_rgb(max_color=max_color)
     if plot:
         plt.figure()
         plt.imshow(rgb, origin='lower')

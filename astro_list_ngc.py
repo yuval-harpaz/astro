@@ -33,7 +33,8 @@ def list_ngc():
     ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
     misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel',
-            'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV', 'OPH']
+            'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV',
+            'OPH', 'WESTERLUND']
     ismisc = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
         for msc in misc:
