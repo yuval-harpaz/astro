@@ -180,11 +180,15 @@ def ngc_html_thumb():
     os.chdir('/home/innereye/astro/')
     df = pd.read_csv('ngc.csv')
     # other = '<a href="https://yuval-harpaz.github.io/astro/ngc_thumb.html" target="_blank">stream view</a>'
+    meta = '    <meta property="og:title" content="JWST color preview" />\n' \
+           '    <meta property="og:type" content="image/PNG" />\n' \
+           '    <meta property="og:url" content="https://yuval-harpaz.github.io/astro/ngc_thumb.html" />\n' \
+           '    <meta property="og:image" content="https://github.com/yuval-harpaz/astro/raw/main/docs/thumb/2022-07-11_WESTERLUND2-DIST-CORE-FULL_NIRCam.png"/>\n'
     page = '<!DOCTYPE html>\n<html>\n<head>\n  ' \
            '<link rel="stylesheet" href="blackstyle.css">' \
-           '<title>JWST NGC color images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  ' \
-           '<style>\n' \
-           '</style>\n</head>\n<body><div class="container">'
+           '<title>JWST NGC color images</title></title><link rel="icon" type="image/x-icon" href="camelfav.ico" />\n  '
+    page += meta
+    page += '\n</head>\n<body><div class="container">'
     page = page + '<h1>A preview of JWST images of NGC objects, automatically colored using available filters</h1>' \
                   'Image triplets are NIRCam, NIRCam+MIRI, MIRI.  For NIRCam+MIRI images red = MIRI. The point is to make a fast, automatic process with fixed parameters. No manual touch, so alignment issues are expected.<br>'
     add = '<a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> table</a>\n    '
