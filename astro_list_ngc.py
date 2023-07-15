@@ -182,6 +182,7 @@ def ngc_html_thumb():
     # other = '<a href="https://yuval-harpaz.github.io/astro/ngc_thumb.html" target="_blank">stream view</a>'
     meta = '    <meta property="og:title" content="JWST color preview" />\n' \
            '    <meta property="og:type" content="image/PNG" />\n' \
+           '    <meta property="og:description" content="Color preview of JWST datasets" />\n' \
            '    <meta property="og:url" content="https://yuval-harpaz.github.io/astro/ngc_thumb.html" />\n' \
            '    <meta property="og:image" content="https://github.com/yuval-harpaz/astro/raw/main/docs/thumb/2022-07-11_WESTERLUND2-DIST-CORE-FULL_NIRCam.png"/>\n'
     page = '<!DOCTYPE html>\n<html>\n<head>\n'
