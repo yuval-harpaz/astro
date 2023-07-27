@@ -1,0 +1,7 @@
+file,width,height,offset,chosen
+jw01225-o001_t001_nircam_clear-f430m_i2d.fits,4876,2118,364.976237909338,False
+jw01225-o001_t001_nircam_clear-f182m_i2d.fits,9851,4315,332.518663341492,False
+jw01225-o001_t001_nircam_clear-f150w_i2d.fits,9896,4390,371.8470587403,True
+jw01225-o001_t001_nircam_clear-f277w_i2d.fits,4876,2118,332.169262315943,True
+jw01225-o001_t001_nircam_f405n-f444w_i2d.fits,4876,2117,364.976237909338,True
+jw01225-o001_t001_nircam_clear-f187n_i2d.fits,9862,4360,372.196486896782,False

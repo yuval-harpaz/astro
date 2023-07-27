@@ -1,6 +1,7 @@
 from astro_utils import *
-from astro_list_ngc import
-auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_f*.fits', png='f.png', pow=[1, 1, 1], pkl=False, crop=True, method='rrgggbb')
+# from astro_list_ngc import
+auto_plot('NGC-346', exp='*w_i2d.fits', png='all.png', pow=[1, 1, 1], pkl=True, method='mnn', crop=False, plot=False)
+# auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_f*.fits', png='f.png', pow=[1, 1, 1], pkl=False, crop=True, method='rrgggbb')
 
 
 # import matplotlib.pyplot as plt
