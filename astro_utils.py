@@ -521,7 +521,7 @@ def movmean(data, win):
 
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              core=False, plot=True, factor=4, smooth=False, crop=False, max_color=False):
+              core=False, plot=True, adj_args={'factor': 4}, smooth=False, crop=False, max_color=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -549,8 +549,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         try resize to fit a 1920 by 1080 image. no cropping or aspect artio chabges. meant to reduce RAM and time.
     core: bool
         True to try focus on the core of the galaxy, in order to stretch the colors differently.
-    factor: int
-        this got to do with color stretching, usually should't be touched
+    adj_args: dict
+        arguments to pass to level_adjust
 
     Returns
     -------
@@ -726,7 +726,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         if np.mean(np.isnan(layers[:, :, lay])) == 1 or layers[:, :, lay].sum() == 0:
             empty[lay] = True
         else:
-            layers[:, :, lay] = level_adjust(layers[:, :, lay], factor=factor)
+            layers[:, :, lay] = level_adjust(layers[:, :, lay], **adj_args)
             if smooth:
                 layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
     # combine colors by method

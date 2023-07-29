@@ -21,15 +21,22 @@ def expand_highs(x):
                         [lambda x: x * 0.8 / 0.9, lambda x: 100.0 / 9.0 * (x - 0.9) ** 2 + 0.8 * x / 0.9])
 
 
-def image_histogram_equalization(image, number_bins=10000):
+def image_histogram_equalization(image, number_bins=10000, ignore0=False):
     # from http://www.janeriksolem.net/histogram-equalization-with-python-and.html
     # get image histogram
-    image_histogram, bins = np.histogram(image.flatten(), number_bins, density=True)
+    shape = image.shape
+    image = image.flatten()
+    if ignore0:
+        include = image > 0
+    else:
+        include = np.ones(len(image), bool)
+    image_histogram, bins = np.histogram(image[include], number_bins, density=True)
     cdf = image_histogram.cumsum()  # cumulative distribution function
     cdf = cdf / cdf[-1]  # normalize
     # use linear interpolation of cdf to find new pixel values
-    image_equalized = np.interp(image.flatten(), bins[:-1], cdf)
-    return image_equalized.reshape(image.shape)
+
+    image[include] = np.interp(image[include], bins[:-1], cdf)
+    return image.reshape(shape)
 
 def nanmask(arr):
     mask = np.isnan(arr)
@@ -38,22 +45,59 @@ def nanmask(arr):
     else:
         mask = None
     return arr, mask
-def level_adjust(fits_arr, factor=4.0):
+
+
+def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, ignore0=False):
+    """
+    Stretch colors of an image. The image is normalized between zero and one, and then manipulated to show faint
+    values. Based on https://github.com/Rachmanin0xFF/jwst-twitter-bot
+    Args:
+        fits_arr: 2D np.ndarray
+            The image
+        negative: str | anything
+            'consider' allows negative colors when computing histogram. otherwise normalization is only for
+            positive values.
+        lims: list
+            lower and upper lim for normalization. if >= one, quantiles are assumed. otherwise these are the
+            actual values between which the image is normalized.
+        factor: int
+            you can play with it but I would leave it alone. you can try factor=1 to avoid power, sometimes nice.
+        ignore0: bool
+            ignore zeros (or values below lower limit) when using image_histogram_equalization
+
+    Returns:
+        adjusted image
+    """
     fits_arr, mask = nanmask(fits_arr)
     hist_dat = fits_arr.flatten()
-    hist_dat = hist_dat[np.nonzero(hist_dat)]
-    zeros = np.abs(np.sign(fits_arr))
-    minval = np.quantile(hist_dat, 0.03)
-    maxval = np.quantile(hist_dat, 0.98)
-    rescaled = (fits_arr - minval) / (maxval - minval)
-    rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
-    rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
-    img_eqd = image_histogram_equalization(rescaled_no_outliers)
+    if negative == 'consider':
+        hist_dat = hist_dat[np.nonzero(hist_dat)]
+    else:
+        hist_dat = hist_dat[hist_dat > 0]
+    nonzeros = np.abs(np.sign(fits_arr))
+    if lims[1] > 1:
+        minval, maxval = lims
+    else:
+        minval = np.quantile(hist_dat, lims[0])
+        maxval = np.quantile(hist_dat, lims[1])
+        # print([minval, maxval])
+        # minval, maxval = np.quantile(hist_dat, lims)
+
+    if lims == [0.03, 0.98]:  # for backward compatibility
+        rescaled = (fits_arr - minval) / (maxval - minval)
+        rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
+        rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
+    else:
+        no_outliers = np.maximum(fits_arr, minval)
+        no_outliers = np.minimum(no_outliers, maxval)
+        rescaled_no_outliers = (no_outliers - minval) / (maxval - minval)
+        rescaled = rescaled_no_outliers
+    img_eqd = image_histogram_equalization(rescaled_no_outliers, ignore0=ignore0)
     img_eqd = (pow(img_eqd, factor) + pow(img_eqd, factor*2) + pow(img_eqd, factor*4)) / 3.0
     adjusted = expand_highs((img_eqd + to1(rescaled)) * 0.5)
     if mask is not None:
         adjusted[mask] = np.nan
-    return np.clip(adjusted * zeros, 0.0, 1.0)
+    return np.clip(adjusted * nonzeros, 0.0, 1.0)
 
 def get_JWST_products_from(start_time=None, end_time=None, release=True):
     """
@@ -133,10 +177,13 @@ def get_JWST_products_from(start_time=None, end_time=None, release=True):
 
 
 if __name__ == '__main__':
-    fname = '/home/innereye/JWST/ngc1512/jw02107-o006_t006_miri_f770w_i2d.fits'
-    hdu = fits.open(fname)
-    raw = hdu[1].data
-    val_arr = level_adjust(hdu[1].data)
-    hdu.close()
-    plt.figure()
-    plt.imshow(val_arr)
+    from astro_utils import *
+    _ = auto_plot('NGC-1433', exp='log', png=False, pow=[1, 1, 1], pkl=True, method='mnn', resize=True, plot=True,
+                  adj_args={'lims': [0.95, 1.0], 'ignore0': True})  # adj_args={'lims': [0.03, 1.0]}
+    # fname = '/home/innereye/JWST/ngc1512/jw02107-o006_t006_miri_f770w_i2d.fits'
+    # hdu = fits.open(fname)
+    # raw = hdu[1].data
+    # val_arr = level_adjust(hdu[1].data)
+    # hdu.close()
+    # plt.figure()
+    # plt.imshow(val_arr)

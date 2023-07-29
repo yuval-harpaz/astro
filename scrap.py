@@ -1,9 +1,31 @@
 from astro_utils import *
+_ = auto_plot('NGC-1433', exp='log', png=False, pow=[1, 1, 1], pkl=True, method='mnn', resize=True, plot=True, adj_args={'lims': [0.95, 1.0], 'ignore0': True})  # adj_args={'lims': [0.03, 1.0]}
 # from astro_list_ngc import
-auto_plot('NGC-346', exp='*w_i2d.fits', png='all.png', pow=[1, 1, 1], pkl=True, method='mnn', crop=False, plot=False)
+# auto_plot('NGC-346', exp='*w_i2d.fits', png='all.png', pow=[1, 1, 1], pkl=True, method='mnn', crop=False, plot=False)
 # auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_f*.fits', png='f.png', pow=[1, 1, 1], pkl=False, crop=True, method='rrgggbb')
-
-
+# hdu = fits.open('/home/innereye/astro/data/M83/jw02219-o011_t002_miri_f2100w_i2d.fits')
+# image = hdu[1].data.copy()
+# ##
+# lims = [0.03, 0.98]
+# hist_dat = image.flatten()
+# hist_dat = hist_dat[hist_dat > 0]
+# # nonzeros = np.abs(np.sign(fits_arr))
+# minval = np.quantile(hist_dat, lims[0])
+# maxval = np.quantile(hist_dat, lims[1])
+#     # minval, maxval = np.quantile(hist_dat, lims)
+# rescaled = (image - minval) / (maxval - minval)
+# rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
+# rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
+#
+#
+# ##
+# number_bins=10000
+# image_histogram, bins = np.histogram(image.flatten(), number_bins, density=True)
+# cdf = image_histogram.cumsum()  # cumulative distribution function
+# cdf = cdf / cdf[-1]  # normalize
+#     # use linear interpolation of cdf to find new pixel values
+# image_equalized = np.interp(image.flatten(), bins[:-1], cdf)
+# imageq = image_equalized.reshape(image.shape)
 # import matplotlib.pyplot as plt
 #
 # # Load and display the image
