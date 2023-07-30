@@ -1,2 +1,2 @@
-file,width,height,offset,chosen
-jw01288-o002_t010_miri_f1500w_i2d.fits,1244.0,1040.0,8.987360099006935,True
+file,width,height,offset,chosen,CRVAL1,CRVAL2
+jw01288-o002_t010_miri_f1500w_i2d.fits,1244.0,1040.0,8.987360099006935,True,83.8305128326742,-5.444169084930052

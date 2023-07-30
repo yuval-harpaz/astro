@@ -12,7 +12,7 @@ def add_crval_to_logs():
     # masto, loc = connect_bot()
     ##
     # loc == 'local'
-    for row in np.where(df['NGC'] == 3627)[0]:  # range(len(df)):
+    for row in range(len(df)):  # np.where(df['NGC'] == 3627)[0]:
         # pkl = True
         tgt = df['target_name'][row]
         drive = '/media/innereye/My Passport/Data/JWST/'
@@ -49,12 +49,14 @@ def add_crval_to_logs():
                     chosen_df['CRVAL1'] = 0
                     chosen_df['CRVAL2'] = 0
                     for ii in range(len(files)):
-                        hdu = fits.open(drive+'data/'+tgt+'/'+files[ii])
-                        chosen_df['CRVAL1'].at[ii] = hdu[1].header['CRVAL1']
-                        chosen_df['CRVAL2'].at[ii] = hdu[1].header['CRVAL2']
-                    if 0 in chosen_df['CRVAL1'].values:
-                        raise Exception('unexpected zeros')
-                    else:
+                        if os.path.isfile(drive+'data/'+tgt+'/'+files[ii]):
+                            hdu = fits.open(drive+'data/'+tgt+'/'+files[ii])
+                            chosen_df['CRVAL1'].at[ii] = hdu[1].header['CRVAL1']
+                            chosen_df['CRVAL2'].at[ii] = hdu[1].header['CRVAL2']
+                        else:
+                            if chosen_df.iloc[ii]['chosen']:
+                                raise Exception('chosen file missing: '+tgt+'/'+files[ii])
+                    if chosen_df['CRVAL1'].to_numpy().max() > 0:
                         chosen_df.to_csv(log_csv, index=False)
 if __name__ == '__main__':
     add_crval_to_logs()

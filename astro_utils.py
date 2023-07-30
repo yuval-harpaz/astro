@@ -568,8 +568,10 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             break
     if not os.path.isdir(folder):
         raise Exception('cannot find '+folder)
+    from_log = False
     if type(exp) == str:
         if exp[:3] == 'log':
+            from_log = True
             if len(exp) > 3:
                 logpath = os.environ['HOME'] + '/astro/logs/' + exp.replace('log','')
                 log = pd.read_csv(logpath)
@@ -579,7 +581,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     log = pd.read_csv(logpath[0])
                 else:
                     print(logpath)
-                    raise Exception('expextec one log file')
+                    raise Exception('expexted one log file')
             path = list(log['file'][log['chosen']])
             os.chdir(folder)
         else:
@@ -624,6 +626,16 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         else:
             wh = [h, w]  # rotate later
         return wh
+
+    def crval_fix(hd):
+        if from_log and 'CRVAL1fix' in log.columns:
+            logrow = np.where(log['file'] == path[ii])[0]
+            if len(logrow) == 1:
+                correct = log['CRVAL1fix'][logrow].to_numpy()[0]
+                if ~np.isnan(correct):
+                    hd[1].header['CRVAL1'] = correct
+        return hd
+
     pkl_name = folder + '.pkl'
     if type(pkl) == str:
         pkl_name = pkl
@@ -648,6 +660,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         for ii in range(len(path)):
             if ii == 0:
                 hdu0 = fits.open(path[ii])
+                hdu0 = crval_fix(hdu0)
                 img = hdu0[1].data
                 if resize:# make rescale size for wallpaper 1920 x 1080
                     wh = resize_wh(img.shape)
@@ -657,6 +670,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 hdu0.close()
             else:
                 hdu = fits.open(path[ii])
+                hdu = crval_fix(hdu)
                 img, _ = reproject_interp(hdu[1], hdr0)
                 if resize:
                     img = transform.resize(img, wh)
@@ -1172,6 +1186,7 @@ def last_100(html=True, products=False):
 
 if __name__ == '__main__':
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
-    auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
-              method='rrgggbb')
-    auto_plot('NGC-7469', exp='logNGC-7469_2022-07-01.csv', png=False, pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
+    auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
+    # auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
+    #           method='rrgggbb')
+    # auto_plot('NGC-7469', exp='logNGC-7469_2022-07-01.csv', png=False, pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)

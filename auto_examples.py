@@ -29,8 +29,10 @@ auto_plot('M16', '*_i2d.fits', png=True, pow=[0.5, 1, 1], pkl=True, resize=True)
 
 auto_plot('ngc2070', '*_i2d.fits', png=True, pow=[0.5, 1, 1], pkl=True, resize=False)
 
+auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True, )
+
 auto_plot('vv114', '*_i2d.fits', png=True, pow=[1,1.5,1], factor=4, pkl=True)
 
 auto_plot('ngc7496', '*_i2d.fits', png=True, pow=[0.5,1,1], factor=4, pkl=True, method='mnn', resize=True)
 
-auto_plot('WR124', '*_i2d.fits', png=True, pow=[0.5,1,1], factor=4, pkl=True, method='mnn', resize=True)
+auto_plot('NGC-3627', exp='log', png='fixed2.png', pow=[1, 1, 1], pkl=True, resize=False, method='mnn', plot=False, adj_args={'factor': 2})
