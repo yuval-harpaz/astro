@@ -579,9 +579,15 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 logpath = glob(os.environ['HOME'] + '/astro/logs/' + folder + '*')
                 if len(logpath) == 1:
                     log = pd.read_csv(logpath[0])
-                else:
+                elif len(logpath) == 0:
                     print(logpath)
-                    raise Exception('expexted one log file')
+                    raise Exception('expected one log file or more')
+                else:
+                    log = pd.read_csv(logpath[0])
+                    for ilog in range(1, len(logpath)):
+                        log_next = pd.read_csv(logpath[ilog])
+                        log = pd.concat([log, log_next])
+                    log = log.reset_index()
             path = list(log['file'][log['chosen']])
             os.chdir(folder)
         else:
@@ -1185,8 +1191,10 @@ def last_100(html=True, products=False):
 
 
 if __name__ == '__main__':
+    auto_plot('NGC-3132', exp='log', png='test.png', pow=[1, 1, 1], pkl=True, resize=False, method='mnn', plot=False,
+              adj_args={'factor': 2})
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
-    auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
+    # auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
     # auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
     #           method='rrgggbb')
     # auto_plot('NGC-7469', exp='logNGC-7469_2022-07-01.csv', png=False, pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
