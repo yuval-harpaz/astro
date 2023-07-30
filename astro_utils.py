@@ -28,7 +28,7 @@ from scipy.spatial import KDTree
 # root = list_files.__code__.co_filename[:-14]
 root = os.environ['HOME']+'/astro/'
 
-def list_files(parent, search='*_cal.fits', exclude='', include=''):
+def list_files(parent, search='*_i2d.fits', exclude='', include=''):
     """
     List all fits files in subfolders of path.
     """
