@@ -637,9 +637,10 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         if from_log and 'CRVAL1fix' in log.columns:
             logrow = np.where(log['file'] == path[ii])[0]
             if len(logrow) == 1:
-                correct = log['CRVAL1fix'][logrow].to_numpy()[0]
-                if ~np.isnan(correct):
-                    hd[1].header['CRVAL1'] = correct
+                for cr in [1, 2]:
+                    correct = log[f'CRVAL{cr}fix'][logrow].to_numpy()[0]
+                    if ~np.isnan(correct):
+                        hd[1].header[f'CRVAL{cr}'] = correct
         return hd
 
     pkl_name = folder + '.pkl'
