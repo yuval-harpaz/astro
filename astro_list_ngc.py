@@ -21,7 +21,7 @@ def list_ngc():
     isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
     table = table[isnotnirspec]
     isnotbackground = []
-    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF']
+    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF', 'NGC7793SKYMIRI']
     for x in table['target_name']:
         isnotbackground.append(True)
         for bg in background:
@@ -34,7 +34,7 @@ def list_ngc():
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
     misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel',
             'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV',
-            'OPH', 'WESTERLUND', 'LDN-57']
+            'OPH', 'WESTERLUND', 'LDN-57', 'SGRA']
     ismisc = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
         for msc in misc:
