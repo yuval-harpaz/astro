@@ -521,7 +521,7 @@ def movmean(data, win):
 
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              core=False, plot=True, adj_args={'factor': 4}, smooth=False, crop=False, max_color=False):
+              core=False, plot=True, adj_args={'factor': 4}, smooth=False, crop=False, max_color=False, opvar='rgb'):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -799,7 +799,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         else:
             png_name = folder+core_str+'.png'
         plt.imsave(png_name, rgb, origin='lower')
-    return rgb
+    return eval(opvar)
 
 
 def maxima_gpt(image, neighborhood_size=10, thr=99.3, smooth=True):
@@ -1192,8 +1192,8 @@ def last_100(html=True, products=False):
 
 
 if __name__ == '__main__':
-    auto_plot('NGC-3132', exp='log', png='test.png', pow=[1, 1, 1], pkl=True, resize=False, method='mnn', plot=False,
-              adj_args={'factor': 2})
+    layers = auto_plot('NGC-3132', exp='log', png='test.png', pow=[1, 1, 1], pkl=True, resize=False, method='mnn', plot=False,
+              adj_args={'factor': 2}, opvar='layers')
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
     # auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
     # auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
