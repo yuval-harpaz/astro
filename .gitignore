@@ -7,3 +7,4 @@ tails
 tmp*
 *.secret
 *.fits
+.*

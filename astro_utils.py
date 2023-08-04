@@ -23,7 +23,7 @@ import pickle
 from skimage import transform
 from scipy.ndimage import label
 from scipy.spatial import KDTree
-
+from astro_fill_holes import *
 # root = __file__[:-14]
 # root = list_files.__code__.co_filename[:-14]
 root = os.environ['HOME']+'/astro/'
@@ -521,7 +521,7 @@ def movmean(data, win):
 
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              core=False, plot=True, adj_args={'factor': 4}, smooth=False, crop=False, max_color=False, opvar='rgb'):
+              plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False, crop=False,):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -657,7 +657,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 order_full = np.argsort(filt_full)
                 path_full = np.asarray(path_full)[order_full]
                 include = [int(np.where(path_full == x)[0][0]) for x in path]
-                layers = layers[:,:,include]
+                layers = layers[:, :, include]
             else:
                 raise Exception('which layer is which file?')
         if resize:
@@ -748,6 +748,10 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             empty[lay] = True
         else:
             layers[:, :, lay] = level_adjust(layers[:, :, lay], **adj_args)
+            if fill:
+                xy = hole_xy(layers[:, :, lay])
+                size = hole_size(layers[:, :, lay], xy, plot=False)
+                layers[:, :, lay] = hole_disk_fill(layers[:, :, lay], xy, size, larger_than=3)
             if smooth:
                 layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
     # combine colors by method
