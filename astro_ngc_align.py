@@ -3,6 +3,10 @@
 '''
 run astro_ngc_preview first to create logs
 '''
+# import os
+
+# import pandas as pd
+
 from astro_utils import *
 def add_crval_to_logs():
     df = pd.read_csv('ngc.csv', sep=',')
@@ -58,5 +62,34 @@ def add_crval_to_logs():
                                 raise Exception('chosen file missing: '+tgt+'/'+files[ii])
                     if chosen_df['CRVAL1'].to_numpy().max() > 0:
                         chosen_df.to_csv(log_csv, index=False)
+
+def fix_by_log(target='NGC-3132', data_dir='/media/innereye/My Passport/Data/JWST/test/'):
+    logs = glob('logs/'+target+'*')
+    df = pd.read_csv(logs[0])
+    if len(logs) > 1:
+        for log in logs[1:]:
+            df = pd.concat([df, pd.read_csv(log)])
+            df = df.reset_index(drop=True)
+    if 'CRVAL1fix' in df.columns:
+        files = glob(data_dir+target+'/*.fits')
+        if len(files) > 0:
+            for file in files:
+                row = np.where(df['file'] == file.split('/')[-1])[0]
+                if len(row) == 0:
+                    print(file.split('/')[-1]+' not in logs')
+                else:
+                    fixed = False
+                    hdu = fits.open(file)
+                    for xy in [1, 2]:
+                        crval = df[f'CRVAL{xy}fix'].values[row]
+                        if ~np.isnan(crval):
+                            hdu[1].header[f'CRVAL{xy}'] = crval[0]
+                            fixed = True
+                    if fixed:
+                        hdu.writeto(file, overwrite=True)
+                        print('fixed ', file)
+
+
+
 if __name__ == '__main__':
     add_crval_to_logs()
