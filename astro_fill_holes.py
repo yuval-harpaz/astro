@@ -1,9 +1,9 @@
 from astropy.io import fits
 import os
-import matplotlib
+# import matplotlib
 
 # matplotlib.use('Qt5Agg')
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
