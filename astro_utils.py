@@ -521,7 +521,8 @@ def movmean(data, win):
 
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False, crop=False,):
+              plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
+              crop=False, deband=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -672,12 +673,19 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 if resize:# make rescale size for wallpaper 1920 x 1080
                     wh = resize_wh(img.shape)
                     img = transform.resize(img, wh)
+                if deband:
+                    print('going to deband')
+                    img = deband_layer(img)
+                    print('done deband 0')
                 layers = np.zeros((img.shape[0], img.shape[1], len(path)))
                 hdr0 = hdu0[1].header
                 hdu0.close()
             else:
                 hdu = fits.open(path[ii])
                 hdu = crval_fix(hdu)
+                if deband:
+                    hdu[1].data = deband_layer(hdu[1].data)
+                    print(f'done deband {ii}')
                 img, _ = reproject_interp(hdu[1], hdr0)
                 if resize:
                     img = transform.resize(img, wh)
@@ -1193,6 +1201,21 @@ def last_100(html=True, products=False):
         with open('docs/news'+suf+'.html', "w") as text_file:
             text_file.write(page)
     return table
+
+
+def deband_layer(layer):
+    ring = Ring2DKernel(50, 3)
+    print('ring...')
+    lp = median_filter(layer, footprint=ring.array)
+    hp = layer.copy()
+    print('medfilt...')
+    for ii in range(hp.shape[0]):
+        hp[ii, :] = medfilt(hp[ii, :], 101)
+        print(f'{ii}/{hp.shape[0]}')
+    hp = layer - hp
+    clean = lp + hp
+    clean[clean < 0] = 0
+    return clean
 
 
 if __name__ == '__main__':
