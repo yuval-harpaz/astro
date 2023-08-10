@@ -552,6 +552,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         True to try focus on the core of the galaxy, in order to stretch the colors differently.
     adj_args: dict
         arguments to pass to level_adjust
+    opvar: str
+        what variable to return. 'rgb' or 'layers'
 
     Returns
     -------

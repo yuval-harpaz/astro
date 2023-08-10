@@ -1,6 +1,13 @@
 from astro_utils import *
-auto_plot('HH46', exp='*.fits', png='deband.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False,
-          adj_args={'factor': 4}, max_color=False, fill=True, deband=True, )
+rgb = auto_plot('HH46', exp='*.fits', png='deband.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False,
+          adj_args={'factor': 4}, max_color=False, fill=True, deband=True)
+rgb[890:, :800, 2] = 0
+plt.imsave('blue_zeroed.png', rgb, origin='lower')
+##
+img = plt.imread('/media/innereye/My Passport/Data/JWST/data/HH46/deband.png')
+img = np.flipud(img)
+rgb[890:, :800, 2] = 0
+plt.imshow(rgb, origin='lower')
 # from time import time
 #
 # ##
