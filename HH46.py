@@ -1,3 +1,5 @@
+import matplotlib.pyplot as plt
+
 from astro_utils import *
 rgb = auto_plot('HH46', exp='*.fits', png='deband.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False,
           adj_args={'factor': 4}, max_color=False, fill=True, deband=True)
@@ -6,8 +8,20 @@ plt.imsave('blue_zeroed.png', rgb, origin='lower')
 ##
 img = plt.imread('/media/innereye/My Passport/Data/JWST/data/HH46/deband.png')
 img = np.flipud(img)
-rgb[890:, :800, 2] = 0
+##
+rgb = img.copy()
+tofix = rgb[800:, :877, :]
+tofix[tofix[..., 0] < 0.1, 2] = 0
+tofix = rgb[:800, :590, :]
+tofix[tofix[..., 0] < 0.1, 2] = 0
+tofix = rgb[:, 1172:, :]
+tofix[tofix[..., 0] < 0.1, 2] = 0
+# tofix[...] = 0
+# rgb[800:, :877, 2] = tofix
+# rgb[800:, :877, 2] = 0
 plt.imshow(rgb, origin='lower')
+
+plt.imsave('deblue.png', rgb, origin='lower')
 # from time import time
 #
 # ##
