@@ -1083,6 +1083,29 @@ def smooth_yx(img, win=5, passes=2):
         smooth = img2
     return smooth
 
+
+def smooth_width(layer, win=101):
+    '''
+    smooth image from left to right, uses nanmedian
+    Args:
+        layer: 2D ndarray
+        win: int
+
+    Returns:
+        smoothed data
+    '''
+    half0 = int(win / 2)
+    half1 = win - half0
+    smoothed = layer.copy()
+    for ii in range(smoothed.shape[0]):
+        toavg = np.nan * np.ones((layer.shape[1] + win - 1, win))
+        for shift in np.arange(win):
+            toavg[shift:layer.shape[1] + shift, shift] = layer[ii, :]
+        smoothed[ii, :] = np.nanmedian(toavg, axis=1)[half0:-half1 + 1]
+        print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
+    return smoothed
+
+
 def smooth_colors(img):
     shift = 0.000000000001
     # img = np.swapaxes(img, 0,1)
@@ -1204,23 +1227,37 @@ def last_100(html=True, products=False):
 
 
 def deband_layer(layer):
-    ring = Ring2DKernel(50, 3)
-    print('ring...')
-    lp = median_filter(layer, footprint=ring.array)
-    hp = layer.copy()
-    print('medfilt...')
-    for ii in range(hp.shape[0]):
-        hp[ii, :] = medfilt(hp[ii, :], 101)
-        print(f'{ii}/{hp.shape[0]}')
-    hp = layer - hp
+    # kernel = Ring2DKernel(50, 3)
+    # print('ring...')
+    # kernel = Gaussian2DKernel(12)
+    # print('gaus...')
+    # lp = convolve(layer, kernel=kernel)
+    # lp = median_filter(layer, footprint=kernel.array)
+    # lp = smooth_yx(layer, 101, 1)
+    # print('nanmed 0...')
+    lp = smooth_width(layer, win=101)
+    hp = layer - lp
+    # print('nanmed 0...')
+    lp = smooth_width(lp.T, win=101).T
+    # hp = layer.copy()
+    # for ii in range(hp.shape[0]):
+    #     hp[ii, :] = medfilt(hp[ii, :], 101)
+    #     print(f'{ii}/{hp.shape[0]}', end='\r')
+    # print('medfilt 1...')
+    # lp = layer.copy()
+    # for ii in range(hp.shape[0]):
+    #     lp[:, ii] = medfilt(hp[:, ii], 101)
+    #     # print(f'{ii}/{hp.shape[0]}')
+    # hp = layer - hp
     clean = lp + hp
     clean[clean < 0] = 0
     return clean
 
 
 if __name__ == '__main__':
-    layers = auto_plot('NGC-3132', exp='log', png='test.png', pow=[1, 1, 1], pkl=True, resize=False, method='mnn', plot=False,
-              adj_args={'factor': 2}, opvar='layers')
+    img = auto_plot('NGC6720', png='deband1.png', pow=[1, 1, 1], pkl=False, resize=False, method='rrgggbb', plot=False,
+                    adj_args={'factor': 1}, max_color=False, fill=False, deband=True)
+
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
     # auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
     # auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
