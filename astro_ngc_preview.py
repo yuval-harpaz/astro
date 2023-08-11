@@ -105,15 +105,15 @@ for row in range(len(df)):
         plotted = []
         # TODO decide if to use 0.5 1 1
         made_png = False
-        if np.sum(mn[:,0]) > 2:
+        if np.sum(mn[:,0]) >= 2:
             auto_plot(tgt, exp=list(files[mn[:, 0]]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt+'_MIRI.png')
             made_png = True
-        if np.sum(mn[:,1]) > 2:
+        if np.sum(mn[:,1]) >= 2:
             auto_plot(tgt, exp=list(files[mn[:, 1]]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt + '_NIRCam.png')
             made_png = True
-        if '+' in instrument and np.sum(mn) > 2:
+        if '+' in instrument and np.sum(mn) >= 2:
             auto_plot(tgt, exp=list(files), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
             plotted.append(tgt+'_'+instrument+'.png')
             made_png = True

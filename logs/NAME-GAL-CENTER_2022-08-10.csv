@@ -1,4 +1,3 @@
 file,width,height,offset,chosen
-jw01306-o001_t001_nircam_clear-f182m_i2d.fits,9899.0,4311.0,241.9964642464863,True
-jw01306-o001_t001_nircam_clear-f360m_i2d.fits,4870.0,2109.0,52.03462674722511,True
-jw01306-o001_t001_niriss_clear-f158m_i2d.fits,2045.0,2068.0,52.13372702830888,True
+jw01306-o001_t001_nircam_clear-f182m_i2d.fits,9899,4311,241.996464246486,True
+jw01306-o001_t001_nircam_clear-f360m_i2d.fits,4870,2109,52.0346267472251,True

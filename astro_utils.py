@@ -768,7 +768,12 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     layers = layers[..., ~empty]
     path = path[~empty]
     rgb = None
-    if method == 'rrgggbb':
+    if layers.shape[2] == 2:
+        ir = [0]
+        ib = [1]
+        ig = [0, 1]
+        iii = [ir, ig, ib]
+    elif method == 'rrgggbb':
         ncol = np.floor(layers.shape[-1] / 3)
         ib = np.arange(0, ncol).astype(int)
         ir = np.arange(layers.shape[-1] - ncol, layers.shape[-1]).astype(int)
