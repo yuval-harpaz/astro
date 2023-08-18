@@ -77,6 +77,8 @@ def list_ngc():
             ngc.append(int(nn[:ii]))
         elif tt[:3] == 'ORI':
             ngc.append(1976)
+        elif tt == 'PSRJ1748-2021B':
+            ngc.append(6440)
         else:
             ngc.append(0)
     ##

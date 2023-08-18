@@ -34,8 +34,6 @@ for row in range(len(df)):
         for alr in already:
             msg += '\n    ' + alr.split('/')[-1]
         print(msg)
-    elif tgt in ['NGC2506G31', 'NGC-5139']:  # clusters
-        print('no clusters for now '+date0+' '+tgt)
     elif tgt == 'ORIBAR-IMAGING-MIRI':
         print(tgt + ' too messy, two sessions with strange overlap + NIRCam')
     elif 'background' in tgt.lower() or 'BKG' in tgt:
