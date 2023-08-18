@@ -95,12 +95,13 @@ for calib in [False, True]:
                     ratio = mb2/size
                     img = resize(img, (int(ratio**0.5*img.shape[0]), int(ratio**0.5*img.shape[1])))
                     plt.imsave('tmp.jpg', img, cmap='gray')
-                metadata = masto.media_post("tmp.jpg", "image/jpeg")
                 try:
+                    metadata = masto.media_post("tmp.jpg", "image/jpeg")
                     masto.status_post(toot, media_ids=metadata["id"])
                     print('toot image')
                 except:
                     try:
+                        metadata = masto.media_post("tmp.jpg", "image/jpeg")
                         ratio = 1500/np.max(img.shape)
                         img = resize(img, (int(ratio * img.shape[0]), int(ratio * img.shape[1])))
                         plt.imsave('tmp.jpg', img, cmap='gray')
