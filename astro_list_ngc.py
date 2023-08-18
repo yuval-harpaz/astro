@@ -79,6 +79,8 @@ def list_ngc():
             ngc.append(1976)
         elif tt == 'PSRJ1748-2021B':
             ngc.append(6440)
+        elif 'sombrero' in tt.lower():
+            ngc.append(4594)
         else:
             ngc.append(0)
     ##
@@ -209,6 +211,12 @@ def ngc_html_thumb():
     for iimg in range(len(df)):  # min([len(tbl), n])):
         date = df.iloc[iimg]['collected_from'][:10]
         tgt = df.iloc[iimg]['target_name']
+        if df['NGC'][iimg] == 0:
+            implicit = ' (not NGC)'
+        else:
+            implicit = ' (NGC-' + str(df['NGC'][iimg]) + ')'
+            if implicit[6:-1] in tgt:
+                implicit = ''
         idx = np.where((session_time == date) & (target_name == tgt))[0]
         if date in exclude or tgt in exclude:
             avoid = True
@@ -216,7 +224,7 @@ def ngc_html_thumb():
             avoid = False
         if len(idx) > 0 and not avoid:
             flt = df.iloc[iimg]['filters']
-            if date == '2022-08-14':
+            if date == '2022-08-14' and tgt == 'M-16':
                 date = '2022-08-14, 2022-08-30'
                 flt = ' 90 187 200 335 444 470 770 1130 1500'
             elif date == '2023-07-11':
@@ -239,7 +247,7 @@ def ngc_html_thumb():
                idx.extend(new)
             if tgt == 'NGC-7469-MRS':
                 tgt = tgt + ' (IC 5283)'
-            desc = f'{date} {tgt}, available filters: [{flt}]'
+            desc = f'{date} {tgt}{implicit}, available filters: [{flt}]'
             page = page + f'\n<h3>{desc}</h3>'
             for jdx in idx:
                 png = 'thumb/'+thumbs[jdx].split('/')[-1]
