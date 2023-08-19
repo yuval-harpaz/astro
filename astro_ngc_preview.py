@@ -1,5 +1,6 @@
 # import pandas as pd
 # import os.path
+import pandas as pd
 
 from astro_utils import *
 from astropy.time import Time
@@ -29,19 +30,25 @@ for row in range(len(df)):
         os.system('mkdir data/'+tgt)
     date0 = df["collected_from"][row][:10]
     already = glob('/home/innereye/astro/docs/thumb/'+date0+'_'+tgt+'*')
+    both_apart = False  # no overlap between MIRI and NIRCam
     if len(already) > 0:
         msg = 'pictures exist:    '
         for alr in already:
             msg += '\n    ' + alr.split('/')[-1]
         print(msg)
-    elif tgt == 'ORIBAR-IMAGING-MIRI':
-        print(tgt + ' too messy, two sessions with strange overlap + NIRCam')
     elif 'background' in tgt.lower() or 'BKG' in tgt:
         print('no background for now '+tgt)
     else:
         log_csv = f'/home/innereye/astro/logs/{tgt}_{date0}.csv'
         if os.path.isfile(log_csv):
             chosen_df = pd.read_csv(log_csv)
+            if date0 == '2022-09-18':
+                prev = '/home/innereye/astro/logs/ORIBAR-IMAGING-MIRI_2022-09-11.csv'
+                prev = pd.read_csv(prev)
+                prev['chosen'] = False
+                prev['chosen'].at[np.where([prev['file'].str.contains('miri_f1500w')])[0][0]] = True
+                chosen_df = pd.concat([prev, chosen_df], ignore_index=True)
+                both_apart = True
             files = list(chosen_df['file'][chosen_df['chosen']])
             print(f'[{row}] downloading {tgt} by log')
             download_fits_files(files, destination_folder='data/' + tgt)
@@ -72,9 +79,6 @@ for row in range(len(df)):
 
         use = chosen_df['chosen'].to_numpy()
         files = np.asarray(chosen_df['file'])
-        todelete = files[~use]
-        # for rm in todelete:
-        #     os.system('rm '+rm)
         # see if we have both MIRI and NIRCam, choose RGB method accordingly
         files = files[use]
         filt = filt_num(files)
@@ -103,7 +107,7 @@ for row in range(len(df)):
         plotted = []
         # TODO decide if to use 0.5 1 1
         made_png = False
-        if np.sum(mn[:,0]) >= 2:
+        if np.sum(mn[:, 0]) >= 2:
             auto_plot(tgt, exp=list(files[mn[:, 0]]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt+'_MIRI.png')
             made_png = True
@@ -111,7 +115,7 @@ for row in range(len(df)):
             auto_plot(tgt, exp=list(files[mn[:, 1]]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt + '_NIRCam.png')
             made_png = True
-        if '+' in instrument and np.sum(mn) >= 2:
+        if '+' in instrument and np.sum(mn) >= 2 and not both_apart:
             auto_plot(tgt, exp=list(files), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
             plotted.append(tgt+'_'+instrument+'.png')
             made_png = True
