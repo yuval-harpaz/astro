@@ -58,10 +58,12 @@ def list_files(parent, search='*_i2d.fits', exclude='', include=''):
     path = sorted(path)
     return path
 
-def mosaic_xy(path, plot=False):
+def mosaic_xy(path, plot=False, log=None):
     '''
     get x y origins of each image
-    :param path:
+    path: list of file names
+    plot: bool
+    log: df with coordinates for fixing the original
     :return:
     '''
     crval = np.empty((len(path), 3))
@@ -71,6 +73,22 @@ def mosaic_xy(path, plot=False):
     pix = []
     for ii, p in enumerate(path):
         hdul = fits.open(p)
+        if log is not None:
+            row = np.where(log['file'] == p)[0]
+            if len(row) == 1:
+                row = row[0]
+                if 'CRVAL1fix' in log.columns:
+                    new = log.iloc[row]['CRVAL1fix']
+                    if ~np.isnan(new):
+                        hdul[1].header['CRVAL1'] = new
+                    new = log.iloc[row]['CRVAL2fix']
+                    if ~np.isnan(new):
+                        hdul[1].header['CRVAL2'] = new
+                else:
+                    raise Exception('no CRVAL1fix in log')
+            else:
+                raise Exception(f'expected one log row with {p}')
+
         w = wcs.WCS(hdul[1].header)
         if ii == 0:
             w0 = w.copy()
@@ -115,12 +133,26 @@ def mosaic_xy(path, plot=False):
     return xy, size
 
 
-def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False):
+def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False, log=None):
+    '''
+    make a mosaic of fits images with the same pixel size
+    Args:
+        data: a list of file names
+        xy: op of mosaic_xy
+        size: op of mosaic_xy
+        clip:
+        method: 'mean' | 'layers' | 'median' | 'overwrite'
+        plot: bool
+        log: use log to fix positions
+
+    Returns:
+
+    '''
     if len(data) < 2:
         raise Exception('need at least 2 images')
     if len(xy) == 0:
         if (type(data[0]) == str) | (type(data[0]) == np.str_):
-            xy, size = mosaic_xy(data, plot=plot)
+            xy, size = mosaic_xy(data, plot=plot, log=log)
     if (type(data[0]) == str) | (type(data[0]) == np.str_):
         path = data
         data = []

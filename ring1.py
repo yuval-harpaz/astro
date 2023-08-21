@@ -1,7 +1,13 @@
 from astro_utils import *
 
-# os.chdir('/home/innereye/JWST/LDN57')
-path = glob('*.fits')
+os.chdir('/media/innereye/My Passport/Data/JWST/UDS1or/')
+path = glob('*/*.fits')+glob('*.fits')
+path = np.sort(path)
+
+for p in path:
+    hdu = fits.open(p)
+    print(p+' '+hdu[0].header['FILTER'])
+
 data = mosaic(path, plot=False, method='mean')
 data = level_adjust(data)
 plt.imsave('mosaic.png', data, cmap='gray', origin='lower')
