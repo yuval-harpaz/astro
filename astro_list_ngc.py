@@ -35,7 +35,7 @@ def list_ngc():
     misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel',
             'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV',
             'OPH', 'WESTERLUND', 'LDN-57', 'SGRA', 'HH46', 'CASSIOPEIA', 'Gal',
-            'PSRJ']
+            'PSRJ', 'M31', 'M-31']
     ismisc = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
         for msc in misc:
@@ -47,8 +47,26 @@ def list_ngc():
     ##
     ngc = []
     for tt in target:
-        if tt[0] == 'M':
-            m = ongc.get(tt.replace('-', ''))
+        if tt[0].upper() == 'M':
+            if tt[1] == '-':
+                ttm = 'M' + tt[2:]
+            else:
+                ttm = tt
+            num0 = -1
+            num1 = -1
+            for ichar in range(len(ttm)):
+                if ttm[ichar].isnumeric():
+                    num0 = ichar
+                    break
+            if num0 == 1:
+                for jchar in range(num0, len(ttm)):
+                    if ttm[jchar].isnumeric():
+                        num1 = jchar
+                    else:
+                        break
+            # m = ongc.get(tt.replace('-', ''))
+            if num1 > 0:
+                m = ongc.get(ttm[:num1+1])
             if m is None:
                 raise Exception('unable to find which ngc is: '+tt)
             else:
