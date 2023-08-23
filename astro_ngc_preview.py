@@ -84,21 +84,22 @@ for row in range(len(df)):
         filt = filt_num(files)
         files = files[np.argsort(filt)]
         filt = np.sort(filt)
-        mn = np.zeros((len(files),2), bool)
+        mn = np.zeros((len(files),2))
         for ii in range(len(files)):
             if 'miri' in files[ii]:
-                mn[ii,0] = True
+                mn[ii,0] = 1
             if 'nircam' in files[ii]:
-                mn[ii,1] = True
+                mn[ii,1] = 1
             if mn[ii, :].sum() == 0:
-                raise Exception('no miri and no nircam')
+                print('no miri and no nircam '+files[ii])
+                mn[ii, :] = np.nan
             elif mn[ii, :].sum() == 2:
                 raise Exception('both miri and nircam')
 
         method = 'rrgggbb'
-        if np.mean(mn[:, 0]) == 1:
+        if np.nanmean(mn[:, 0]) == 1:
             instrument = 'MIRI'
-        elif np.mean(mn[:,1]) == 1:
+        elif np.nanmean(mn[:,1]) == 1:
             instrument = 'NIRCam'
         else:
             instrument = 'NIRCam+MIRI'
@@ -107,16 +108,16 @@ for row in range(len(df)):
         plotted = []
         # TODO decide if to use 0.5 1 1
         made_png = False
-        if np.sum(mn[:, 0]) >= 2:
-            auto_plot(tgt, exp=list(files[mn[:, 0]]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
+        if np.nansum(mn[:, 0]) >= 2:
+            auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt+'_MIRI.png')
             made_png = True
-        if np.sum(mn[:,1]) >= 2:
-            auto_plot(tgt, exp=list(files[mn[:, 1]]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
+        if np.nansum(mn[:,1]) >= 2:
+            auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
             plotted.append(tgt + '_NIRCam.png')
             made_png = True
-        if '+' in instrument and np.sum(mn) >= 2 and not both_apart:
-            auto_plot(tgt, exp=list(files), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
+        if '+' in instrument and np.nansum(mn) >= 2 and not both_apart:
+            auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
             plotted.append(tgt+'_'+instrument+'.png')
             made_png = True
         ##
