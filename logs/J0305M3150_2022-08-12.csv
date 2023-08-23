@@ -1,0 +1,6 @@
+file,width,height,offset,chosen
+jw02078-o007_t009_niriss_clearp-f444w_i2d.fits,2236.0,2255.0,344.4824426016524,True
+jw02078-o007_t009_niriss_clearp-f356w_i2d.fits,2405.0,2137.0,335.3841569236863,False
+jw02078-o007_t009_nircam_clear-f200w_i2d.fits,10248.0,4692.0,48.50013280840878,True
+jw02078-o007_t009_nircam_clear-f115w_i2d.fits,10764.0,4561.0,56.27635680393026,True
+jw02078-o007_t009_nircam_clear-f356w_i2d.fits,5247.0,2180.0,56.27635680393026,True
