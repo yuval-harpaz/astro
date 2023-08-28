@@ -58,6 +58,38 @@ def list_files(parent, search='*_i2d.fits', exclude='', include=''):
     path = sorted(path)
     return path
 
+
+def fix_wcs_by_log(p, log, hdul=None):
+    '''
+
+    Args:
+        p: filename
+        hdul: hdu = fits.open(p)
+        log: df with CRVAL1fix
+
+    Returns:
+        hdu with fixed CRVAL1 and CRVAL2
+    '''
+    if hdul is None:
+        hdu = fits.open(p)
+    if type(log) == str:
+        log = pd.read_csv(log)
+    row = np.where(log['file'] == p)[0]
+    if len(row) == 1:
+        row = row[0]
+        if 'CRVAL1fix' in log.columns:
+            new = log.iloc[row]['CRVAL1fix']
+            if ~np.isnan(new):
+                hdul[1].header['CRVAL1'] = new
+            new = log.iloc[row]['CRVAL2fix']
+            if ~np.isnan(new):
+                hdul[1].header['CRVAL2'] = new
+        else:
+            raise Exception('no CRVAL1fix in log')
+    else:
+        raise Exception(f'expected one log row with {p}')
+    return hdul
+
 def mosaic_xy(path, plot=False, log=None):
     '''
     get x y origins of each image
@@ -74,24 +106,29 @@ def mosaic_xy(path, plot=False, log=None):
     for ii, p in enumerate(path):
         hdul = fits.open(p)
         if log is not None:
-            row = np.where(log['file'] == p)[0]
-            if len(row) == 1:
-                row = row[0]
-                if 'CRVAL1fix' in log.columns:
-                    new = log.iloc[row]['CRVAL1fix']
-                    if ~np.isnan(new):
-                        hdul[1].header['CRVAL1'] = new
-                    new = log.iloc[row]['CRVAL2fix']
-                    if ~np.isnan(new):
-                        hdul[1].header['CRVAL2'] = new
-                else:
-                    raise Exception('no CRVAL1fix in log')
-            else:
-                raise Exception(f'expected one log row with {p}')
+            hdul = fix_wcs_by_log(p, log, hdul=hdul)
+            # row = np.where(log['file'] == p)[0]
+            # if len(row) == 1:
+            #     row = row[0]
+            #     if 'CRVAL1fix' in log.columns:
+            #         new = log.iloc[row]['CRVAL1fix']
+            #         if ~np.isnan(new):
+            #             hdul[1].header['CRVAL1'] = new
+            #         new = log.iloc[row]['CRVAL2fix']
+            #         if ~np.isnan(new):
+            #             hdul[1].header['CRVAL2'] = new
+            #     else:
+            #         raise Exception('no CRVAL1fix in log')
+            # else:
+            #     raise Exception(f'expected one log row with {p}')
 
         w = wcs.WCS(hdul[1].header)
         if ii == 0:
             w0 = w.copy()
+            pix_size0 =  hdul[1].header['CDELT1']
+        pix_size = hdul[1].header['CDELT1']
+        if abs(1-pix_size/pix_size0) > 0.1:
+            raise Exception('pixel size more than 10% different')
         crval[ii, :len(w.wcs.crval)] = w.wcs.crval
         size.append(w.array_shape)
         pix.append(w.wcs.crpix)
@@ -340,15 +377,19 @@ def download_fits_files(file_names, destination_folder='', overwrite=False):
                 success += 1
     print(f'Downloaded {success} files to {destination_folder}')
 
-def reproject(path, project_to=0):
+def reproject(path, project_to=0, log=None):
     # FIXME add support for exact and adaptive methods
     template = path[project_to]
     # remove the template from the path
     # path = path[:project_to] + path[project_to+1:]
     hdu_temp = fits.open(template)
+    if log is not None:
+        hdu_temp = fix_wcs_by_log(template, log, hdul=hdu_temp)
     layers = np.ndarray((hdu_temp[1].shape[0], hdu_temp[1].shape[1], len(path)))
     for ii, pp in enumerate(path):
         hdu = fits.open(pp)
+        if log is not None:
+            hdu = fix_wcs_by_log(pp, log, hdul=hdu)
         if ii == project_to:
             layers[:,:,ii] = hdu[1].data
         else:
