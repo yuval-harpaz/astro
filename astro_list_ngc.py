@@ -74,8 +74,9 @@ def list_ngc():
         elif tt[:2] == 'IC':
             ic = ongc.get(tt.replace('-', ''))
             if ic is None:
-                raise Exception('unable to find which ngc is: ' + tt)
-            if ic.name[:3] == 'NGC':
+                print('unable to find which ngc is: ' + tt)
+                ngc.append(0)
+            elif ic.name[:3] == 'NGC':
                 ngc.append(int(ic.name[3:]))
             else:
                 ngc.append(0)
