@@ -1,2 +1,2 @@
-file,width,height,offset,chosen
-jw02130-o014_t008_nircam_clear-f430m_i2d.fits,6824.0,10028.0,249.1091130979863,True
+file,width,height,offset,chosen,CRVAL1,CRVAL2
+jw02130-o014_t008_nircam_clear-f430m_i2d.fits,6824.0,10028.0,249.1091130979863,True,23.43477568673331,30.54929041285902
