@@ -1,6 +1,8 @@
 from astro_utils import *
-auto_plot('HH46', exp='*.fits', png='deband.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False,
-          adj_args={'factor': 4}, max_color=False, fill=True, deband=True, )
+auto_plot('IC348-MOSAIC', exp='log', png='deband.png', pkl=True, resize=False, method='rrgggbb', plot=False,
+           max_color=False, fill=False, deband=True, adj_args={'factor': 2})
+# auto_plot('HH46', exp='*.fits', png='deband.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False,
+#           adj_args={'factor': 4}, max_color=False, fill=True, deband=True, )
 # from time import time
 #
 # ##

@@ -221,8 +221,8 @@ def hole_conv_fill(img, n_pixels_around=4, ringsize=15, clean_below_local=0.75, 
                 x = zer[ii, 0] + jj
                 for kk in idx:
                     y = zer[ii, 1] + kk
-                    if x == 511 and y == 88:
-                        a=1  # debug stop
+                    # if x == 511 and y == 88:
+                    #     a=1  # debug stop
                     if x > -1 and y > -1 and x < img.shape[0] and y < img.shape[1]:
                         if (img[x, y] < conv[x, y] * clean_below_local) and img[x, y] < med * clean_below:
                             img[x, y] = conv[x, y]
