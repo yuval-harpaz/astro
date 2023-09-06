@@ -102,6 +102,8 @@ def list_ngc():
             ngc.append(4594)
         elif tt == '2022ACKO':
             ngc.append(1300)
+        elif 'BRICK13' in tt:
+            ngc.append(224)
         else:
             ngc.append(0)
     ##
