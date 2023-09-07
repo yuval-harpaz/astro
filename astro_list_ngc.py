@@ -411,7 +411,19 @@ if __name__ == "__main__":
     df_prev = pd.read_csv('ngc.csv', sep=',')
     df.to_csv('ngc.csv', sep=',', index=False)
     ngc_html()
-    if df.iloc[0]['release_date'] > df_prev.iloc[0]['release_date']:
-        toot = 'A new NGC image at https://yuval-harpaz.github.io/astro/ngc.html'
+    if df.iloc[0]['target_name'] == df_prev.iloc[0]['target_name']:
+        print('no new NGC')
+    else:
+        last = np.where(df['target_name'] == df_prev['target_name'][0])[0][-1]
+        if last == 1:
+            s = ''
+            a = 'A n'
+        else:
+            s = 's'
+            a = 'N'
+        tgts = ''
+        for new in range(last):
+            tgts += df['target_name'][new]+', '
+        toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/ngc.html'
         masto, _ = connect_bot()
         masto.status_post(toot)

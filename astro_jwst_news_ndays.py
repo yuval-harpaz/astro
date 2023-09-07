@@ -68,14 +68,14 @@ for calib in [False, True]:
         # print('making html')
         for iimg in range(len(tbl)):  # min([len(tbl), n])):
             time = astropy.time.Time(tbl['t_obs_release'].iloc[iimg], format='mjd').utc.iso
-            date = time[:10]
+            date = time[:16]
             if date != date_prev:
                 page = page + '\n<br>' +date + '<br>\n'
             jpg = tbl['jpegURL'].iloc[iimg].replace('mast:JWST/product/', '')
             desc = 'title: ' + tbl['obs_title'].iloc[iimg] + '\n' + \
                    'target: ' + tbl['target_name'].iloc[iimg] + '\n' + \
                    'proposal: ' + str(tbl['proposal_id'].iloc[iimg]) + '\n' + \
-                   jpg + '\n' + time[:16]
+                   jpg + '\n' + date
             date_prev = date
             page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">'
         page = page + cred + '\n</body>\n</html>\n'
@@ -83,8 +83,17 @@ for calib in [False, True]:
             text_file.write(page)
         first_image = page.index('https://mast')
         # new_date = page[first_image - 16:first_image - 6]
-        if new_date > last_date and not calib:
-            toot = 'new ' + tit + ' images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
+        if new_date[:16] > last_date[:16] and not calib:
+            for tblrow in range(len(tbl)):
+                nd = astropy.time.Time(tbl['t_obs_release'].iloc[tblrow], format='mjd').utc.iso[:16]
+                if nd == last_date[:16]:
+                    print('gotcha')
+                    break
+            # last = np.where(tbl['target_name'] == df_prev['target_name'][0])[0][-1]
+            tgts = ','
+            tgts = tgts.join(list(np.unique(tbl.iloc[:tblrow]['target_name'])))
+            toot = f'New {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
+            # toot = 'new ' + tit + ' images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
             masto, _ = connect_bot()
             a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
             if a == 0:
@@ -134,7 +143,7 @@ for calib in [False, True]:
         date_prev = ''
         for iimg in range(len(tbl)):  # min([len(tbl), n])):
             time = astropy.time.Time(tbl['t_obs_release'].iloc[iimg], format='mjd').utc.iso
-            date = time[:10]
+            date = time[:16]
             if date != date_prev:
                 page = page + '\n<br>' +date + '<br>\n'
             target = tbl['dataURL'].iloc[iimg].replace('mast:JWST/product/', '')
