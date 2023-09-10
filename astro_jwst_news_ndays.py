@@ -71,7 +71,12 @@ for calib in [False, True]:
             date = time[:16]
             if date != date_prev:
                 page = page + '\n<br>' +date + '<br>\n'
-            jpg = tbl['jpegURL'].iloc[iimg].replace('mast:JWST/product/', '')
+            jpg = tbl['jpegURL'].iloc[iimg]
+            if type(jpg) == str:
+                jpg = jpg.replace('mast:JWST/product/', '')
+            else:
+                print(f'strange jpg path {jpg}')
+                jpg = ''
             desc = 'title: ' + tbl['obs_title'].iloc[iimg] + '\n' + \
                    'target: ' + tbl['target_name'].iloc[iimg] + '\n' + \
                    'proposal: ' + str(tbl['proposal_id'].iloc[iimg]) + '\n' + \
