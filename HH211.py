@@ -12,10 +12,44 @@ hdul = fits.open('jw01257-o003_t005_nircam_clear-f210m_i2d.fits')
 os.chdir('/media/innereye/My Passport/Data/JWST/HH211/')
 obs_table = Observations.query_object("HH211")
 obj = obs_table[obs_table['instrument_name'] == 'NIRCAM/IMAGE']
+obj = obj[obj['dataRights'] == 'PUBLIC']
+obj = obj[obj['target_name'] == 'HH211NIRCAM']
+isurl = np.zeros(len(obj), bool)
+for iobs in range(len(isurl)):
+    isurl[iobs] = type(obj['jpegURL'][iobs]) == np.str_
+obj = obj[isurl]
+##
+address = 'https://mast.stsci.edu/portal/Download/file/'
+for iobs in range(len(obj)):
+    try:
+        os.system('wget -O tmp.jpg '+address+obj['jpegURL'][iobs][5:])
+        img = plt.imread('tmp.jpg')
+        plt.subplot(4, 5, iobs+1)
+        plt.imshow(img)
+        plt.title(obj['filters'][iobs])
+    except:
+        print(iobs)
+
+
+
+##
 for obs in obj:
     all = Observations.get_product_list(obs)
     filt = Observations.filter_products(all, extension='_cal.fits')
+    filt = filt[filt['productType'] == 'SCIENCE']
     Observations.download_products(filt)
+
+
+##
+path = list_files('/media/innereye/My Passport/Data/JWST/HH211/', search='*image*')
+short = []
+long = []
+for p in path:
+    if 'long' in p:
+        long.append(p)
+    else:
+        short.append(p)
+
 # if not os.path.isfile('IC348-MOSAIC.pkl'):
 #     auto_plot('IC348-MOSAIC', exp='log', png='deband.png', pkl=True, resize=False, method='rrgggbb', plot=False,
 #                max_color=False, fill=False, deband=True, adj_args={'factor': 2})

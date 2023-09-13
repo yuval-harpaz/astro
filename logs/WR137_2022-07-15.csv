@@ -1,0 +1,5 @@
+file,width,height,offset,chosen
+jw01349-o006_t005_niriss_clearp-f380m-sub80_i2d.fits,89.0,88.0,3.6264918011402e-11,True
+jw01349-o006_t005_niriss_clearp-f480m-sub80_i2d.fits,89.0,88.0,3.6264918011402e-11,True
+jw01349-c1010_t005_niriss_clearp-f380m-sub80_i2d.fits,89.0,88.0,3.6264918011402e-11,False
+jw01349-c1010_t005_niriss_clearp-f480m-sub80_i2d.fits,89.0,88.0,3.6264918011402e-11,False
