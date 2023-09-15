@@ -720,6 +720,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                         hd[1].header[f'CRVAL{cr}'] = correct
         return hd
 
+    todeband = np.zeros(len(path), bool)
     pkl_name = folder + '.pkl'
     if type(pkl) == str:
         pkl_name = pkl
@@ -748,7 +749,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             if (type(deband) == list) or (type(deband) == np.ndarray):
                 todeband = deband
             elif deband == 1:
-                todeband = np.ones(layers.shape[0])
+                todeband = np.ones(len(path))
             elif (deband == 'nircam') or (deband > 1):
                 dbstr = ' nircam'
                 todeband = np.array(['nircam' in x for x in path])
@@ -854,8 +855,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     path = path[~empty]
     rgb = None
     if layers.shape[2] == 2:
-        ir = [0]
-        ib = [1]
+        ir = [1]
+        ib = [0]
         ig = [0, 1]
         iii = [ir, ig, ib]
     elif method == 'rrgggbb':
