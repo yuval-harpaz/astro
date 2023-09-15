@@ -627,7 +627,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         arguments to pass to level_adjust
     opvar: str
         what variable to return. 'rgb' or 'layers'
-
+    deband: bool | int | list | ndarray
+        remove banding noise 1/f. True or 1 for all layers, 2 or 'nircam' for nircam layers, False default. lots of time!
     Returns
     -------
     rgb: np.ndarray
@@ -724,6 +725,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         pkl_name = pkl
         pkl = True
     if os.path.isfile(pkl_name) and pkl:
+        if deband:
+            raise Exception(f'deband BEFORE saving pickle. use deband=False or pkl=False or delete {pkl_name}')
         layers = np.load(pkl_name, allow_pickle=True)
         if len(path) < layers.shape[2]:
             os.chdir(search)
@@ -740,6 +743,15 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             wh = resize_wh(layers.shape[:2])
             layers = transform.resize(layers, wh)
     else:
+        if deband:
+            dbstr = ''
+            if (type(deband) == list) or (type(deband) == np.ndarray):
+                todeband = deband
+            elif deband == 1:
+                todeband = np.ones(layers.shape[0])
+            elif (deband == 'nircam') or (deband > 1):
+                dbstr = ' nircam'
+                todeband = np.array(['nircam' in x for x in path])
         for ii in range(len(path)):
             if ii == 0:
                 hdu0 = fits.open(path[ii])
@@ -748,8 +760,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 if resize:# make rescale size for wallpaper 1920 x 1080
                     wh = resize_wh(img.shape)
                     img = transform.resize(img, wh)
-                if deband:
-                    print('going to deband')
+                if todeband[ii]:
+                    print('going to deband'+dbstr)
                     img = deband_layer(img)
                     print('done deband 0')
                 layers = np.zeros((img.shape[0], img.shape[1], len(path)))
@@ -758,7 +770,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             else:
                 hdu = fits.open(path[ii])
                 hdu = crval_fix(hdu)
-                if deband:
+                if todeband[ii]:
                     hdu[1].data = deband_layer(hdu[1].data)
                     print(f'done deband {ii}')
                 img, _ = reproject_interp(hdu[1], hdr0)
@@ -852,7 +864,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         ir = np.arange(layers.shape[-1] - ncol, layers.shape[-1]).astype(int)
         ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
         iii = [ir, ig, ib]
-    elif method == 'mnn':  # Miri Nircam Nircam
+    elif method[:3] == 'mnn':  # Miri Nircam Nircam, could also be mnnw for whiteish
         ismiri = ['miri' in x for x in path]
         ir = np.where(ismiri)[0]
         inircam = np.where(~np.asarray(ismiri))[0]
@@ -881,6 +893,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         rgb = rgb.astype('uint8')
     if rgb is None:
         rgb = make_rgb(max_color=max_color)
+    if method == 'mnnw':
+        rgb[..., 0] = np.max([rgb[..., 0], np.min(rgb[..., 1:], 2)], 0)
     if plot:
         plt.figure()
         plt.imshow(rgb, origin='lower')
