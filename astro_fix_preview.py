@@ -1,6 +1,6 @@
 import pandas as pd
 
-from astro_list_ngc import make_thumb
+from astro_list_ngc import make_thumb, ngc_html_thumb
 from astro_utils import *
 from glob import glob
 auto_plot('NGC3256-CENTERED', exp='*o029*.fits', png='NGC3256-CENTERED_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
@@ -62,56 +62,62 @@ os.chdir('/media/innereye/My Passport/Data/JWST/data/NGC-4321/')
 plotted = glob('*png')
 make_thumb(plotted, '2023-01-17', flip=False)
 ##
+'''
+sep 2023 issue with two color images
+'''
+##
+png = 'LDN-694_NIRCam.png'
+auto_plot('LDN-694', exp='log', png=png, pkl=True, resize=True, method='rrgggbb', plot=False,
+          max_color=False, fill=False, deband=False, adj_args={'factor': 3})
+date = glob(f'/home/innereye/astro/docs/thumb/*{png}')[0].split('/')[-1][:10]
+make_thumb(png, date, flip=False)
+##
+tgt = 'CL-WESTERLUND-CF'
+png = tgt + '_NIRCam.png'
+auto_plot(tgt, exp='*nircam*fits', png=png, pow=[1, 1, 1], pkl=False,
+          resize=True, method='rrgggbb', plot=False)
+date = glob(f'/home/innereye/astro/docs/thumb/*{png}')[0].split('/')[-1][:10]
+make_thumb(png, date, flip=False)
+##
+tgt = 'NGC-6822-NIRCAM-TILE-1'
+inst = 'MIRI'
+png = tgt + f'_{inst}.png'
+auto_plot(tgt, exp=f'*{inst.lower()}*fits', png=png, pow=[1, 1, 1], pkl=False,
+          resize=True, method='rrgggbb', plot=False)
+date = glob(f'/home/innereye/astro/docs/thumb/*{png}')[0].split('/')[-1][:10]
+make_thumb(png, date, flip=False)
+##
+tgt = 'PREIMAGING+BRICK13'
+inst = 'NIRCam'
+png = tgt + f'_{inst}.png'
+auto_plot(tgt, exp=f'*{inst.lower()}*fits', png=png, pow=[1, 1, 1], pkl=False,
+          resize=True, method='rrgggbb', plot=False)
+date = glob(f'/home/innereye/astro/docs/thumb/*{png}')[0].split('/')[-1][:10]
+make_thumb(png, date, flip=False)
+##
+tgt = 'M31-NIRCAM-PREIMAGING'
+inst = 'NIRCam'
+png = tgt + f'_{inst}.png'
+auto_plot(tgt, exp=f'*{inst.lower()}*fits', png=png, pow=[1, 1, 1], pkl=False,
+          resize=True, method='rrgggbb', plot=False)
+date = glob(f'/home/innereye/astro/docs/thumb/*{png}')[0].split('/')[-1][:10]
+make_thumb(png, date, flip=False)
+##
+tgts = ['M-33', 'NGC0300MIRI', 'NGC891-DISK-NORTH3', 'NGC891-DISK-NORTH1', 'NGC891-DISK-NORTH', 'CASSIOPEIA-A-CENTER-IFU',
+        'NGC0598MIRI-BRIGHT2', 'NGC0598MIRI-BRIGHT1', 'NGC0598MIRI', 'SGRA', 'NGC7793MIRI', 'NGC2506G31', 'NGC-5139',
+        'NGC-6543']
+insts = ['MIRI', 'MIRI', 'NIRCam', 'NIRCam', 'NIRCam', 'MIRI',
+         'MIRI', 'MIRI', 'MIRI', 'NIRCam', 'MIRI', 'NIRCam', 'NIRCam',
+         'MIRI']
+for ii in range(len(tgts)):
+    tgt = tgts[ii]
+    inst = insts[ii]
+    png = tgt + f'_{inst}.png'
+    auto_plot(tgt, exp=f'*{inst.lower()}*fits', png=png, pow=[1, 1, 1], pkl=False,
+              resize=True, method='rrgggbb', plot=False)
+    date = glob(f'/home/innereye/astro/docs/thumb/*{png}')[0].split('/')[-1][:10]
+    make_thumb(png, date, flip=False)
+##
+ngc_html_thumb()
+##
 # from astro_utils import *
-# from glob import glob
-# os.chdir('/home/innereye/JWST/neptune/')
-# files = np.sort(glob('jw*s3d.fits'))
-# files1d = np.sort(glob('jw*x1d.fits'))
-#
-# data = []
-# for ii in [0, 1, 2, 3]:
-#     hdu = fits.open(files[ii])
-#     data.append(hdu[1].data.copy())
-#     hdu.close()
-# wavelength = []
-# for ii in [0, 1, 2, 3]:
-#     hdu = fits.open(files1d[ii])
-#     wavelength.append(hdu[1].data['WAVELENGTH'])
-#     hdu.close()
-#
-# plt.figure()
-# for ii in [0, 1, 2, 3]:
-#     plt.subplot(2,2,ii+1)
-#     med = np.nanmedian(data[ii], 0)
-#     if ii == 0:
-#         med[med < 0] = 0
-#         med[med > 200] = 0
-#     plt.imshow(med)
-#
-# center = [[22, 21], [20, 23], [25, 24], [12, 16]]
-# corner = [[13, 17], [15, 19], [21, 20], [10, 16]]
-# buldge = [[25, 25], [22, 24], [27, 25], [13, 18]]
-# plt.figure()
-# for ii in [0, 1, 2, 3]:
-#     plt.subplot(2,2,ii+1)
-#     med = np.nanmedian(data[ii], 0)
-#     if ii == 0:
-#         med[med < 0] = 0
-#         med[med > 200] = 0
-#     # med[center[ii][0], center[ii][1]] = 0
-#     med[buldge[ii][0], buldge[ii][1]] = 0
-#     plt.imshow(med)
-#
-# plt.figure()
-# for ii in [0, 1, 2, 3]:
-#     # plt.subplot(2,2,ii+1)
-#     plt.plot(wavelength[ii], data[ii][:, corner[ii][0], corner[ii][1]], 'g')
-#     plt.plot(wavelength[ii], data[ii][:, buldge[ii][0], buldge[ii][1]], 'b')
-#     plt.plot(wavelength[ii], data[ii][:, center[ii][0], center[ii][1]], 'r')
-# plt.title('Flux for Neptune at three spots')
-# plt.ylabel(hdu[1].header['TUNIT2'])
-# plt.xlabel('Wavelength (µm)')
-# plt.grid()
-#
-#
-#
