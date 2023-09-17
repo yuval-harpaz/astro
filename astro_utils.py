@@ -538,7 +538,13 @@ def filt_num(path):
             filt[ii] = np.nan
         else:
             p = plip[:iF][-1:0:-1]
-            filt[ii] = int(p[:p.find('_')-1])
+            inn = 0  # is not a number
+            for ip in p:
+                if ip.isnumeric():
+                    inn += 1
+                else:
+                    break
+            filt[ii] = int(p[:inn])
     return filt
 
 
