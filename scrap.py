@@ -1,6 +1,6 @@
 from astro_utils import *
-auto_plot('GALCEN', exp='*.fits', png='filled2.png', pkl=True, resize=False, method='rrgggbb', plot=False,
-           max_color=False, fill=True, deband=False, adj_args={'factor': 2})
+auto_plot('LDN-694', exp='logLDN-694_2022-09-20.csv', png='deband.png', pkl=False, resize=True, method='rrgggbb', plot=False,
+           max_color=False, fill=True, deband=True, adj_args={'factor': 2})
 # auto_plot('HH46', exp='*.fits', png='deband.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False,
 #           adj_args={'factor': 4}, max_color=False, fill=True, deband=True, )
 # from time import time
