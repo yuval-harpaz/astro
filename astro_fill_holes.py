@@ -230,6 +230,80 @@ def hole_conv_fill(img, n_pixels_around=4, ringsize=15, clean_below_local=0.75, 
     return img
 
 
+def hole_func_fill(img1, kernel_array=None, fill_below=0, func='max', n_iter=100):
+    '''
+    fill holes with a maximum filter, conv, or a custom function
+    Args:
+        img1: 2D ndarray
+        kernel_array: a square ndarray with an odd length.
+        fill_below: int | float, consider hole values at or below this
+        func: a function with input arguments for data patch sq and kernel_array. allow nans.
+        n_iter: int, how many times to run until filled
+
+    Returns:
+        img1 after filling its holes
+    '''
+    if func == 'max':
+        if kernel_array is None:
+            kernel_array = np.ones((17, 17)) / 17 ** 2
+
+        def func(sq):
+            return np.nanmax(sq)
+    elif func == 'mean':
+        if kernel_array is None:
+            kernel = Gaussian2DKernel(x_stddev=2)  # 17 by 17
+            kernel_array = kernel.array
+
+        def func(sq):
+            val = np.nansum(sq*kernel_array)  # /np.nansum(kernel_array[~np.isnan(sq)])
+            return val
+    for iter in range(n_iter):
+        # change nans and negative to zeros to avoid treating black edged as holes
+        img1[np.isnan(img1)] = 0
+        img1[img1 <= 0] = 0
+        for ii in range(img1.shape[0]):
+            pos = np.where(img1[ii,:] > 0)[0]
+            if len(pos) == 0:
+                img1[ii,:] = np.nan
+            else:
+                img1[ii, :pos[0]] = np.nan
+                img1[ii, pos[-1]+1:] = np.nan
+        for jj in range(img1.shape[1]):
+            pos = np.where(img1[:, jj] > 0)[0]
+            if len(pos) == 0:
+                img1[:, jj] = np.nan
+            else:
+                img1[:pos[0], jj] = np.nan
+                img1[pos[-1]+1:, jj] = np.nan
+        if kernel_array.shape[0] != kernel_array.shape[1]:
+            raise Exception('kernel must be square')
+        kershape0 = kernel_array.shape[0]
+        if kershape0%2 == 0:
+            raise Exception('kernel array must have odd dimentions')
+        zer = np.where(img1 <= fill_below)
+        if len(zer[0]) == 0:
+            print(f'no more holes after {iter} iterations')
+            break
+        zer = np.asarray(zer).T
+        zer = zer[(zer[:,0] > np.floor(kershape0/2)) &
+                  (zer[:,1] > np.floor(kershape0/2)) &
+                  (zer[:,0] < img1.shape[0]-np.ceil(kershape0/2)) &
+                  (zer[:,1] < img1.shape[1]-np.ceil(kershape0/2)), :]
+        if len(zer) == 0:
+            print(f'no more holes after {iter} iterations')
+            break
+        img1[img1 <= fill_below] = np.nan  # turn zeros to nans to ignore when computing fill values
+        half = int(kershape0/2)
+        fill_val = np.zeros(zer.shape[0])
+        for izer in range(zer.shape[0]):
+            sq = img1[zer[izer, 0] - half:zer[izer, 0] + half + 1, zer[izer, 1] - half:zer[izer, 1] + half + 1]
+            fill_val[izer] = func(sq)
+            # img1[zer[izer, 0], zer[izer, 1]] = func(sq*kernel.array)
+            # fill_val[izer] = np.nansum(sq*kernel.array)/np.nansum(kernel.array[~np.isnan(sq)])
+        img1[zer[:, 0], zer[:, 1]] = fill_val
+        img1[np.isnan(img1)] = 0
+
+    return img1
 
 if __name__ == '__main__':
     path = root+'jw01288-o001_t011_nircam_clear-f480m_cropped.fits'

@@ -764,6 +764,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 hdu0 = fits.open(path[ii])
                 hdu0 = crval_fix(hdu0)
                 img = hdu0[1].data
+                if fill:
+                    img = hole_func_fill(img)
                 if resize:# make rescale size for wallpaper 1920 x 1080
                     wh = resize_wh(img.shape)
                     img = transform.resize(img, wh)
@@ -776,6 +778,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 hdu0.close()
             else:
                 hdu = fits.open(path[ii])
+                if fill:
+                    hdu[1].data = hole_func_fill(hdu[1].data)
                 hdu = crval_fix(hdu)
                 if todeband[ii]:
                     hdu[1].data = deband_layer(hdu[1].data)
@@ -850,10 +854,10 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             empty[lay] = True
         else:
             layers[:, :, lay] = level_adjust(layers[:, :, lay], **adj_args)
-            if fill:
-                xy = hole_xy(layers[:, :, lay])
-                size = hole_size(layers[:, :, lay], xy, plot=False)
-                layers[:, :, lay] = hole_disk_fill(layers[:, :, lay], xy, size, larger_than=0, allowed=0.33)
+            # if fill:
+            #     xy = hole_xy(layers[:, :, lay])
+            #     size = hole_size(layers[:, :, lay], xy, plot=False)
+            #     layers[:, :, lay] = hole_disk_fill(layers[:, :, lay], xy, size, larger_than=0, allowed=0.33)
             if smooth:
                 layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
     # combine colors by method
