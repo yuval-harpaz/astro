@@ -31,6 +31,8 @@ for row in range(len(df)):
     date0 = df["collected_from"][row][:10]
     already = glob('/home/innereye/astro/docs/thumb/'+date0+'_'+tgt+'*')
     both_apart = False  # no overlap between MIRI and NIRCam
+    if tgt == 'NGC-6822-MIRI-TILE-2-COPY':
+        both_apart = True
     if len(already) > 0:
         msg = 'pictures exist:    '
         for alr in already:
