@@ -108,7 +108,7 @@ def list_ngc():
             ngc.appen(6946)
         elif tt == 'SN-2004ET':
             ngc.append(6946)
-        elif tgt == 'SN2022AAIQ':
+        elif tt == 'SN2022AAIQ':
             ngc.append(5631)
         else:
             ngc.append(0)
