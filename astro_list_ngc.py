@@ -105,7 +105,7 @@ def list_ngc():
         elif 'BRICK13' in tt:
             ngc.append(224)
         elif tt == 'SN-2017EAW':
-            ngc.appen(6946)
+            ngc.append(6946)
         elif tt == 'SN-2004ET':
             ngc.append(6946)
         elif tt == 'SN2022AAIQ':
