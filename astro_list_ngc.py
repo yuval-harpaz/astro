@@ -420,7 +420,7 @@ if __name__ == "__main__":
     if df.iloc[0]['target_name'] == df_prev.iloc[0]['target_name']:
         print('no new NGC')
     else:
-        last = np.where(df['target_name'] == df_prev['target_name'][0])[0][-1]
+        last = np.where(df['target_name'] == df_prev['target_name'][0])[0][0]
         if last == 1:
             s = ''
             a = 'A n'
