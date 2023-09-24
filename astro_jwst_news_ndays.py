@@ -64,7 +64,7 @@ for calib in [False, True]:
         add = download + other
         page = page + social(add=add)
         #<h2>by <a href="https://twitter.com/yuvharpaz" target="_blank">@yuvharpaz</a>, <a href="https://github.com/yuval-harpaz/astro/blob/main/astro_jwst_news_ndays.py" target="_blank"> code</a>' + download + other + '. Follow the <a href="https://botsin.space/@astrobot_jwst" target="_blank">bot</a>.<br>'
-        date_prev = ''
+        date_prev = ''  # add date every time there is a new dataset
         # print('making html')
         for iimg in range(len(tbl)):  # min([len(tbl), n])):
             time = astropy.time.Time(tbl['t_obs_release'].iloc[iimg], format='mjd').utc.iso
@@ -97,6 +97,10 @@ for calib in [False, True]:
             # last = np.where(tbl['target_name'] == df_prev['target_name'][0])[0][-1]
             tgts = ','
             tgts = tgts.join(list(np.unique(tbl.iloc[:tblrow]['target_name'])))
+            print(f'debug info ndays:\n'
+                  f'targets: {tgts}\n'
+                  f'table row: {tblrow}\n'
+                  f'new date: {new_date[:16]}, prev date: {last_date[:16]}')
             toot = f'New {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
             # toot = 'new ' + tit + ' images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
             masto, _ = connect_bot()
