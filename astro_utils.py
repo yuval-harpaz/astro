@@ -1,22 +1,25 @@
 import pandas as pd
-from astropy.io import fits
+# from astropy.io import fits
 from astropy import wcs
+from astropy.coordinates import SkyCoord
+from astropy.time import Time
+from astropy.wcs import WCS
+from astropy.nddata import Cutout2D
+import astropy.units as u
+from astroquery.simbad import Simbad
+from astroquery.mast import Observations
 from reproject import reproject_interp
-import os
+# import os
 from glob import glob
 import matplotlib
 # matplotlib.use('Qt5Agg')
 # matplotlib.use('TkAgg')
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
-from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
-from astropy.time import Time
-from astropy.wcs import WCS
-from astropy.nddata import Cutout2D
+# from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
 from scipy.ndimage import median_filter, maximum_filter
 from scipy.signal import find_peaks, medfilt
-from astroquery.mast import Observations
 # from skimage.morphology import disk
 from bot_grabber import level_adjust, nanmask, get_JWST_products_from
 import pickle
@@ -599,9 +602,91 @@ def movmean(data, win):
     return smooth
 
 
+def blc_image(img):
+    for ii in range(3):
+        layer = img[..., ii]
+        layer[layer <= 0] = np.nan
+        layer = layer - np.nanmin(layer)
+        layer = layer / np.nanmax(layer)
+        layer[np.isnan(layer)] = 0
+        img[..., ii] = layer
+    return img
+
+
+
+def add_time(spaced, h_d):
+    # Add h m s for RA and DEC coordinates from simbad
+    toadd = [h_d, 'm', 's']
+    spaced = spaced.split(' ')
+    timed = ''
+    for seg in range(len(spaced)):
+        timed += spaced[seg]+toadd[seg]
+    return timed
+
+
+def crop_xy(crop):
+    # Get x and y values to crop from string input
+    if 'y1' in crop:
+        ldict = {}
+        exec(crop, globals(), ldict)
+        x1 = ldict['x1']
+        x2 = ldict['x2']
+        y1 = ldict['y1']
+        y2 = ldict['y2']
+        print(y1)
+    else:
+        raise Exception('I expect string to be like "y1=1003; y2=2248; x1=949; x2=1926"')
+    return x1, x2, y1, y2
+
+
+def annotate_simbad(img_file, fits_file, crop=None):
+    # crop example: crop =  'y1=54; y2=3176; x1=2067; x2=7156'
+    header = fits.open(fits_file)[1].header
+    img = plt.imread(img_file)
+    if img.shape[2] == 4:
+        img = img[..., :3]
+    img = img[::-1, ...]
+    wcs = WCS(header)
+    print('querying SIMBAD')
+    result_table = Simbad.query_region(
+        SkyCoord(ra=header['CRVAL1'],
+                 dec=header['CRVAL2'],
+                 unit=(u.deg, u.deg), frame='fk5'),
+        radius=0.1 * u.deg)
+    print(f'got {len(result_table)} results, converting to pixels')
+    if len(result_table) == 0:
+        raise Exception('no results')
+    pix = np.zeros((len(result_table), 2))
+    for ii in range(len(result_table)):
+        ra = add_time(result_table[ii]['RA'], 'h')
+        dec = add_time(result_table[ii]['DEC'], 'd')
+        c = SkyCoord(ra=ra, dec=dec).to_pixel(wcs)
+        pix[ii, :] = [c[0], c[1]]
+    y1 = 0
+    y2 = header['NAXIS2']
+    x1 = 0
+    x2 = header['NAXIS1']
+    if crop is None:
+        if img.shape[:2] != (y2, x2):
+            raise Exception('image and hdu not the same size')
+    else:
+        x1, x2, y1, y2 = crop_xy(crop)
+        if img.shape[:2] != (y2-y1, x2-x1):
+            raise Exception('image is expected to fit crop size')
+    inframe = (pix[:, 0] > x1) & (pix[:, 1] > y1) & (pix[:, 0] <= x2) & (pix[:, 1] <= y2)
+    if np.sum(inframe) == 0:
+        raise Exception('no results in frame')
+    else:
+        print(f'{np.sum(inframe)} results in frame')
+    plt.figure()
+    plt.imshow(img, origin='lower')
+    for idx in np.where(inframe)[0]:
+        plt.text(pix[idx, 0]-x1, pix[idx, 1]-y1,
+                 result_table[idx]['MAIN_ID'].replace('[LCW2019] ', '').replace('[WZT2014] ', ''), color='r')
+
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
-              crop=False, deband=False):
+              crop=False, deband=False, blc=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -809,16 +894,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         core_str = '_core'
     elif crop:
         if type(crop) == str:
-            if 'y1' in crop:
-                ldict = {}
-                exec(crop, globals(), ldict)
-                x1 = ldict['x1']
-                x2 = ldict['x2']
-                y1 = ldict['y1']
-                y2 = ldict['y2']
-                print(y1)
-            else:
-                raise Exception('I expect string to be like "y1=1003; y2=2248; x1=949; x2=1926"')
+            x1, x2, y1, y2 = crop_xy(crop)
         else:
             lay3 = [0, int(layers.shape[2]/2), layers.shape[2]-1]
             imtochoose = layers[..., lay3].copy()
@@ -906,6 +982,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         rgb = make_rgb(max_color=max_color)
     if method == 'mnnw':
         rgb[..., 0] = np.max([rgb[..., 0], np.min(rgb[..., 1:], 2)], 0)
+    if blc:
+        rgb = blc_image(rgb)
     if plot:
         plt.figure()
         plt.imshow(rgb, origin='lower')
