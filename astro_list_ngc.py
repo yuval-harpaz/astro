@@ -73,7 +73,9 @@ def list_ngc():
                 ngc.append(int(m.name[3:]))
         elif tt[:2] == 'IC':
             ic = ongc.get(tt.replace('-', ''))
-            if ic is None:
+            if tt == 'IC348-MOSAIC':
+                ngc.append(0)
+            elif ic is None:
                 print('unable to find which ngc is: ' + tt)
                 ngc.append(0)
             elif ic.name[:3] == 'NGC':
@@ -420,16 +422,23 @@ if __name__ == "__main__":
     if df.iloc[0]['target_name'] == df_prev.iloc[0]['target_name']:
         print('no new NGC')
     else:
-        last = np.where(df['target_name'] == df_prev['target_name'][0])[0][0]
-        if last == 1:
-            s = ''
-            a = 'A n'
+        last_loc = np.where((df_prev['target_name'] == df.iloc[0]['target_name']) &
+                            (df_prev['collected_from'] == df.iloc[0]['collected_from']))[0]
+        if len(last_loc) > 0:
+            print(f'last target {df.iloc[0]["target_name"]} and acquisition date {df.iloc[0]["collected_from"]} already in df, but not the newest row')
         else:
-            s = 's'
-            a = 'N'
-        tgts = ''
-        for new in range(last):
-            tgts += df['target_name'][new]+', '
-        toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/ngc.html'
-        masto, _ = connect_bot()
-        masto.status_post(toot)
+            last = np.where(df['target_name'] == df_prev['target_name'][0])[0][0]
+            if last == 1:
+                s = ''
+                a = 'A n'
+            else:
+                s = 's'
+                a = 'N'
+            tgts = ''
+            for new in range(last):
+                tgts += df['target_name'][new]+', '
+            if last > 3:
+                raise Exception(f'sus, too many new additions ({last}): {tgts[:-2]}')
+            toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/ngc.html'
+            masto, _ = connect_bot()
+            masto.status_post(toot)
