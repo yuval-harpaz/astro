@@ -603,6 +603,11 @@ def movmean(data, win):
 
 
 def blc_image(img):
+    if img.dtype == 'uint8':
+        uint8 = True
+        img = img.astype(float)
+    else:
+        uint8 = False
     for ii in range(3):
         layer = img[..., ii]
         layer[layer <= 0] = np.nan
@@ -610,6 +615,9 @@ def blc_image(img):
         layer = layer / np.nanmax(layer)
         layer[np.isnan(layer)] = 0
         img[..., ii] = layer
+    if uint8:
+        img = img*255
+        img = img.astype('uint8')
     return img
 
 
@@ -633,33 +641,49 @@ def crop_xy(crop):
         x2 = ldict['x2']
         y1 = ldict['y1']
         y2 = ldict['y2']
-        print(y1)
+        # print(y1)
     else:
         raise Exception('I expect string to be like "y1=1003; y2=2248; x1=949; x2=1926"')
     return x1, x2, y1, y2
 
-
-def annotate_simbad(img_file, fits_file, crop=None):
+##
+def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.6):
     # crop example: crop =  'y1=54; y2=3176; x1=2067; x2=7156'
+    if save:
+        from cv2 import putText, FONT_HERSHEY_SIMPLEX, LINE_AA
     header = fits.open(fits_file)[1].header
     img = plt.imread(img_file)
     if img.shape[2] == 4:
         img = img[..., :3]
-    img = img[::-1, ...]
+    if not save:
+        img = img[::-1, ...]
+    # TODO: add pix to df and save csv
     wcs = WCS(header)
     print('querying SIMBAD')
-    result_table = Simbad.query_region(
+    my_simbad = Simbad()
+    my_simbad.add_votable_fields('otype')
+    result_table = my_simbad.query_region(
         SkyCoord(ra=header['CRVAL1'],
                  dec=header['CRVAL2'],
                  unit=(u.deg, u.deg), frame='fk5'),
         radius=0.1 * u.deg)
+    result_table = result_table.to_pandas()
     print(f'got {len(result_table)} results, converting to pixels')
     if len(result_table) == 0:
         raise Exception('no results')
+    color = (100, 255, 255)
+    result_table['color'] = [color]*len(result_table)
+    result_table['OTYPE'].str.replace('Star', '*')
+    icat = np.where(result_table['OTYPE'].str.contains('\*'))[0]
+    for iicat in icat:
+        result_table.at[iicat, 'color'] = (255, 255, 255)
+    icat = np.where(result_table['OTYPE'].str.contains('ebula'))[0]
+    for iicat in icat:
+        result_table.at[iicat, 'color'] = (255, 100, 100)
     pix = np.zeros((len(result_table), 2))
     for ii in range(len(result_table)):
-        ra = add_time(result_table[ii]['RA'], 'h')
-        dec = add_time(result_table[ii]['DEC'], 'd')
+        ra = add_time(result_table['RA'][ii], 'h')
+        dec = add_time(result_table['DEC'][ii], 'd')
         c = SkyCoord(ra=ra, dec=dec).to_pixel(wcs)
         pix[ii, :] = [c[0], c[1]]
     y1 = 0
@@ -678,15 +702,35 @@ def annotate_simbad(img_file, fits_file, crop=None):
         raise Exception('no results in frame')
     else:
         print(f'{np.sum(inframe)} results in frame')
-    plt.figure()
-    plt.imshow(img, origin='lower')
-    for idx in np.where(inframe)[0]:
-        plt.text(pix[idx, 0]-x1, pix[idx, 1]-y1,
-                 result_table[idx]['MAIN_ID'].replace('[LCW2019] ', '').replace('[WZT2014] ', ''), color='r')
+    if save:
+        # color = (155, 255, 255)
+        thickness = 2
+        img = 255*img
+        img = img.astype('uint8')
+        for idx in np.where(inframe)[0]:
+            org = (int(np.round(pix[idx, 0] - x1)),
+                   int(np.round(y2)) - int(np.round(pix[idx, 1])))
+            img = putText(img, result_table['MAIN_ID'][idx], org,
+                          FONT_HERSHEY_SIMPLEX, fontScale,
+                          result_table['color'][idx], thickness, LINE_AA)
+        plt.imsave(img_file.replace('.', '_ann.'), img)
+    else:
+        plt.figure()
+        plt.imshow(img, origin='lower')
+        for idx in np.where(inframe)[0]:
+            plt.text(pix[idx, 0]-x1, pix[idx, 1]-y1,
+                     result_table[idx]['MAIN_ID'], color=np.array(color)/255)
+##
+
+def whiten_image(img):
+    ''' prevent blue hue, rise red to min([green, blue]) '''
+    img[..., 0] = np.max([img[..., 0], np.min(img[..., 1:], 2)], 0)
+    return img
+
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
-              crop=False, deband=False, blc=False):
+              crop=False, deband=False, blc=False, whiten=None, annotate=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -720,6 +764,11 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         what variable to return. 'rgb' or 'layers'
     deband: bool | int | list | ndarray
         remove banding noise 1/f. True or 1 for all layers, 2 or 'nircam' for nircam layers, False default. lots of time!
+    blc: bool
+        subtract non-zero minimum (baseline correction) and divide by maximum
+    whiten: None | bool
+        prevent blue hue, rise red to min([green, blue]). This is designed to make NIRCam more white than blue.
+        by default whiten is True when at least one image is NIRCam
     Returns
     -------
     rgb: np.ndarray
@@ -919,7 +968,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             p1, p2 = click_coordinates
             x1, y1 = int(min(p1[0], p2[0])), int(min(p1[1], p2[1]))
             x2, y2 = int(max(p1[0], p2[0])), int(max(p1[1], p2[1]))
-            print(f'y1={y1}; y2={y2}; x1={x1}; x2={x2}')
+            crop = f'y1={y1}; y2={y2}; x1={x1}; x2={x2}'
+            print(crop)
         layers = layers[y1:y2, x1:x2]
         core_str = '_crop'
     else:
@@ -940,6 +990,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     layers = layers[..., ~empty]
     path = path[~empty]
     rgb = None
+    ismiri = ['miri' in x for x in path]
     if layers.shape[2] == 2:
         ir = [1]
         ib = [0]
@@ -952,7 +1003,6 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
         iii = [ir, ig, ib]
     elif method[:3] == 'mnn':  # Miri Nircam Nircam, could also be mnnw for whiteish
-        ismiri = ['miri' in x for x in path]
         ir = np.where(ismiri)[0]
         inircam = np.where(~np.asarray(ismiri))[0]
         nb = np.ceil(len(inircam)/2)
@@ -960,7 +1010,6 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         ig = np.arange(ib[-1] + 1, ir[0]).astype(int)
         iii = [ir, ig, ib]
     elif method == 'mtn':  # Miri Total NirCam
-        ismiri = ['miri' in x for x in path]
         ir = np.where(ismiri)[0]
         ib = np.where(~np.asarray(ismiri))[0]
         ig = np.arange(layers.shape[2]).astype(int)
@@ -980,20 +1029,38 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         rgb = rgb.astype('uint8')
     if rgb is None:
         rgb = make_rgb(max_color=max_color)
-    if method == 'mnnw':
-        rgb[..., 0] = np.max([rgb[..., 0], np.min(rgb[..., 1:], 2)], 0)
+    if whiten is None:
+        if all(ismiri):
+            whiten = False
+        else:
+            whiten = True
     if blc:
         rgb = blc_image(rgb)
+    if whiten:
+        rgb = whiten_image(rgb)
     if plot:
         plt.figure()
         plt.imshow(rgb, origin='lower')
         plt.show()
+        if annotate:
+            print('no annotate for plot, only works for save')
     if png:
         if type(png) == str:
             png_name = png
         else:
             png_name = folder+core_str+'.png'
         plt.imsave(png_name, rgb, origin='lower')
+        if annotate:
+            if not crop:
+                crop = None
+            elif type(crop) != str:
+                raise Exception(f'what is crop? crop = {crop}')
+            if type(annotate) == bool:
+                fontScale = 0.6
+            else:
+                fontScale = annotate
+            annotate_simbad(png_name, path[0], crop=crop, save=True, fontScale=fontScale)
+
     return eval(opvar)
 
 
