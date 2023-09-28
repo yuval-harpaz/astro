@@ -786,7 +786,12 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     if not os.path.isdir(folder):
         raise Exception('cannot find '+folder)
     from_log = False
-    if type(exp) == str:
+    if type(exp) == pd.DataFrame:
+        log = exp
+        from_log=True
+        path = np.array(log['file'])
+        os.chdir(folder)
+    elif type(exp) == str:
         if exp[:3] == 'log':
             from_log = True
             if len(exp) > 3:
@@ -855,7 +860,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             logrow = np.where(log['file'] == path[ii])[0]
             if len(logrow) == 1:
                 for cr in [1, 2]:
-                    correct = log[f'CRVAL{cr}fix'][logrow].to_numpy()[0]
+                    correct = log.iloc[logrow][f'CRVAL{cr}fix'].to_numpy()[0]
                     if ~np.isnan(correct):
                         hd[1].header[f'CRVAL{cr}'] = correct
         return hd
