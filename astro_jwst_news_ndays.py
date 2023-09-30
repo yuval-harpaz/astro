@@ -12,6 +12,7 @@ from mastodon_bot import connect_bot
 from skimage.transform import resize
 import os
 from astro_list_ngc import social, credits
+from astro_utils import download_obs, auto_plot
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -92,46 +93,63 @@ for calib in [False, True]:
             for tblrow in range(len(tbl)):
                 nd = astropy.time.Time(tbl['t_obs_release'].iloc[tblrow], format='mjd').utc.iso[:16]
                 if nd == last_date[:16]:
-                    print('gotcha')
+                    print(f'update {tblrow} rows')
                     break
             # last = np.where(tbl['target_name'] == df_prev['target_name'][0])[0][-1]
+            tgt_list = list(np.unique(tbl.iloc[:tblrow]['target_name']))
             tgts = ','
-            tgts = tgts.join(list(np.unique(tbl.iloc[:tblrow]['target_name'])))
+            tgts = tgts.join(tgt_list)
             print(f'debug info ndays:\n'
                   f'targets: {tgts}\n'
                   f'table row: {tblrow}\n'
                   f'new date: {new_date[:16]}, prev date: {last_date[:16]}')
             toot = f'New {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
             # toot = 'new ' + tit + ' images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
+            tbl_new = tbl.iloc[:tblrow, :]
+            tbl_new.to_csv('tmp_new.csv', index=False)
             masto, _ = connect_bot()
-            a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
-            if a == 0:
-                img = plt.imread('tmp.jpg')
-                size = os.path.getsize('tmp.jpg')
-                mb2 = 2*10**6  # mastodon allows 2MB
-                if size >= mb2:
-                    ratio = mb2/size
-                    img = resize(img, (int(ratio**0.5*img.shape[0]), int(ratio**0.5*img.shape[1])))
-                    plt.imsave('tmp.jpg', img, cmap='gray')
+            failed = False
+            for tgt in tgt_list:
                 try:
+                    #TODO: if one file, adjust levels and toot
+                    download_obs(tbl_new[tbl_new['target_name'] == tgt])
+                    auto_plot(tgt, exp='*.fits', png='tmp.jpg', pkl=False, resize=True, method='rrgggbb',
+                              plot=False, fill=False, deband=False, adj_args={'factor': 2}, blc=False)
                     metadata = masto.media_post("tmp.jpg", "image/jpeg")
-                    masto.status_post(toot, media_ids=metadata["id"])
+                    masto.status_post('New public JWST data: '+tgt, media_ids=metadata["id"])
                     print('toot image')
                 except:
-                    try:
-                        metadata = masto.media_post("tmp.jpg", "image/jpeg")
-                        ratio = 1500/np.max(img.shape)
-                        img = resize(img, (int(ratio * img.shape[0]), int(ratio * img.shape[1])))
-                        plt.imsave('tmp.jpg', img, cmap='gray')
-                        metadata = masto.media_post("tmp.jpg", "image/jpeg")
-                        masto.status_post(toot, media_ids=metadata["id"])
-                        print('toot image')
-                    except:
-                        masto.status_post(toot)
-                        print('toot')
-            else:
+                    print('failed '+tgt)
+                    failed = True
+            if failed:
                 masto.status_post(toot)
                 print('toot')
+            # a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
+            # if a == 0:
+            #     img = plt.imread('tmp.jpg')
+            #     size = os.path.getsize('tmp.jpg')
+            #     mb2 = 2*10**6  # mastodon allows 2MB
+            #     if size >= mb2:
+            #         ratio = mb2/size
+            #         img = resize(img, (int(ratio**0.5*img.shape[0]), int(ratio**0.5*img.shape[1])))
+            #         plt.imsave('tmp.jpg', img, cmap='gray')
+            #     try:
+            #         metadata = masto.media_post("tmp.jpg", "image/jpeg")
+            #         masto.status_post(toot, media_ids=metadata["id"])
+            #         print('toot image')
+            #     except:
+            #         try:
+            #             metadata = masto.media_post("tmp.jpg", "image/jpeg")
+            #             ratio = 1500/np.max(img.shape)
+            #             img = resize(img, (int(ratio * img.shape[0]), int(ratio * img.shape[1])))
+            #             plt.imsave('tmp.jpg', img, cmap='gray')
+            #             metadata = masto.media_post("tmp.jpg", "image/jpeg")
+            #             masto.status_post(toot, media_ids=metadata["id"])
+            #             print('toot image')
+            #         except:
+            #             masto.status_post(toot)
+            #             print('toot')
+
 print('wrote image preview')
 ## create a list of download links
 for calib in [False, True]:

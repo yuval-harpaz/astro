@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 # from astropy.io import fits
 from astropy import wcs
@@ -367,8 +369,12 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include='', ptyp
 
 
 def download_fits_files(file_names, destination_folder='', overwrite=False):
+    if type(file_names) == str:
+        file_names = [file_names]
     if len(destination_folder) > 0 and destination_folder[-1] not in '\/':
         destination_folder += '/'
+    if not os.path.isdir(destination_folder):
+        os.system('mkdir '+destination_folder)
     mast = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
     no_print = '>/dev/null 2>&1'
     success = 0
@@ -379,6 +385,38 @@ def download_fits_files(file_names, destination_folder='', overwrite=False):
             if a == 0:
                 success += 1
     print(f'Downloaded {success} files to {destination_folder}')
+
+
+def download_obs(df='tmp_new.csv', stingy=True):
+    if type(df) == str:
+        df = pd.read_csv(df)
+    tgt_list = list(np.unique(df['target_name']))
+    for itgt in range(len(tgt_list)):
+        tgt = tgt_list[itgt]
+        df1 = df[df['target_name'] == tgt]
+        filt = filt_num(list(df1['dataURL']))
+        order = np.argsort(filt)
+        df1 = df1.iloc[order]
+        df1 = df1.reset_index()
+        size_ok = True
+        for ifile in range(len(df1)):
+            prod = Observations.get_product_list(str(df1['obsid'][ifile]))
+            fits_name = df1['dataURL'][ifile]
+            prodrow = np.where(prod['dataURI'] == fits_name)[0]
+            if len(prodrow) == 0:
+                raise Exception('unable to find '+fits_name)
+            if len(prodrow) > 1:
+                raise Exception('too many rows for '+fits_name)
+            else:
+                prodrow = prodrow[0]
+            sizeMB = prod['size'][prodrow]/10**6
+            if sizeMB > 1000 and stingy:
+                print(f'{sizeMB}MB for {tgt} {fits_name}')
+                size_ok = False
+                break
+            download_fits_files(fits_name, destination_folder='data/'+tgt)
+
+
 
 def reproject(path, project_to=0, log=None):
     # FIXME add support for exact and adaptive methods
@@ -719,7 +757,7 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.6):
         plt.imshow(img, origin='lower')
         for idx in np.where(inframe)[0]:
             plt.text(pix[idx, 0]-x1, pix[idx, 1]-y1,
-                     result_table[idx]['MAIN_ID'], color=np.array(color)/255)
+                     result_table.iloc[idx]['MAIN_ID'], color=np.array(color)/255)
 ##
 
 def whiten_image(img):
