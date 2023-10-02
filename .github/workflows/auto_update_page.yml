@@ -21,7 +21,7 @@ jobs:
       env:
           OAuth: ${{ secrets.MASTODON_BOT }}
       run: |
-        python astro_jwst_news_ndays.py
+        python astro_jwst_news_ndays_backup.py
     - name: check news
       env:
           OAuth: ${{ secrets.MASTODON_BOT }}
@@ -74,3 +74,8 @@ jobs:
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
       if: ${{ env.IS_NEW == 'true' }}
+    #- name: tweet colors
+      #env:
+      #    OAuth: ${{ secrets.MASTODON_BOT }}
+      #run: |
+      #  python astro_jwst_news_ndays.py

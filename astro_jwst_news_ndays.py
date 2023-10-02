@@ -119,11 +119,13 @@ if len(tbl) > 0:
                 metadata = masto.media_post("tmp.jpg", "image/jpeg")
                 masto.status_post('New public JWST data: '+tgt, media_ids=metadata["id"])
                 print('toot image')
+                os.systemnew_date
                 if loc == 'github':
                     os.system('rm -rf data/'+tgt)
             except:
                 print('failed '+tgt)
                 failed = True
+
         if failed:
             masto.status_post(toot)
             print('toot')
