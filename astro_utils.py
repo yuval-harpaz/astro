@@ -391,6 +391,8 @@ def download_obs(df='tmp_new.csv', stingy=True):
     if type(df) == str:
         df = pd.read_csv(df)
     tgt_list = list(np.unique(df['target_name']))
+    results = pd.DataFrame(tgt_list, columns=['target'])
+    results['size'] = 0
     for itgt in range(len(tgt_list)):
         tgt = tgt_list[itgt]
         df1 = df[df['target_name'] == tgt]
@@ -398,23 +400,27 @@ def download_obs(df='tmp_new.csv', stingy=True):
         order = np.argsort(filt)
         df1 = df1.iloc[order]
         df1 = df1.reset_index()
-        size_ok = True
-        for ifile in range(len(df1)):
-            prod = Observations.get_product_list(str(df1['obsid'][ifile]))
-            fits_name = df1['dataURL'][ifile]
-            prodrow = np.where(prod['dataURI'] == fits_name)[0]
-            if len(prodrow) == 0:
-                raise Exception('unable to find '+fits_name)
-            if len(prodrow) > 1:
-                raise Exception('too many rows for '+fits_name)
-            else:
-                prodrow = prodrow[0]
-            sizeMB = prod['size'][prodrow]/10**6
-            if sizeMB > 1000 and stingy:
-                print(f'{sizeMB}MB for {tgt} {fits_name}')
-                size_ok = False
-                break
-            download_fits_files(fits_name, destination_folder='data/'+tgt)
+        if stingy:
+            # size_ok = True
+            for ifile in range(len(df1)):
+                prod = Observations.get_product_list(str(df1['obsid'][ifile]))
+                fits_name = df1['dataURL'][ifile]
+                prodrow = np.where(prod['dataURI'] == fits_name)[0]
+                if len(prodrow) == 0:
+                    raise Exception('unable to find '+fits_name)
+                if len(prodrow) > 1:
+                    raise Exception('too many rows for '+fits_name)
+                else:
+                    prodrow = prodrow[0]
+                sizeMB = prod['size'][prodrow]/10**6
+                tot_size += sizeMB
+            print(f'{tot_size}MB for {tgt} {fits_name}')
+            results.at[itgt, 'size'] = tot_size
+        if results['size'][itgt] < 3000:  # less than 3000MB
+            for ifile in range(len(df1)):
+                fits_name = df1['dataURL'][ifile]
+                download_fits_files(fits_name, destination_folder='data/'+tgt)
+    return results
 
 
 

@@ -32,7 +32,7 @@ def list_ngc():
     isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
     ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
-    misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel',
+    misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel', 'TRAPEZIUM',
             'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV',
             'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN',
             'PSRJ', 'M31', 'M-31', '2022ACKO', 'BRICK', 'SNAKE', 'SN-1987A', 'WR']
