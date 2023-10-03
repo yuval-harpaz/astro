@@ -774,7 +774,7 @@ def whiten_image(img):
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
-              crop=False, deband=False, blc=False, whiten=None, annotate=False):
+              crop=False, deband=False, blc=False, whiten=None, annotate=False, decimate=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -946,6 +946,9 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             if ii == 0:
                 hdu0 = fits.open(path[ii])
                 hdu0 = crval_fix(hdu0)
+                if decimate:
+                    hdu0[1].data = hdu0[1].data[::decimate, ::decimate]
+                    print('decimated')
                 img = hdu0[1].data
                 if fill:
                     img = hole_func_fill(img)
@@ -961,6 +964,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 hdu0.close()
             else:
                 hdu = fits.open(path[ii])
+                if decimate:
+                    hdu[1].data = hdu[1].data[::decimate, ::decimate]
                 if fill:
                     hdu[1].data = hole_func_fill(hdu[1].data)
                 hdu = crval_fix(hdu)
