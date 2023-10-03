@@ -31,6 +31,14 @@ fix = img.copy()
 fix[1170:, :250, 1] = orig[1170:, :250, 1]
 fix[:100, :100, 1] = orig[:100, :100, 1]
 plt.imsave('large_fix.png', fix)
+
+img = plt.imread('proplydsDS9.png')
+# img = img[282:1574, 10:2090,:]
+for ii in range(3):
+    img[..., ii] = hole_func_fill(img[..., ii])
+plt.imsave('proplyds_filled.png', img)
+
+
 # download_obs()
 # os.chdir('/media/innereye/My Passport/Data/JWST/NGC-6822-TILE-1')
 # crop = 'y1=54; y2=3176; x1=2067; x2=7156'
