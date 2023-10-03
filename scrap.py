@@ -1,8 +1,11 @@
-from astro_utils import *
-os.chdir('/media/innereye/My Passport/Data/JWST/TRAPEZIUM-CLUSTER-P1/')
+from astro_list_ngc import *
+ngc_html_thumb()
 
-auto_plot('TRAPEZIUM-CLUSTER-P1', exp='*clear*.fits', png='fac2.jpg', pkl=False, resize=True, method='rrgggbb',
-          plot=False, fill=True, deband=False, adj_args={'factor': 4}, blc=False, annotate=False, decimate=6)
+#
+# os.chdir('/media/innereye/My Passport/Data/JWST/TRAPEZIUM-CLUSTER-P1/')
+#
+# auto_plot('TRAPEZIUM-CLUSTER-P1', exp='*clear*.fits', png='fac2.jpg', pkl=False, resize=True, method='rrgggbb',
+#           plot=False, fill=True, deband=False, adj_args={'factor': 4}, blc=False, annotate=False, decimate=6)
 
 # hdu = fits.open('jw01256-o001_t001_nircam_clear-f140m_i2d.fits')
 # hdu[1].writeto('1_jw01256-o001_t001_nircam_clear-f140m_i2d.fits')
