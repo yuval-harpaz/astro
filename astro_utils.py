@@ -1028,6 +1028,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         core_str = '_crop'
     else:
         core_str = ''
+    iii = None
     empty = np.zeros(len(path), bool)
     for lay in range(layers.shape[2]):
         if np.mean(np.isnan(layers[:, :, lay])) == 1 or layers[:, :, lay].sum() == 0:
@@ -1068,7 +1069,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         ib = np.where(~np.asarray(ismiri))[0]
         ig = np.arange(layers.shape[2]).astype(int)
         iii = [ir, ig, ib]
-    elif method == 'filt':
+    elif method[:4] == 'filt':
         col = matplotlib.cm.jet(filt / np.max(filt))[:, :3]  # [:, ::-1]
         rgb = assign_colors(layers, col)
         # rgb = np.zeros((layers.shape[0], layers.shape[1], 3))
