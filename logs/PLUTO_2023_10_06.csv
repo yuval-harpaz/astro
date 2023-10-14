@@ -1,0 +1,13 @@
+file,chosen,CRVAL1fix,CRVAL2fix
+jw01658-o009_t001_nircam_clear-f070w-sub320_i2d.fits,True,,
+jw01658-o009_t001_nircam_clear-f090w-sub320_i2d.fits,True,298.215058,-23.15456
+jw01658-o009_t001_nircam_clear-f115w-sub320_i2d.fits,True,298.215057,-23.154555
+jw01658-o009_t001_nircam_clear-f140m-sub320_i2d.fits,True,298.21506,-23.15455
+jw01658-o009_t001_nircam_clear-f335m-sub320_i2d.fits,True,298.21504,-23.15456
+jw01658-o009_t001_nircam_clear-f410m-sub320_i2d.fits,True,298.215042,-23.154543
+jw01658-o009_t001_nircam_clear-f430m-sub320_i2d.fits,True,298.215045,-23.154545
+jw01658-o009_t001_nircam_clear-f480m-sub320_i2d.fits,True,298.215047,-23.15454
+jw01658-o003_t001_miri_f1500w_i2d.fits,True,298.21556,-23.15655
+jw01658-o003_t001_miri_f1800w_i2d.fits,True,298.21558,-23.15652
+jw01658-o003_t001_miri_f2100w_i2d.fits,True,298.21558,-23.15654
+jw01658-o003_t001_miri_f2550w_i2d.fits,True,298.2156,-23.15652

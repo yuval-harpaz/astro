@@ -696,6 +696,11 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.6):
     if save:
         from cv2 import putText, FONT_HERSHEY_SIMPLEX, LINE_AA
     header = fits.open(fits_file)[1].header
+    if img_file == None:
+        img = fits.open(fits_file)[1].data
+        img = level_adjust(img)
+        img_file = fits_file.replace('.fits', '.png')
+        plt.imsave(img_file, img, origin='lower')
     img = plt.imread(img_file)
     if img.shape[2] == 4:
         img = img[..., :3]
@@ -1531,7 +1536,7 @@ def last_100(html=True, products=False):
     return table
 
 
-def deband_layer(layer):
+def deband_layer(layer, win=101):
     # kernel = Ring2DKernel(50, 3)
     # print('ring...')
     # kernel = Gaussian2DKernel(12)
@@ -1540,10 +1545,10 @@ def deband_layer(layer):
     # lp = median_filter(layer, footprint=kernel.array)
     # lp = smooth_yx(layer, 101, 1)
     # print('nanmed 0...')
-    lp = smooth_width(layer, win=101)
+    lp = smooth_width(layer, win=win)
     hp = layer - lp
     # print('nanmed 0...')
-    lp = smooth_width(lp.T, win=101).T
+    lp = smooth_width(lp.T, win=win).T
     # hp = layer.copy()
     # for ii in range(hp.shape[0]):
     #     hp[ii, :] = medfilt(hp[ii, :], 101)

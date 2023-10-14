@@ -38,7 +38,7 @@ for row in range(len(df)):
         print('forbidden: ' + date0 + '_' + tgt)
     else:
         both_apart = False  # no overlap between MIRI and NIRCam
-        if tgt == 'NGC-6822-MIRI-TILE-2-COPY':
+        if tgt == 'NGC-6822-MIRI-TILE-2-COPY' or tgt == 'NGC-346-TILE-6':
             both_apart = True
         if len(already) > 0:
             msg = 'pictures exist:    '
