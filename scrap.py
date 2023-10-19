@@ -1,7 +1,56 @@
-from astro_list_ngc import *
-ngc_html_thumb()
+import os
 
-#
+from astro_list_ngc import *
+
+
+for hshift in range(-10, 10):
+    h = 1053 + hshift
+    for wshift in range(-10, 10):
+        w = 633 + wshift
+        h0 = layers.shape[0]-h
+        w0 = layers.shape[1]-w
+        subt = layers[h:,w:,:] - layers[:h0, :w0, :]
+        img = np.zeros(subt.shape)
+        for ii in range(3):
+            img[..., ii] = level_adjust(subt[..., ii])
+        plt.imsave(f'{w}_{h}.jpg', img[..., ::-1], origin='lower')
+
+# ngc_html_thumb()
+##
+w = 632
+h = 1051
+h0 = layers.shape[0]-h
+w0 = layers.shape[1]-w
+subt = np.zeros((869, 867, 3))
+for ii in range(3):
+    notgreater = layers[:h0, :w0, ii].copy()
+    lay = layers[h:, w:, ii]
+    notgreater[notgreater > lay*1.2] = 0
+    subt[..., ii] = lay - notgreater
+img = np.zeros(subt.shape)
+for ii in range(3):
+    img[..., ii] = level_adjust(subt[..., ii])
+plt.imsave('subt.jpg', img[..., ::-1], origin='lower')
+
+##
+os.chdir('/home/innereye/astro/data/IR23128/')
+noise = glob('*o051*.fits')
+data = glob('*o047*.fits')
+for file in np.sort(data + noise):
+    hdu = fits.open(file)
+    print(hdu[1].shape)
+tmp = noise[0]
+noise[0] = noise[1]
+noise[1] = tmp
+##
+img = np.zeros((561, 561, 3))
+for ii in range(3):
+    d = fits.open(data[ii])
+    n = fits.open(noise[ii])
+    img[..., 2-ii] = level_adjust(d[1].data[:561, :561] - n[1].data[:561, :561])
+plt.imshow(img, origin='lower')
+
+##
 # os.chdir('/media/innereye/My Passport/Data/JWST/TRAPEZIUM-CLUSTER-P1/')
 #
 # auto_plot('TRAPEZIUM-CLUSTER-P1', exp='*clear*.fits', png='fac2.jpg', pkl=False, resize=True, method='rrgggbb',
