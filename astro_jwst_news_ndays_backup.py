@@ -71,7 +71,8 @@ for calib in [False, True]:
             date = time[:16]
             if date != date_prev:
                 page = page + '\n<br>' +date + '<br>\n'
-            jpg = tbl['jpegURL'].iloc[iimg]
+            # jpg = tbl['jpegURL'].iloc[iimg]
+            jpg = 'mast:JWST/product/' + tbl['obs_id'].iloc[iimg] + '_i2d.jpg'
             if type(jpg) == str:
                 jpg = jpg.replace('mast:JWST/product/', '')
             else:
@@ -154,8 +155,9 @@ for calib in [False, True]:
             time = astropy.time.Time(tbl['t_obs_release'].iloc[iimg], format='mjd').utc.iso
             date = time[:16]
             if date != date_prev:
-                page = page + '\n<br>' +date + '<br>\n'
-            target = tbl['dataURL'].iloc[iimg].replace('mast:JWST/product/', '')
+                page = page + '\n<br>' + date + '<br>\n'
+            # target = tbl['dataURL'].iloc[iimg].replace('mast:JWST/product/', '')
+            target = tbl['obs_id'].iloc[iimg] + '_i2d.fits'
             tname = tbl['target_name'].iloc[iimg]
             date_prev = date
             page = page + f'\n{tname} <a href="https://mast.stsci.edu/portal/Download/file/JWST/product/{target}"' \

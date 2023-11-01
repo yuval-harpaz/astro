@@ -135,10 +135,20 @@ def list_ngc():
         for ses in session:
             df2 = df1.iloc[ses]
             df2 = df2.reset_index(drop=True)
-            filt = filt_num(df2['dataURL'])
+            filt = filt_num(df2['obs_id'])
+            # try:
+            #     filt = filt_num(df2['dataURL'])
+            # except:
+            #     # TODO make something smarter here
+            #     filt = [int(x[1:-1]) for x in df2['filters'].values]
+
             bluer = np.argmin(filt)
             filt = str(np.unique(filt).astype(int))
-            url = df2['jpegURL'][bluer]
+
+            if 'jpegURL' in df2.columns:
+                url = df2['jpegURL'][bluer]
+            else:
+                url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/' + df2['obs_id'][bluer]+'_i2d.jpg'
             t_min = Time(df2['t_min'].iloc[0], format='mjd').utc.iso
             # t_min = t_min[:10]
             t_max = Time(df2['t_max'].iloc[-1], format='mjd').utc.iso
@@ -146,6 +156,11 @@ def list_ngc():
             release = Time(df2['t_obs_release'].iloc[0], format='mjd').utc.iso
             release = release[:10]
             row.append([release, t_min, t_max, ngc[ii], tt, filt[1:-1], url, int(df2['proposal_id'][bluer])])
+            # else:
+            #     if df2['target_name'][0] == '2022ACKO':
+            #         print('bad acko')
+            #     else:
+            #         raise Exception('where is the URL? for ' + df2['target_name'][0])
     df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg','proposal'])
     df = df.sort_values('release_date', ignore_index=True, ascending=False)
     return df
