@@ -72,8 +72,10 @@ for row in range(len(df)):
                         'intentType': 'science',
                         'dataproduct_type': "image"}
                 table = Observations.query_criteria(**args)
-                files = list(table['dataURL'])
-                files = [x.split('/')[-1] for x in files]
+                # files = list(table['dataURL'])
+                # files = [x.split('/')[-1] for x in files]
+                files = list(table['obs_id'])
+                files = [x + '_i2d.fits' for x in files]
                 print(f'[{row}] downloading {tgt} by query')
                 download_fits_files(files, destination_folder='data/' + tgt)
                 chosen_df = choose_fits(files, folder='data/' + tgt)
