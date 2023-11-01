@@ -30,11 +30,11 @@ def list_ngc():
     table = table[isnotbackground]
     isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
     isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
-    ism = [x[0] == 'M' and x[1:].replace('-','').isnumeric() for x in table['target_name']]
+    ism = [x[0] == 'M' and x[1:].replace('-', '').isnumeric() for x in table['target_name']]
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
     misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel', 'TRAPEZIUM',
             'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV',
-            'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN',
+            'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB',
             'PSRJ', 'M31', 'M-31', '2022ACKO', 'BRICK', 'SNAKE', 'SN-1987A', 'WR', 'M-82']
     ismisc = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
@@ -222,7 +222,7 @@ def ngc_html():
             if ii == 0:
                 page = page + f'\n<h3>{desc}</h3>'
             jpg = df['jpeg'].iloc[iimg].replace('mast:JWST/product/', '')
-            page = page + '\n<img src="https://mast.stsci.edu/portal/Download/file/JWST/product/' + jpg + f'" title="{desc}">{img_br}'
+            page = page + '\n<img src="' + jpg + f'" title="{desc}">{img_br}'
         page = page + '\n</div></body>\n</html>\n'
         with open(f'docs/ngc{grid}.html', "w") as text_file:
             text_file.write(page)
