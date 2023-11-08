@@ -1,0 +1,4 @@
+file,width,height,offset,chosen
+jw01995-o014_t014_nircam_clear-f115w_i2d.fits,10089.0,4588.0,233.504693548832,True
+jw01995-o014_t014_nircam_clear-f444w_i2d.fits,4972.0,2211.0,54.10017387843094,True
+jw01995-o014_t014_niriss_clear-f115w_i2d.fits,2144.0,2166.0,54.10017387843094,False

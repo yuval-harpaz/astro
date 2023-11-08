@@ -1,22 +1,10 @@
-# import pandas as pd
-# import os.path
-import pandas as pd
-
 from astro_utils import *
 from astropy.time import Time
-# from mastodon_bot import connect_bot
 from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
 from glob import glob
-
-# from pyongc import ongc
 ##
 df = pd.read_csv('ngc.csv', sep=',')
-# df = list_ngc()
-# df.to_csv('ngc.csv', sep=',', index=False)
-# ngc_html()
-# masto, loc = connect_bot()
 ##
-# loc == 'local'
 for row in range(len(df)):
     pkl = True
     tgt = df['target_name'][row]
