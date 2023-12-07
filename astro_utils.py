@@ -747,6 +747,7 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.6):
         if img.shape[:2] != (y2-y1, x2-x1):
             raise Exception('image is expected to fit crop size')
     inframe = (pix[:, 0] > x1) & (pix[:, 1] > y1) & (pix[:, 0] <= x2) & (pix[:, 1] <= y2)
+
     if np.sum(inframe) == 0:
         raise Exception('no results in frame')
     else:
@@ -769,6 +770,7 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.6):
         for idx in np.where(inframe)[0]:
             plt.text(pix[idx, 0]-x1, pix[idx, 1]-y1,
                      result_table.iloc[idx]['MAIN_ID'], color=np.array(color)/255)
+    return result_table[inframe]
 ##
 
 def whiten_image(img):
