@@ -21,7 +21,7 @@ def list_ngc():
     isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
     table = table[isnotnirspec]
     isnotbackground = []
-    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF', 'SKY', 'J0305M3150']
+    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF', 'SKY', 'J0305M3150', 'M0416']
     for x in table['target_name']:
         isnotbackground.append(True)
         for bg in background:

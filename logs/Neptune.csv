@@ -1,0 +1,5 @@
+file,chosen,CRVAL1fix,CRVAL2fix
+jw02739-o004_t003_nircam_clear-f140m_i2d.fits,True,,
+jw02739-o004_t003_nircam_clear-f210m_i2d.fits,True,355.970542,-3.033765
+jw02739-o004_t003_nircam_clear-f300m_i2d.fits,True,355.97059,-3.034015
+jw02739-o004_t003_nircam_clear-f460m_i2d.fits,True,355.970585,-3.03401
