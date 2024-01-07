@@ -778,6 +778,11 @@ def whiten_image(img):
     img[..., 0] = np.max([img[..., 0], np.min(img[..., 1:], 2)], 0)
     return img
 
+def reduce_color(img, bad=1):
+    okay = [0, 1, 2]
+    okay.pop(bad)
+    img[..., bad] = np.min(img[..., okay], 2)
+    return img
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
