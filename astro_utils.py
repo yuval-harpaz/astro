@@ -1572,9 +1572,10 @@ def deband_layer(layer, win=101):
 
 
 if __name__ == '__main__':
-    img = auto_plot('NGC6720', png='deband1.png', pow=[1, 1, 1], pkl=False, resize=False, method='rrgggbb', plot=False,
-                    adj_args={'factor': 1}, max_color=False, fill=False, deband=True)
-
+    # img = auto_plot('NGC6720', png='deband1.png', pow=[1, 1, 1], pkl=False, resize=False, method='rrgggbb', plot=False,
+    #                 adj_args={'factor': 1}, max_color=False, fill=False, deband=True)
+    auto_plot('NGC1068', exp='logNGC1068_nircam.csv', png='nircam2.png', pkl=False, resize=False, method='rrgggbb',
+              blc=True, plot=False, fill=True, deband=False, adj_args={'factor': 2}, whiten=False)
     # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
     # auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
     # auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
