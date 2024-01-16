@@ -221,7 +221,7 @@ def ngc_html():
             desc = f'{date} {tgt}, available filters: [{flt}]'
             if ii == 0:
                 page = page + f'\n<h3>{desc}</h3>'
-            jpg = df['jpeg'].iloc[iimg].replace('mast:JWST/product/', '')
+            jpg = df['jpeg'].iloc[iimg].replace('mast:JWST/product/', 'https://mast.stsci.edu/portal/Download/file/JWST/product/')
             page = page + '\n<img src="' + jpg + f'" title="{desc}">{img_br}'
         page = page + '\n</div></body>\n</html>\n'
         with open(f'docs/ngc{grid}.html', "w") as text_file:
