@@ -32,7 +32,7 @@ def list_ngc():
     isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
     ism = [x[0] == 'M' and x[1:].replace('-', '').isnumeric() for x in table['target_name']]
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
-    misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel', 'TRAPEZIUM',
+    misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel', 'TRAPEZIUM', 'N5584',
             'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV', 'HORSEHEAD',
             'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB',
             'PSRJ', 'M31', 'M-31', '2022ACKO', 'BRICK', 'SNAKE', 'SN-1987A', 'WR', 'M-82']
@@ -100,6 +100,8 @@ def list_ngc():
             ngc.append(1976)
         elif tt == 'PSRJ1748-2021B':
             ngc.append(6440)
+        elif tt == 'N5584':
+            ngc.append(5584)
         elif 'sombrero' in tt.lower():
             ngc.append(4594)
         elif tt == '2022ACKO':
