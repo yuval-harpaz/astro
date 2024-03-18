@@ -1,0 +1,9 @@
+file,chosen,CRVAL1fix,CRVAL2fix
+jw02768-o001_t001_nircam_clear-f182m_i2d.fits,True,,
+jw02768-o001_t001_nircam_clear-f210m_i2d.fits,True,46.398115,17.128565
+jw02768-o001_t001_nircam_clear-f410m_i2d.fits,True,46.398137,17.128825
+jw02768-o001_t001_nircam_clear-f480m_i2d.fits,True,46.39815,17.128821
+jw02768-o002_t001_nircam_clear-f182m_i2d.fits,True,46.398107,17.128552
+jw02768-o002_t001_nircam_clear-f210m_i2d.fits,True,46.39811,17.128555
+jw02768-o002_t001_nircam_clear-f410m_i2d.fits,True,46.39813,17.128805
+jw02768-o002_t001_nircam_clear-f480m_i2d.fits,True,46.39813,17.128808

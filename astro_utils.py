@@ -784,6 +784,17 @@ def reduce_color(img, bad=1):
     img[..., bad] = np.min(img[..., okay], 2)
     return img
 
+def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
+    if type(bad) == int:
+        bad = [bad]
+    for bd in bad:
+        okay = [0, 1, 2]
+        okay.pop(bd)
+        layer = img[..., bd]
+        mask = layer <= thr
+        layer[mask] = replace(img[..., okay], 2)[mask]
+    return img
+
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
               crop=False, deband=False, blc=False, whiten=None, annotate=False, decimate=False):
@@ -878,11 +889,12 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     path = np.asarray(path)[order]
     filt = filt[order]
 
-    def make_rgb(prc=0, max_color=False):
+    def make_rgb(prc=0):
         rgb = np.zeros((layers.shape[0], layers.shape[1], 3), float)
         for ll in range(3):
-            if max_color:  # convert zeros to nans
-                # lay = np.nanmean(layers[:, :, iii[ll]], axis=2)
+            if max_color == -1:
+                lay = np.min(layers[:, :, iii[ll]], axis=2)
+            elif max_color:  # convert zeros to nans
                 lay = np.max(layers[:, :, iii[ll]], axis=2)
             else:
                 lay = np.mean(layers[:, :, iii[ll]], axis=2)
@@ -1084,18 +1096,11 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     elif method[:4] == 'filt':
         col = matplotlib.cm.jet(filt / np.max(filt))[:, :3]  # [:, ::-1]
         rgb = assign_colors(layers, col)
-        # rgb = np.zeros((layers.shape[0], layers.shape[1], 3))
-        # for lay in range(layers.shape[2]):
-        #     for ic in range(3):
-        #         rgb[:, :, ic] = np.nanmax(
-        #             np.array([rgb[:, :, ic], layers[:, :, lay] * col[lay, ic]]), 0)
-        #         # rgb[:, :, ic] = np.nansum(
-        #         #     np.array([rgb[:, :, ic], layers[:, :, lay] * (1 / layers.shape[2]) * col[lay, ic]]), 0)
         for ic in range(3):
             rgb[:, :, ic] = rgb[:, :, ic] ** pow[ic] * 255
         rgb = rgb.astype('uint8')
     if rgb is None:
-        rgb = make_rgb(max_color=max_color)
+        rgb = make_rgb()
     if whiten is None:
         if all(ismiri):
             whiten = False
@@ -1544,40 +1549,18 @@ def last_100(html=True, products=False):
 
 
 def deband_layer(layer, win=101):
-    # kernel = Ring2DKernel(50, 3)
-    # print('ring...')
-    # kernel = Gaussian2DKernel(12)
-    # print('gaus...')
-    # lp = convolve(layer, kernel=kernel)
-    # lp = median_filter(layer, footprint=kernel.array)
-    # lp = smooth_yx(layer, 101, 1)
-    # print('nanmed 0...')
     lp = smooth_width(layer, win=win)
     hp = layer - lp
-    # print('nanmed 0...')
     lp = smooth_width(lp.T, win=win).T
-    # hp = layer.copy()
-    # for ii in range(hp.shape[0]):
-    #     hp[ii, :] = medfilt(hp[ii, :], 101)
-    #     print(f'{ii}/{hp.shape[0]}', end='\r')
-    # print('medfilt 1...')
-    # lp = layer.copy()
-    # for ii in range(hp.shape[0]):
-    #     lp[:, ii] = medfilt(hp[:, ii], 101)
-    #     # print(f'{ii}/{hp.shape[0]}')
-    # hp = layer - hp
     clean = lp + hp
     clean[clean < 0] = 0
     return clean
 
 
 if __name__ == '__main__':
-    # img = auto_plot('NGC6720', png='deband1.png', pow=[1, 1, 1], pkl=False, resize=False, method='rrgggbb', plot=False,
-    #                 adj_args={'factor': 1}, max_color=False, fill=False, deband=True)
-    auto_plot('NGC1068', exp='logNGC1068_nircam.csv', png='nircam2.png', pkl=False, resize=False, method='rrgggbb',
-              blc=True, plot=False, fill=True, deband=False, adj_args={'factor': 2}, whiten=False)
-    # auto_plot('ngc3256', '*w_i2d.fits', method='mnn')
-    # auto_plot('NGC-3627', exp='log', png='fixed.png', pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
-    # auto_plot('ORIBAR-IMAGING-NIRCAM', exp='*_cle*.fits', png='clear.png', pow=[1, 1, 1], pkl=False, crop=True,
-    #           method='rrgggbb')
-    # auto_plot('NGC-7469', exp='logNGC-7469_2022-07-01.csv', png=False, pow=[1, 1, 1], pkl=False, resize=True, method='mnn', plot=True)
+    os.chdir('/media/innereye/My Passport/Data/JWST/Uranus24hr/')
+    layers = auto_plot('Uranus24hr', exp='logUranus24all.csv', png='rgb_all1.png', pkl=False, resize=False, method='rrgggbb', blc=True, opvar='layers',
+              plot=False, fill=True, deband=False, adj_args={'factor': 1}, whiten=False, crop='y1=1862; y2=2382; x1=1902; x2=2397')
+    with open('layers12.pkl', 'wb') as f:
+        pickle.dump(layers, f)
+
