@@ -2,6 +2,7 @@ from astro_utils import *
 from astropy.time import Time
 from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
 from glob import glob
+from astro_ngc_align import add_crval_to_logs
 ##
 df = pd.read_csv('ngc.csv', sep=',')
 ##
@@ -135,4 +136,4 @@ for row in range(len(df)):
         #     plt.imsave('/home/innereye/astro/docs/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
 
 ngc_html_thumb()
-
+add_crval_to_logs()

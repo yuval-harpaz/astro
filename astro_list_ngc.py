@@ -34,7 +34,7 @@ def list_ngc():
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
     misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel', 'TRAPEZIUM', 'N5584',
             'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV', 'HORSEHEAD',
-            'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB',
+            'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB', 'CENA',
             'PSRJ', 'M31', 'M-31', '2022ACKO', 'BRICK', 'SNAKE', 'SN-1987A', 'WR', 'M-82']
     ismisc = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
