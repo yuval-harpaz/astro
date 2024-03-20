@@ -54,9 +54,12 @@ def add_crval_to_logs():
                     chosen_df['CRVAL2'] = 0
                     for ii in range(len(files)):
                         if os.path.isfile(drive+'data/'+tgt+'/'+files[ii]):
-                            hdu = fits.open(drive+'data/'+tgt+'/'+files[ii])
-                            chosen_df['CRVAL1'].at[ii] = hdu[1].header['CRVAL1']
-                            chosen_df['CRVAL2'].at[ii] = hdu[1].header['CRVAL2']
+                            try:
+                                hdu = fits.open(drive+'data/'+tgt+'/'+files[ii])
+                                chosen_df['CRVAL1'].at[ii] = hdu[1].header['CRVAL1']
+                                chosen_df['CRVAL2'].at[ii] = hdu[1].header['CRVAL2']
+                            except:
+                                print('failed getting data from ' + tgt + ' ' + files[ii])
                         else:
                             if chosen_df.iloc[ii]['chosen']:
                                 raise Exception('chosen file missing: '+tgt+'/'+files[ii])
