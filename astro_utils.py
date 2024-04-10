@@ -691,10 +691,10 @@ def crop_xy(crop):
     return x1, x2, y1, y2
 
 ##
-def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.6):
+def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65):
     # crop example: crop =  'y1=54; y2=3176; x1=2067; x2=7156'
     if save:
-        from cv2 import putText, FONT_HERSHEY_SIMPLEX, LINE_AA
+        from cv2 import putText, FONT_HERSHEY_SIMPLEX, LINE_AA, getTextSize
     header = fits.open(fits_file)[1].header
     if img_file == None:
         img = fits.open(fits_file)[1].data
@@ -758,9 +758,14 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.6):
         img = 255*img
         img = img.astype('uint8')
         for idx in np.where(inframe)[0]:
+            txt = result_table['MAIN_ID'][idx]
+            midhight = int(np.floor(getTextSize(txt,
+                                            fontFace=FONT_HERSHEY_SIMPLEX,
+                                            fontScale=fontScale,
+                                            thickness=thickness)[0][1]/2))
             org = (int(np.round(pix[idx, 0] - x1)),
-                   int(np.round(y2)) - int(np.round(pix[idx, 1])))
-            img = putText(img, result_table['MAIN_ID'][idx], org,
+                   int(np.round(y2)) - int(np.round(pix[idx, 1])) + midhight)
+            img = putText(img, txt, org,
                           FONT_HERSHEY_SIMPLEX, fontScale,
                           result_table['color'][idx], thickness, LINE_AA)
         plt.imsave(img_file.replace('.', '_ann.'), img)
