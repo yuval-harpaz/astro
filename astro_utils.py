@@ -1411,7 +1411,7 @@ def smooth_yx(img, win=5, passes=2):
     return smooth
 
 
-def smooth_width(layer, win=101):
+def smooth_width(layer, win=101, prct=50):
     '''
     smooth image from left to right, uses nanmedian
     Args:
@@ -1428,7 +1428,7 @@ def smooth_width(layer, win=101):
         toavg = np.nan * np.ones((layer.shape[1] + win - 1, win))
         for shift in np.arange(win):
             toavg[shift:layer.shape[1] + shift, shift] = layer[ii, :]
-        smoothed[ii, :] = np.nanmedian(toavg, axis=1)[half0:-half1 + 1]
+        smoothed[ii, :] = np.nanpercentile(toavg, prct, axis=1)[half0:-half1 + 1]
         print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
     return smoothed
 
@@ -1553,10 +1553,10 @@ def last_100(html=True, products=False):
     return table
 
 
-def deband_layer(layer, win=101):
-    lp = smooth_width(layer, win=win)
+def deband_layer(layer, win=101, prct=10):
+    lp = smooth_width(layer, win=win, prct=prct)
     hp = layer - lp
-    lp = smooth_width(lp.T, win=win).T
+    lp = smooth_width(lp.T, win=win, prct=prct).T
     clean = lp + hp
     clean[clean < 0] = 0
     return clean
