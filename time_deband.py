@@ -1,45 +1,8 @@
-import numpy as np
-
+# import numpy as np
 from astro_utils import *
 from time import time
-import multiprocessing as mp
+# import multiprocessing as mp
 
-def nanpercentile_worker(args):
-    data, q = args
-    return np.nanpercentile(data, q, axis=1)
-
-
-def parallel_nanpercentile(data, q, num_processes=8):
-    pool = mp.Pool(num_processes)
-    chunk_size = len(data) // num_processes
-    results = pool.map(nanpercentile_worker, [(data[i:i+chunk_size], q) for i in range(0, len(data), chunk_size)])
-    pool.close()
-    pool.join()
-    return np.concatenate(results)
-
-
-def smooth_width1(layer, win=101, prct=50):
-    half0 = int(win / 2)
-    half1 = win - half0
-    smoothed = layer.copy()
-    for ii in range(smoothed.shape[0]):
-        toavg = np.nan * np.ones((layer.shape[1] + win - 1, win))
-        # toavg = np.zeros((layer.shape[1] + win - 1, win))
-        for shift in np.arange(win):
-            toavg[shift:layer.shape[1] + shift, shift] = layer[ii, :]
-        # smoothed[ii, :] = nanpercentile(toavg, prct)[half0:-half1 + 1]
-        smoothed[ii, :] = parallel_nanpercentile(toavg, 10)[half0:-half1 + 1]
-        print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
-    return smoothed
-
-
-def deband_layer1(layer, win=101, prct=10):
-    lp = smooth_width1(layer, win=win, prct=prct)
-    hp = layer - lp
-    lp = smooth_width1(lp.T, win=win, prct=prct).T
-    clean = lp + hp
-    clean[clean < 0] = 0
-    return clean
 
 os.chdir('/home/innereye/astro/data/IR09022/')
 hdu0 = fits.open('jw03368-o113_t007_nircam_clear-f150w_i2d.fits')
@@ -47,12 +10,51 @@ data = hdu0[1].data[3200:3600, 3200:3600]
 hdu0.close()
 clean = data.copy()
 t0 = time()
-clean = deband_layer(clean)
+clean = deband_layer(clean, func=np.nanpercentile)
 print(np.round(time()-t0))
 ##
 plt.figure()
 plt.imshow(level_adjust(clean, factor=1), origin='lower', cmap='gray')
 plt.show()
+
+#
+# def nanpercentile_worker(args):
+#     data, q = args
+#     return np.nanpercentile(data, q, axis=1)
+#
+#
+# def parallel_nanpercentile(data, q, num_processes=8):
+#     pool = mp.Pool(num_processes)
+#     chunk_size = len(data) // num_processes
+#     results = pool.map(nanpercentile_worker, [(data[i:i+chunk_size], q) for i in range(0, len(data), chunk_size)])
+#     pool.close()
+#     pool.join()
+#     return np.concatenate(results)
+#
+#
+# def smooth_width1(layer, win=101, prct=50):
+#     half0 = int(win / 2)
+#     half1 = win - half0
+#     smoothed = layer.copy()
+#     for ii in range(smoothed.shape[0]):
+#         toavg = np.nan * np.ones((layer.shape[1] + win - 1, win))
+#         # toavg = np.zeros((layer.shape[1] + win - 1, win))
+#         for shift in np.arange(win):
+#             toavg[shift:layer.shape[1] + shift, shift] = layer[ii, :]
+#         # smoothed[ii, :] = nanpercentile(toavg, prct)[half0:-half1 + 1]
+#         smoothed[ii, :] = parallel_nanpercentile(toavg, 10)[half0:-half1 + 1]
+#         print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
+#     return smoothed
+#
+#
+# def deband_layer1(layer, win=101, prct=10):
+#     lp = smooth_width1(layer, win=win, prct=prct)
+#     hp = layer - lp
+#     lp = smooth_width1(lp.T, win=win, prct=prct).T
+#     clean = lp + hp
+#     clean[clean < 0] = 0
+#     return clean
+
 # Example usage
 # data = np.random.rand(1000, 1000)  # Example 2D array
 # q = 50  # Percentile value
