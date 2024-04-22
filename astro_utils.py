@@ -963,11 +963,17 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             layers = transform.resize(layers, wh)
     else:
         if deband:
+            dbargs = {'func': np.median, 'prct': 10}
             dbstr = ''
             if (type(deband) == list) or (type(deband) == np.ndarray):
                 todeband = deband
-            elif deband == 1:
+            elif type(deband) == int or type(bool):
                 todeband = np.ones(len(path))
+                if type(deband) == int:
+                    if deband == 50:
+                        dbargs['func'] = np.nanmedian
+                    else:
+                        dbargs['func'] = np.nanpercentile
             elif (deband == 'nircam') or (deband > 1):
                 dbstr = ' nircam'
                 todeband = np.array(['nircam' in x for x in path])
@@ -986,7 +992,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     img = transform.resize(img, wh)
                 if todeband[ii]:
                     print('going to deband'+dbstr)
-                    img = deband_layer(img)
+                    img = deband_layer(img, **dbargs)
                     print('done deband 0')
                 layers = np.zeros((img.shape[0], img.shape[1], len(path)))
                 hdr0 = hdu0[1].header
@@ -999,7 +1005,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     hdu[1].data = hole_func_fill(hdu[1].data)
                 hdu = crval_fix(hdu)
                 if todeband[ii]:
-                    hdu[1].data = deband_layer(hdu[1].data)
+                    hdu[1].data = deband_layer(hdu[1].data, **dbargs)
                     print(f'done deband {ii}')
                 img, _ = reproject_interp(hdu[1], hdr0)
                 if resize:
@@ -1411,16 +1417,24 @@ def smooth_yx(img, win=5, passes=2):
     return smooth
 
 
-def smooth_width(layer, win=101, prct=50):
+def smooth_width(layer, win=101, prct=50, func=np.median):
     '''
     smooth image from left to right, uses nanmedian
     Args:
+        func: np function for smoothing
+            median, nanmedian, percentile or nanpercentile. nan is slower but without it you loose 50 pixels on all sides
+        prct: int
+            when removing percentile specifies q. recommended prct=10
         layer: 2D ndarray
         win: int
 
     Returns:
         smoothed data
     '''
+    if func == np.median or func == np.nanmedian:
+        args = {'axis': 1}
+    else:
+        args = {'q': prct, 'axis': 1}
     half0 = int(win / 2)
     half1 = win - half0
     smoothed = layer.copy()
@@ -1428,7 +1442,8 @@ def smooth_width(layer, win=101, prct=50):
         toavg = np.nan * np.ones((layer.shape[1] + win - 1, win))
         for shift in np.arange(win):
             toavg[shift:layer.shape[1] + shift, shift] = layer[ii, :]
-        smoothed[ii, :] = np.nanpercentile(toavg, prct, axis=1)[half0:-half1 + 1]
+        smoothed[ii, :] = func(toavg, **args)[half0:-half1 + 1]
+        # smoothed[ii, :] = np.nanpercentile(toavg, prct, axis=1)[half0:-half1 + 1]
         print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
     return smoothed
 
@@ -1553,10 +1568,10 @@ def last_100(html=True, products=False):
     return table
 
 
-def deband_layer(layer, win=101, prct=10):
-    lp = smooth_width(layer, win=win, prct=prct)
+def deband_layer(layer, win=101, prct=10, func=np.median):
+    lp = smooth_width(layer, win=win, prct=prct, func=func)
     hp = layer - lp
-    lp = smooth_width(lp.T, win=win, prct=prct).T
+    lp = smooth_width(lp.T, win=win, prct=prct, func=func).T
     clean = lp + hp
     clean[clean < 0] = 0
     return clean
