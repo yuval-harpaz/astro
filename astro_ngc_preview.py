@@ -1,3 +1,5 @@
+import os
+
 from astro_utils import *
 from astropy.time import Time
 from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
@@ -117,9 +119,14 @@ for row in range(len(df)):
                 plotted.append(tgt + '_NIRCam.png')
                 made_png = True
             if '+' in instrument and np.nansum(mn) >= 2 and not both_apart:
-                auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
-                plotted.append(tgt+'_'+instrument+'.png')
-                made_png = True
+                if not os.path.isfile('nooverlap.txt'):
+                    try:
+                        auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
+                        plotted.append(tgt+'_'+instrument+'.png')
+                        made_png = True
+                    except:
+                        print('no overlap???????????????')
+                        os.system('echo "no overlap" > nooverlap.txt')
             ##
             if made_png:
                 make_thumb(plotted, date0)

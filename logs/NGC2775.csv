@@ -1,0 +1,9 @@
+file,width,height,offset,chosen,CRVAL1,CRVAL2,CRVAL1fix,CRVAL2fix
+jw03707-o027_t016_miri_f770w_i2d.fits,1779,1175,25.724633,True,137.581395748327,7.03328584437714,137.58144,7.033297
+jw03707-o027_t016_miri_f2100w_i2d.fits,1779,1175,25.724633,False,137.581388002516,7.033288084727,,
+jw03707-c1068_t016_miri_f2100w_i2d.fits,,,,False,,,,
+jw03707-c1068_t016_miri_f770w_i2d.fits,,,,False,,,,
+jw03707-o028_t016_nircam_clear-f150w_i2d.fits,,,,True,137.585329720741,7.0392760308182,,
+jw03707-o028_t016_nircam_clear-f187n_i2d.fits,,,,True,,,137.585332,7.039277
+jw03707-o028_t016_nircam_clear-f300m_i2d.fits,,,,True,,,137.58546,7.03949
+jw03707-o028_t016_nircam_clear-f335m_i2d.fits,,,,True,,,137.585448,7.039489

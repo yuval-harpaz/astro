@@ -1,7 +1,5 @@
-import os
-
+from astro_deband import deband_layer
 import pandas as pd
-# from astropy.io import fits
 from astropy import wcs
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
@@ -11,24 +9,21 @@ import astropy.units as u
 from astroquery.simbad import Simbad
 from astroquery.mast import Observations
 from reproject import reproject_interp
-# import os
 from glob import glob
 import matplotlib
-# matplotlib.use('Qt5Agg')
-# matplotlib.use('TkAgg')
-# from matplotlib import pyplot as plt
 import numpy as np
 from pathlib import Path
-# from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
-from scipy.ndimage import median_filter, maximum_filter
-from scipy.signal import find_peaks, medfilt
-# from skimage.morphology import disk
+from scipy.ndimage import median_filter
+from scipy.signal import medfilt
 from bot_grabber import level_adjust, nanmask, get_JWST_products_from
 import pickle
 from skimage import transform
 from scipy.ndimage import label
 from scipy.spatial import KDTree
 from astro_fill_holes import *
+# from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
+# from skimage.morphology import disk
+# from astropy.io import fits
 # root = __file__[:-14]
 # root = list_files.__code__.co_filename[:-14]
 root = os.environ['HOME']+'/astro/'
@@ -749,6 +744,7 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65):
     inframe = (pix[:, 0] > x1) & (pix[:, 1] > y1) & (pix[:, 0] <= x2) & (pix[:, 1] <= y2)
 
     if np.sum(inframe) == 0:
+        print(result_table)
         raise Exception('no results in frame')
     else:
         print(f'{np.sum(inframe)} results in frame')
@@ -963,7 +959,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             layers = transform.resize(layers, wh)
     else:
         if deband:
-            dbargs = {'func': np.median, 'prct': 10}
+            dbargs = {'func': np.percentile, 'prct': 10}
             dbstr = ''
             if (type(deband) == list) or (type(deband) == np.ndarray):
                 todeband = deband
@@ -991,7 +987,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     wh = resize_wh(img.shape)
                     img = transform.resize(img, wh)
                 if todeband[ii]:
-                    print('going to deband'+dbstr)
+                    print('going to deband'+dbstr+str(dbargs))
                     img = deband_layer(img, **dbargs)
                     print('done deband 0')
                 layers = np.zeros((img.shape[0], img.shape[1], len(path)))
@@ -1417,35 +1413,7 @@ def smooth_yx(img, win=5, passes=2):
     return smooth
 
 
-def smooth_width(layer, win=101, prct=50, func=np.median):
-    '''
-    smooth image from left to right, uses nanmedian
-    Args:
-        func: np function for smoothing
-            median, nanmedian, percentile or nanpercentile. nan is slower but without it you loose 50 pixels on all sides
-        prct: int
-            when removing percentile specifies q. recommended prct=10
-        layer: 2D ndarray
-        win: int
 
-    Returns:
-        smoothed data
-    '''
-    if func == np.median or func == np.nanmedian:
-        args = {'axis': 1}
-    else:
-        args = {'q': prct, 'axis': 1}
-    half0 = int(win / 2)
-    half1 = win - half0
-    smoothed = layer.copy()
-    for ii in range(smoothed.shape[0]):
-        toavg = np.nan * np.ones((layer.shape[1] + win - 1, win))
-        for shift in np.arange(win):
-            toavg[shift:layer.shape[1] + shift, shift] = layer[ii, :]
-        smoothed[ii, :] = func(toavg, **args)[half0:-half1 + 1]
-        # smoothed[ii, :] = np.nanpercentile(toavg, prct, axis=1)[half0:-half1 + 1]
-        print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
-    return smoothed
 
 
 def smooth_colors(img):
@@ -1568,13 +1536,7 @@ def last_100(html=True, products=False):
     return table
 
 
-def deband_layer(layer, win=101, prct=10, func=np.median):
-    lp = smooth_width(layer, win=win, prct=prct, func=func)
-    hp = layer - lp
-    lp = smooth_width(lp.T, win=win, prct=prct, func=func).T
-    clean = lp + hp
-    clean[clean < 0] = 0
-    return clean
+
 
 
 if __name__ == '__main__':
