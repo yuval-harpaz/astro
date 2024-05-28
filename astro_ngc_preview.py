@@ -7,18 +7,16 @@ from glob import glob
 from astro_ngc_align import add_crval_to_logs
 ##
 df = pd.read_csv('ngc.csv', sep=',')
+drive = '/media/innereye/KINGSTON/JWST/'
 ##
 for row in range(len(df)):
     pkl = True
     tgt = df['target_name'][row]
-    drive = '/media/innereye/My Passport/Data/JWST/'
     if os.path.isdir(drive):
         os.chdir(drive)
     else:
         raise Exception('where is the drive?')
         # os.system('mkdir data')
-    if not os.path.isdir('data/'+tgt):
-        os.system('mkdir data/'+tgt)
     date0 = df["collected_from"][row][:10]
     log_csv = f'/home/innereye/astro/logs/{tgt}_{date0}.csv'
     already = glob('/home/innereye/astro/docs/thumb/'+date0+'_'+tgt+'*')
@@ -39,7 +37,8 @@ for row in range(len(df)):
         elif 'background' in tgt.lower() or 'BKG' in tgt:
             print('no background for now '+tgt)
         else:
-
+            if not os.path.isdir('data/' + tgt):
+                os.system('mkdir data/' + tgt)
             if os.path.isfile(log_csv):
                 chosen_df = pd.read_csv(log_csv)
                 if date0 == '2022-09-18':
