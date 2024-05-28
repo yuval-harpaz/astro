@@ -3,9 +3,6 @@
 '''
 run astro_ngc_preview first to create logs
 '''
-# import os
-
-# import pandas as pd
 
 from astro_utils import *
 def add_crval_to_logs():

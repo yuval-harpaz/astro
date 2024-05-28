@@ -843,7 +843,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
 
     '''
     # TODO: clean small holes fast without conv, remove red background
-    for search in ['/media/innereye/My Passport/Data/JWST/data/',
+    for search in ['/media/innereye/KINGSTON/JWST/data/',
                    './',
                    '../',
                    '/home/innereye/astro/data/',
