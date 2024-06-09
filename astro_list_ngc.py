@@ -95,6 +95,8 @@ def list_ngc():
                     break
             if ii == len(nn)-1:
                 ii += 1
+            if nn == '4496A':
+                nn = '4496'
             ngc.append(int(nn[:ii]))
         elif (tt[:3] == 'ORI') | ('TRAPEZIUM' in tt.upper()):
             ngc.append(1976)
@@ -455,7 +457,8 @@ if __name__ == "__main__":
             for new in range(last):
                 tgts += df['target_name'][new]+', '
             if last > 3:
-                raise Exception(f'sus, too many new additions ({last}): {tgts[:-2]}')
-            toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/ngc.html'
-            masto, _ = connect_bot()
-            masto.status_post(toot)
+                print(f'sus, too many new additions ({last}): {tgts[:-2]}\nno tooting')
+            else:
+                toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/ngc.html'
+                masto, _ = connect_bot()
+                masto.status_post(toot)
