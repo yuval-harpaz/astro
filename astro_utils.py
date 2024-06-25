@@ -798,7 +798,7 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
-              crop=False, deband=False, blc=False, whiten=None, annotate=False, decimate=False):
+              crop=False, deband=False, blc=False, whiten=None, annotate=False, decimate=False, func=None):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -1065,7 +1065,10 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         if np.mean(np.isnan(layers[:, :, lay])) == 1 or layers[:, :, lay].sum() == 0:
             empty[lay] = True
         else:
-            layers[:, :, lay] = level_adjust(layers[:, :, lay], **adj_args)
+            if func:
+                layers[:, :, lay] = level_adjust(func(layers[:, :, lay]), **adj_args)
+            else:
+                layers[:, :, lay] = level_adjust(layers[:, :, lay], **adj_args)
             # if fill:
             #     xy = hole_xy(layers[:, :, lay])
             #     size = hole_size(layers[:, :, lay], xy, plot=False)
