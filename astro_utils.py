@@ -1142,7 +1142,6 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             else:
                 fontScale = annotate
             annotate_simbad(png_name, path[0], crop=crop, save=True, fontScale=fontScale)
-
     return eval(opvar)
 
 
