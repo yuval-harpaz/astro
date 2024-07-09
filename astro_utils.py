@@ -794,6 +794,7 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
         layer = img[..., bd]
         mask = layer <= thr
         layer[mask] = replace(img[..., okay], 2)[mask]
+        img[..., bd] = layer
     return img
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,

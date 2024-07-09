@@ -7,6 +7,7 @@ from astropy.time import Time
 from mastodon_bot import connect_bot
 from pyongc import ongc
 from skimage.transform import resize
+import re
 ##
 
 def list_ngc():
@@ -37,12 +38,18 @@ def list_ngc():
             'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB', 'CENA', 'M-4-shift',
             'PSRJ', 'M31', 'M-31', 'M51', '2022ACKO', 'BRICK', 'SNAKE', 'SN-1987A', 'WR', 'M-82', 'M-81-MIRI',
             'N5468', 'M-87-MIRI', 'RM032', 'N5643']
+    patterns = [r'^N\d{3,4}', r'^M(110|10[0-9]|[1-9][0-9]?)', r'^M-(110|10[0-9]|[1-9][0-9]?)']
     ismisc = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
         for msc in misc:
             if msc.upper() in x.upper():
                 ismisc[ix] = True
-    table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic) | np.array(ismisc)]
+    ispattern = np.zeros(len(isngc), bool)
+    for ix, x in enumerate(table['target_name']):
+        for pattern in patterns:
+            if re.match(pattern, x):
+                ispattern[ix] = True
+    table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic) | ismisc | ispattern]
     target_name = np.asarray(table['target_name'])
     target = np.unique(target_name)
     ##
