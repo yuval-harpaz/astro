@@ -1539,6 +1539,10 @@ def last_100(html=True, products=False):
     return table
 
 
+def log(arr, small=0.01):
+    arr[arr <= 0] = small
+    arr = np.log10(arr)
+    return arr
 
 
 
