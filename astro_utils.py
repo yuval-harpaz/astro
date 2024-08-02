@@ -686,12 +686,12 @@ def crop_xy(crop):
     return x1, x2, y1, y2
 
 ##
-def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65):
+def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65, filter=None):
     # crop example: crop =  'y1=54; y2=3176; x1=2067; x2=7156'
     if save:
         from cv2 import putText, FONT_HERSHEY_SIMPLEX, LINE_AA, getTextSize
     header = fits.open(fits_file)[1].header
-    if img_file == None:
+    if img_file is None:
         img = fits.open(fits_file)[1].data
         img = level_adjust(img)
         img_file = fits_file.replace('.fits', '.png')
@@ -712,6 +712,9 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65):
                  unit=(u.deg, u.deg), frame='fk5'),
         radius=0.1 * u.deg)
     result_table = result_table.to_pandas()
+    if filter:
+        result_table = result_table[result_table['MAIN_ID'].str.contains(filter)]
+        result_table.reset_index(drop=True, inplace=True)
     print(f'got {len(result_table)} results, converting to pixels')
     if len(result_table) == 0:
         raise Exception('no results')
@@ -1132,7 +1135,10 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             png_name = png
         else:
             png_name = folder+core_str+'.png'
-        plt.imsave(png_name, rgb, origin='lower')
+        if png_name[-3:] == 'jpg':
+            plt.imsave(png_name, rgb, origin='lower', pil_kwargs={'quality':95})
+        else:
+            plt.imsave(png_name, rgb, origin='lower')
         if annotate:
             if not crop:
                 crop = None

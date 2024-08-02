@@ -1,0 +1,3 @@
+file,width,height,offset,chosen,CRVAL1,CRVAL2,CRVAL1fix,CRVAL2fix
+jw03707-c1103_t053_miri_f770w_i2d.fits,4841,1960,25.724633,True,,,259.22115,-62.779225
+jw03707-o116_t053_nircam_clear-f335m_i2d.fits,,,,True,259.247476623492,-62.8186996818691,,
