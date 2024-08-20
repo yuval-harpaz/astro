@@ -782,10 +782,17 @@ def whiten_image(img):
     img[..., 0] = np.max([img[..., 0], np.min(img[..., 1:], 2)], 0)
     return img
 
-def reduce_color(img, bad=1):
+def reduce_color(img, bad=1, replace=np.min, thr=None, thratio=None):
     okay = [0, 1, 2]
     okay.pop(bad)
-    img[..., bad] = np.min(img[..., okay], 2)
+    good = replace(img[..., okay], 2)
+    mask = np.ones(good.shape, bool)
+    if thr:
+        mask[good < thr] = False
+    if thratio:
+        rat = good/img[..., bad]
+        mask[img[..., bad]/good < thratio] = False
+    img[..., bad][mask] = good[mask]
     return img
 
 def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
@@ -1039,7 +1046,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             for i3 in range(3):
                 imtochoose[..., i3] = level_adjust(imtochoose[..., i3])
             plt.figure()
-            plt.imshow(level_adjust(imtochoose))
+            plt.imshow(level_adjust(imtochoose), origin='lower')
             plt.axis('off')
             click_coordinates = []
             def onclick(event):
