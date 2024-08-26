@@ -47,7 +47,7 @@ def list_ngc():
     ispattern = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
         for pattern in patterns:
-            if re.match(pattern, x):
+            if re.search(pattern, x):
                 ispattern[ix] = True
     table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic) | ismisc | ispattern]
     target_name = np.asarray(table['target_name'])
