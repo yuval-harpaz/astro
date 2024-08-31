@@ -103,7 +103,8 @@ for calib in [False, True]:
                   f'table row: {tblrow}\n'
                   f'new date: {new_date[:16]}, prev date: {last_date[:16]}')
             toot = f'New {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
-            # toot = 'new ' + tit + ' images at https://yuval-harpaz.github.io/astro/' + html_name[5:]
+            if len(toot) > 500:
+                toot = toot[:500]
             masto, _ = connect_bot()
             a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
             if a == 0:
