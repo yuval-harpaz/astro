@@ -7,12 +7,15 @@ from glob import glob
 from astro_ngc_align import add_crval_to_logs
 ##
 df = pd.read_csv('ngc.csv', sep=',')
-drive = '/media/innereye/KINGSTON/JWST/'
+# drive = '/media/innereye/KINGSTON/JWST/'
 ##
 if os.path.isdir(drive):
     os.chdir(drive)
 else:
     raise Exception('where is the drive?')
+##
+
+##
 for row in range(len(df)):
     pkl = True
     tgt = df['target_name'][row]
@@ -41,17 +44,18 @@ for row in range(len(df)):
                 if not os.path.isdir('data/' + tgt):
                     os.system('mkdir data/' + tgt)
                 if os.path.isfile(log_csv):
-                    chosen_df = pd.read_csv(log_csv)
-                    if date0 == '2022-09-18':
-                        prev = '/home/innereye/astro/logs/ORIBAR-IMAGING-MIRI_2022-09-11.csv'
-                        prev = pd.read_csv(prev)
-                        prev['chosen'] = False
-                        prev['chosen'].at[np.where([prev['file'].str.contains('miri_f1500w')])[0][0]] = True
-                        chosen_df = pd.concat([prev, chosen_df], ignore_index=True)
-                        both_apart = True
-                    files = list(chosen_df['file'][chosen_df['chosen']])
-                    print(f'[{row}] downloading {tgt} by log')
-                    download_fits_files(files, destination_folder='data/' + tgt)
+                    download_by_log(log_csv, tgt=tgt)
+                    # chosen_df = pd.read_csv(log_csv)
+                    # if date0 == '2022-09-18':
+                    #     prev = '/home/innereye/astro/logs/ORIBAR-IMAGING-MIRI_2022-09-11.csv'
+                    #     prev = pd.read_csv(prev)
+                    #     prev['chosen'] = False
+                    #     prev['chosen'].at[np.where([prev['file'].str.contains('miri_f1500w')])[0][0]] = True
+                    #     chosen_df = pd.concat([prev, chosen_df], ignore_index=True)
+                    #     both_apart = True
+                    # files = list(chosen_df['file'][chosen_df['chosen']])
+                    # print(f'[{row}] downloading {tgt} by log')
+                    # download_fits_files(files, destination_folder='data/' + tgt)
                 else:
                     t_min = [np.floor(Time(df['collected_from'][row]).mjd),
                              np.ceil(Time(df['collected_to'][row]).mjd)]

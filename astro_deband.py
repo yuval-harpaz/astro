@@ -33,12 +33,16 @@ def smooth_width(layer, win=101, prct=50, func=np.median):
     return smoothed
 
 
-def deband_layer(layer, win=101, prct=10, func=np.median):
+def deband_layer(layer, win=101, prct=10, func=np.median, flip=False):
+    if flip:
+        layer = layer.T
     lp = smooth_width(layer, win=win, prct=prct, func=func)
     hp = layer - lp
     lp = smooth_width(lp.T, win=win, prct=prct, func=func).T
     clean = lp + hp
     clean[clean < 0] = 0
+    if flip:
+        clean = clean.T
     return clean
 
 

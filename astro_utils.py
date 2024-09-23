@@ -1558,6 +1558,24 @@ def log(arr, small=0.01):
     return arr
 
 
+drive = '/media/innereye/KINGSTON/JWST/'
+def download_by_log(log_csv, tgt=None):
+    if log_csv[0] != '/':
+        log_csv = '/home/innereye/astro/logs/' + log_csv
+    if os.path.isdir(drive):
+        os.chdir(drive)
+    else:
+        raise Exception('where is the drive?')
+    if tgt is None:
+        tgt = log_csv.split('_')[0].split('/')[-1]
+    if not os.path.isdir('data/' + tgt):
+        os.system('mkdir data/' + tgt)
+    if os.path.isfile(log_csv):
+        chosen_df = pd.read_csv(log_csv)
+        files = list(chosen_df['file'][chosen_df['chosen']])
+        print(f'downloading {tgt} by log')
+        download_fits_files(files, destination_folder='data/' + tgt)
+
 
 if __name__ == '__main__':
     os.chdir('/media/innereye/My Passport/Data/JWST/Uranus24hr/')
