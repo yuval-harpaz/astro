@@ -1,0 +1,7 @@
+file,width,height,offset,chosen,CRVAL1,CRVAL2,CRVAL1fix,CRVAL2fix
+jw02780-c1013_t001_nircam_f182m-maskrnd-sub320a335r_i2d.fits,,,,True,290.745810083024,-54.5385874247163,,
+jw02780-c1013_t001_nircam_f210m-maskrnd-sub320a335r_i2d.fits,,,,True,,,290.74579,-54.53859
+jw02780-c1013_t001_nircam_f250m-maskrnd-sub320a335r_i2d.fits,,,,True,,,290.74531,-54.53854
+jw02780-c1013_t001_nircam_f300m-maskrnd-sub320a335r_i2d.fits,,,,False,,,290.74527,-54.53856
+jw02780-c1013_t001_nircam_f335m-maskrnd-sub320a335r_i2d.fits,,,,False,,,290.74525,-54.53856
+jw02780-c1013_t001_nircam_f444w-maskrnd-sub320a335r_i2d.fits,,,,False,,,290.74525,-54.53856

@@ -169,8 +169,8 @@ def mosaic_xy(path, plot=False, log=None):
         plt.show(block=False)
     return xy, size
 
-
-def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False, log=None):
+##
+def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False, log=None, fill=False, subtract=None):
     '''
     make a mosaic of fits images with the same pixel size
     Args:
@@ -195,7 +195,23 @@ def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False, log=No
         data = []
         for idat, p in enumerate(path):
             hdul = fits.open(p)
-            data.append(hdul[1].data.copy())
+            hdudata = hdul[1].data.copy()
+            if subtract:
+                key = [s for s in subtract.keys() if s in p]
+                if len(key) == 1:
+                    hdub = fits.open(subtract[key[0]])
+                else:
+                    print(key)
+                    raise Exception('failed to recognize noise data')
+                if hdudata.shape == hdub[1].data.shape:
+                    hdudata = hdudata - hdub[1].data
+                    hdudata[hdudata < 0] = 0
+                else:
+                    print('wrong size for '+p+' '+str(hdub[1].data.shape))
+
+            data.append(hdudata)
+            if fill:
+                data[-1] = hole_func_fill(data[-1])
     xy = np.asarray(xy)
     # x1 = int(np.max(xy[:, 0])-np.min(xy[:, 0])+xy[:, 0][0]*2+1)
     # y1 = int(np.max(xy[:, 1])-np.min(xy[:, 1])+xy[:, 1][0]*2+1)
@@ -258,7 +274,7 @@ def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False, log=No
         plt.axis('off')
         plt.show(block=False)
     return canvas
-
+##
 def optimize_xy(layers, square_size=[100, 100], tests=9, plot=False):
     if square_size is None:
         szx05 = int(np.ceil(tests/2))
@@ -809,7 +825,7 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
-              crop=False, deband=False, blc=False, whiten=None, annotate=False, decimate=False, func=None):
+              crop=False, deband=False, blc=False, whiten=None, annotate=False, decimate=False, func=None, bar=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -1088,6 +1104,14 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 layers[:, :, lay] = smooth_yx(layers[:, :, lay], 5, 2)
     # combine colors by method
     layers = layers[..., ~empty]
+    if bar:
+        if type(bar) == bool:
+            bar_square_size = int(layers.shape[0]*0.2/layers.shape[2])
+        else:
+            bar_square_size = int(bar)
+        for ilay in range(layers.shape[2]):
+            layers[bar_square_size * ilay: bar_square_size * ilay + bar_square_size, :bar_square_size, :] = 0
+            layers[bar_square_size * ilay: bar_square_size * ilay + bar_square_size, :bar_square_size, ilay] = 1
     path = path[~empty]
     rgb = None
     ismiri = ['miri' in x for x in path]
@@ -1131,6 +1155,13 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         rgb = blc_image(rgb)
     if whiten:
         rgb = whiten_image(rgb)
+    if bar:
+        colorbar = rgb[: bar_square_size * ilay + bar_square_size, :bar_square_size, :]
+        cbmax = np.max(colorbar)
+        print(cbmax)
+        colorbar = colorbar.copy()/cbmax*255  # ).astype('uint8')
+        colorbar = colorbar.astype('uint8')
+        rgb[: bar_square_size * ilay + bar_square_size, :bar_square_size, :] = colorbar
     if plot:
         plt.figure()
         plt.imshow(rgb, origin='lower')
