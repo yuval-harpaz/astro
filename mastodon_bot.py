@@ -7,14 +7,16 @@ def connect_bot():
     local = '/home/innereye/astro/'
     if os.path.isdir(local):
         os.chdir(local)
-        oauth = 'token.secret'
+        oauth = os.environ['MOAuth']
+        # oauth = 'token.secret'
         loc = 'local'
     else:
-        oauth = os.environ['OAuth']
+        oauth = os.environ['MOAuth']
         loc = 'github'
     masto = Mastodon(
         access_token=oauth,
-        api_base_url='https://botsin.space/'
+        api_base_url='https://mas.to/'
+        # api_base_url='https://mas.space/'
     )
     return masto, loc
 
