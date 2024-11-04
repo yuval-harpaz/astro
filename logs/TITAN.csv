@@ -1,0 +1,5 @@
+file,width,height,offset,chosen,CRVAL1,CRVAL2,CRVAL1fix,CRVAL2fix
+jw04523-o001_t001_nircam_clear-f187n-sub160p_i2d.fits,,,,False,344.847844818534,-8.78041035564034,,
+jw04523-o001_t001_nircam_clear-f212n-sub160p_i2d.fits,,,,True,,,344.847847,-8.780415
+jw04523-o001_t001_nircam_clear-f300m-sub160p_i2d.fits,,,,True,,,344.847978,-8.780438
+jw04523-o001_t001_nircam_f444w-f466n-sub160p_i2d.fits,,,,True,,,344.847975,-8.780445

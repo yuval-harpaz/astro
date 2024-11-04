@@ -205,7 +205,7 @@ def mosaic(data, xy=[], size=[], clip=[], method='overwrite', plot=False, log=No
                     raise Exception('failed to recognize noise data')
                 if hdudata.shape == hdub[1].data.shape:
                     hdudata = hdudata - hdub[1].data
-                    hdudata[hdudata < 0] = 0
+                    # hdudata[hdudata < 0] = 0
                 else:
                     print('wrong size for '+p+' '+str(hdub[1].data.shape))
 
