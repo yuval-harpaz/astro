@@ -1,9 +1,11 @@
+"""Create a mastodon client."""
 from mastodon import Mastodon
 import os
 import sys
 
 
 def connect_bot():
+    """Connect a client to bot account."""
     local = '/home/innereye/astro/'
     if os.path.isdir(local):
         os.chdir(local)

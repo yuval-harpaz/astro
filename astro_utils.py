@@ -825,7 +825,7 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
               plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
-              crop=False, deband=False, blc=False, whiten=None, annotate=False, decimate=False, func=None, bar=False):
+              crop=False, deband=False, deband_flip=False, blc=False, whiten=None, annotate=False, decimate=False, func=None, bar=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -986,7 +986,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             layers = transform.resize(layers, wh)
     else:
         if deband:
-            dbargs = {'func': np.percentile, 'prct': 10}
+            dbargs = {'func': np.percentile, 'prct': 10, 'flip': deband_flip}
             dbstr = ''
             if (type(deband) == list) or (type(deband) == np.ndarray):
                 todeband = deband
