@@ -711,6 +711,7 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65, f
         img = fits.open(fits_file)[1].data
         img = level_adjust(img)
         img_file = fits_file.replace('.fits', '.png')
+        img[np.isnan(img)] = 0
         plt.imsave(img_file, img, origin='lower')
     img = plt.imread(img_file)
     if img.shape[2] == 4:
@@ -770,8 +771,9 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65, f
     if save:
         # color = (155, 255, 255)
         thickness = 2
-        img = 255*img
-        img = img.astype('uint8')
+        if np.nanmax(img) <= 1:
+            img = 255*img
+            img = img.astype('uint8')
         for idx in np.where(inframe)[0]:
             txt = result_table['MAIN_ID'][idx]
             midhight = int(np.floor(getTextSize(txt,
