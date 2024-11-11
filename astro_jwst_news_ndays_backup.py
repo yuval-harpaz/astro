@@ -12,6 +12,7 @@ from mastodon_bot import connect_bot
 from skimage.transform import resize
 import os
 from astro_list_ngc import social, credits
+from atproto import Client as Blient
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -105,7 +106,14 @@ for calib in [False, True]:
             toot = f'New {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
             if len(toot) > 500:
                 toot = toot[:500]
-            masto, _ = connect_bot()
+
+            try:
+                blient = Blient()
+                blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
+                blient.send_post(text=toot)
+            except:
+                print('failed bluesky')
+            masto, loc = connect_bot()
             a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
             if a == 0:
                 img = plt.imread('tmp.jpg')
