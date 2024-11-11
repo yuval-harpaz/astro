@@ -20,6 +20,8 @@ jobs:
     - name: run script
       env:
           MOAuth: ${{ secrets.MASTO }}
+          Blueword: ${{ secrets.BWORD }}
+          Bluehandle: ${{ secrets.BNDL }}
       run: |
         python astro_jwst_news_ndays_backup.py
     - name: check news
@@ -51,7 +53,6 @@ jobs:
           MOAuth: ${{ secrets.MASTO }}
       run: |
         python astro_list_ngc.py
-        # python astro_toot_colors.py
     - name: check news ngc
       run: |
         git config --global user.name "actions"
