@@ -8,3 +8,4 @@ scipy
 matplotlib
 scikit-image
 pyongc
+atproto
