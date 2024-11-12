@@ -13,6 +13,9 @@ from skimage.transform import resize
 import os
 from astro_list_ngc import social, credits
 from atproto import Client as Blient
+from atproto import client_utils
+from astro_utils import resize_with_padding
+
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -110,19 +113,43 @@ for calib in [False, True]:
             try:
                 blient = Blient()
                 blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
-                blient.send_post(text=toot)
+                boot = client_utils.TextBuilder()
+                blue = True
+                if 'https' in toot:
+                    boot.text(toot[:toot.index('https')])
+                    boot.link('news_by_date.html', toot[toot.index('https'):])
+                else:
+                    boot.text(toot)
             except:
                 print('failed bluesky')
+                blue = False
+
+                # post = blient.send_post(text=toot)
+
             masto, loc = connect_bot()
             a = os.system('wget -O tmp.jpg '+page[first_image:page.index('.jpg')+4] + '>/dev/null 2>&1')
             if a == 0:
                 img = plt.imread('tmp.jpg')
+                imgrs = resize_with_padding(img)
+                plt.imsave('tmprs.jpg', imgrs, cmap='gray')
                 size = os.path.getsize('tmp.jpg')
                 mb2 = 2*10**6  # mastodon allows 2MB
                 if size >= mb2:
                     ratio = mb2/size
                     img = resize(img, (int(ratio**0.5*img.shape[0]), int(ratio**0.5*img.shape[1])))
                     plt.imsave('tmp.jpg', img, cmap='gray')
+                if blue:
+                    try:
+                        with open('tmprs.jpg', 'rb') as f:
+                            img_data = f.read()
+                        alt = page[first_image:page.index('.jpg')+4].split('/')[-1]
+                        tbl_row = np.where(tbl['jpegURL'].str.contains(alt))[0]
+                        if len(tbl_row) == 1:
+                            alt = f"{alt}\n{tbl.iloc[tbl_row[0]]['target_name']}\n{tbl.iloc[tbl_row[0]]['obs_title']}"
+                        post = blient.send_image(text=boot, image=img_data, image_alt=alt)
+                    except:
+                        post = blient.send_post(boot)
+                        print('boot')
                 try:
                     metadata = masto.media_post("tmp.jpg", "image/jpeg")
                     masto.status_post(toot, media_ids=metadata["id"])
@@ -139,9 +166,13 @@ for calib in [False, True]:
                     except:
                         masto.status_post(toot)
                         print('toot')
+
             else:
                 masto.status_post(toot)
                 print('toot')
+                if blue:
+                    post = blient.send_post(boot)
+                    print('boot')
 print('wrote image preview')
 ## create a list of download links
 for calib in [False, True]:

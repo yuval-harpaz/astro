@@ -1610,6 +1610,37 @@ def download_by_log(log_csv, tgt=None):
         download_fits_files(files, destination_folder='data/' + tgt)
 
 
+def resize_with_padding(img, target_size=(1200, 675)):
+    """
+    Resize an image to the target size, maintaining aspect ratio by padding the
+    remaining area.
+    """
+    padding_color = 0
+    # img = plt.imread(image_path)
+    # Determine the target aspect ratio
+    target_aspect = target_size[0] / target_size[1]
+    img_aspect = img.shape[1] / img.shape[0]
+    # Resize the image to fit within the target size, maintaining aspect ratio
+    if img_aspect > target_aspect:
+        # Image is wider than target aspect ratio
+        new_width = target_size[0]
+        new_height = round(new_width / img_aspect)
+    else:
+        # Image is taller than target aspect ratio
+        new_height = target_size[1]
+        new_width = round(new_height * img_aspect)
+    # Resize the image
+    resized_img = transform.resize(img, (new_height, new_width), anti_aliasing=True)
+    # Create a new image with the target size and fill with the padding color
+    padded_img = np.zeros((target_size[1], target_size[0])) * padding_color
+    # Calculate the position to paste the resized image onto the background
+    y_offset = (target_size[1] - new_height) // 2
+    x_offset = (target_size[0] - new_width) // 2
+    # Place the resized image in the center of the padded background
+    padded_img[y_offset:y_offset + new_height, x_offset:x_offset + new_width] = resized_img
+    return padded_img
+
+
 if __name__ == '__main__':
     os.chdir('/media/innereye/My Passport/Data/JWST/Uranus24hr/')
     layers = auto_plot('Uranus24hr', exp='logUranus24all.csv', png='rgb_all1.png', pkl=False, resize=False, method='rrgggbb', blc=True, opvar='layers',
