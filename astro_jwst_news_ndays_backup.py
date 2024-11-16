@@ -122,7 +122,10 @@ for calib in [False, True]:
                     boot.text(txt)
                     boot.link('news_by_date.html', toot[toot.index('https'):])
                 else:
-                    boot.text(toot)
+                    txt = toot
+                    if len(txt) > 300:
+                        txt = txt[:300]
+                    boot.text(txt)
             except:
                 print('failed bluesky')
                 blue = False
@@ -151,8 +154,11 @@ for calib in [False, True]:
                             alt = f"{alt}\n{tbl.iloc[tbl_row[0]]['target_name']}\n{tbl.iloc[tbl_row[0]]['obs_title']}"
                         post = blient.send_image(text=boot, image=img_data, image_alt=alt)
                     except:
-                        post = blient.send_post(boot)
-                        print('boot')
+                        try:
+                            post = blient.send_post(boot)
+                            print('boot')
+                        except:
+                            print('failed bluesky 2')
                 try:
                     metadata = masto.media_post("tmp.jpg", "image/jpeg")
                     masto.status_post(toot, media_ids=metadata["id"])
