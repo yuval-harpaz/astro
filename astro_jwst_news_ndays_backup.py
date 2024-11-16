@@ -116,7 +116,10 @@ for calib in [False, True]:
                 boot = client_utils.TextBuilder()
                 blue = True
                 if 'https' in toot:
-                    boot.text(toot[:toot.index('https')])
+                    txt = toot[:toot.index('https')]
+                    if len(txt) > 300:
+                        txt = txt[:300]
+                    boot.text(txt)
                     boot.link('news_by_date.html', toot[toot.index('https'):])
                 else:
                     boot.text(toot)
