@@ -5,7 +5,7 @@ os.chdir('/media/innereye/KINGSTON/JWST/data/')
 
 
 
-files = sorted(glob('NGC-253*/*miri*.fits'))
+files = sorted(glob('NGC-253*/*.fits'))
 filt = filt_num(files)
 files = np.array(files)[np.argsort(filt)]
 
