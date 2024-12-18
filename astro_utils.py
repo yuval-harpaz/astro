@@ -391,7 +391,8 @@ def download_fits_files(file_names, destination_folder='', overwrite=False):
     success = 0
     for fn in file_names:
         fn = fn.split('/')[-1]
-        if not os.path.isfile(destination_folder+fn) or overwrite:
+        dfn = destination_folder+fn
+        if not os.path.isfile(dfn) or overwrite or os.path.getsize(dfn) == 0:
             a = os.system(f'wget -O {destination_folder+fn} {mast}{fn} {no_print}')
             if a == 0:
                 success += 1
