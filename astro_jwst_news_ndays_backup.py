@@ -115,16 +115,17 @@ for calib in [False, True]:
                 blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
                 boot = client_utils.TextBuilder()
                 blue = True
+                blim = 250  # should be 300 limit but failed once
                 if 'https' in toot:
                     txt = toot[:toot.index('https')]
-                    if len(txt) > 300:
-                        txt = txt[:300]
+                    if len(txt) > blim:
+                        txt = txt[:blim]
                     boot.text(txt)
                     boot.link('news_by_date.html', toot[toot.index('https'):])
                 else:
                     txt = toot
-                    if len(txt) > 300:
-                        txt = txt[:300]
+                    if len(txt) > blim:
+                        txt = txt[:blim]
                     boot.text(txt)
             except:
                 print('failed bluesky')
