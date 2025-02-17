@@ -826,9 +826,9 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
         img[..., bd] = layer
     return img
 
-def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=True, png=False, resize=False,
-              plot=True, adj_args={'factor': 4}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
-              crop=False, deband=False, deband_flip=False, blc=False, whiten=None, annotate=False, decimate=False, func=None, bar=False):
+def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=False, png=None, resize=False,
+              plot=False, adj_args={'factor': 2}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
+              crop=False, deband=False, deband_flip=False, blc=None, whiten=None, annotate=False, decimate=False, func=None, bar=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
     Parameters
@@ -850,7 +850,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     pkl: bool | str
         True for save nd array of all data as pickle first time this directory is processed, and read it if it exists next times
         str means True + pkl filename to read / save
-    png: bool | str
+    png: bool | str | None
         False - don't save png. True - save png according to folder name. str - specify png name to save.
     resize: bool
         try resize to fit a 1920 by 1080 image. no cropping or aspect artio chabges. meant to reduce RAM and time.
@@ -862,7 +862,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         what variable to return. 'rgb' or 'layers'
     deband: bool | int | list | ndarray
         remove banding noise 1/f. True or 1 for all layers, 2 or 'nircam' for nircam layers, False default. lots of time!
-    blc: bool
+    blc: bool | None
         subtract non-zero minimum (baseline correction) and divide by maximum
     whiten: None | bool
         prevent blue hue, rise red to min([green, blue]). This is designed to make NIRCam more white than blue.
@@ -1154,6 +1154,11 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             whiten = False
         else:
             whiten = True
+    if blc is None:
+        if method == 'filt':
+            blc = True
+        else:
+            blc = False
     if blc:
         rgb = blc_image(rgb)
     if whiten:
@@ -1171,6 +1176,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         plt.show()
         if annotate:
             print('no annotate for plot, only works for save')
+    if png is None:
+        png = f"{method}_fac{adj_args['factor']}.jpg"
     if png:
         if type(png) == str:
             png_name = png
