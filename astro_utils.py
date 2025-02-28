@@ -993,16 +993,21 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             dbstr = ''
             if (type(deband) == list) or (type(deband) == np.ndarray):
                 todeband = deband
-            elif type(deband) == int or type(bool):
+            elif type(deband) == int or type(deband) == bool:
                 todeband = np.ones(len(path))
                 if type(deband) == int:
                     if deband == 50:
                         dbargs['func'] = np.nanmedian
                     else:
                         dbargs['func'] = np.nanpercentile
-            elif (deband == 'nircam') or (deband > 1):
+            elif deband == 'nircam':
                 dbstr = ' nircam'
                 todeband = np.array(['nircam' in x for x in path])
+            elif deband == 'n':
+                dbstr = ' n'
+                todeband = np.array(['n_i2d.' in x for x in path])
+                dbargs['func'] = np.nanpercentile
+
         for ii in range(len(path)):
             if ii == 0:
                 hdu0 = fits.open(path[ii])
@@ -1650,9 +1655,10 @@ def resize_with_padding(img, target_size=(1200, 675)):
 
 
 if __name__ == '__main__':
-    os.chdir('/media/innereye/My Passport/Data/JWST/Uranus24hr/')
-    layers = auto_plot('Uranus24hr', exp='logUranus24all.csv', png='rgb_all1.png', pkl=False, resize=False, method='rrgggbb', blc=True, opvar='layers',
-              plot=False, fill=True, deband=False, adj_args={'factor': 1}, whiten=False, crop='y1=1862; y2=2382; x1=1902; x2=2397')
-    with open('layers12.pkl', 'wb') as f:
-        pickle.dump(layers, f)
+    auto_plot('OMC2-NW', exp = '*.fits', method='rrgggbb', deband='n', png='rgb1deband.jpg',adj_args={'factor':1}, func=log, fill=True, pkl=True)
+    # os.chdir('/media/innereye/My Passport/Data/JWST/Uranus24hr/')
+    # layers = auto_plot('Uranus24hr', exp='logUranus24all.csv', png='rgb_all1.png', pkl=False, resize=False, method='rrgggbb', blc=True, opvar='layers',
+    #           plot=False, fill=True, deband=False, adj_args={'factor': 1}, whiten=False, crop='y1=1862; y2=2382; x1=1902; x2=2397')
+    # with open('layers12.pkl', 'wb') as f:
+    #     pickle.dump(layers, f)
 

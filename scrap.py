@@ -1,5 +1,3 @@
-import os
-
 from astro_list_ngc import *
 
-auto_plot('OMC2-NE', exp = '*.fits', method='rrgggbb', deband=10, png='rgb1deband.jpg',adj_args={'factor':1}, func=log, fill=True, pkl=True)
+auto_plot('CB-26', exp = 'log', method='rrgggbb', deband=False, png='rgb1log.jpg',adj_args={'factor':1}, func=log, fill=True, pkl=False)
