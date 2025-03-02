@@ -35,7 +35,7 @@ def list_ngc():
     isic = [x[:2].upper() == 'IC' for x in table['target_name']]
     misc = ['Cartwheel', 'Comet', 'Antennae', 'Hoag', 'Arp', 'Pinwheel', 'TRAPEZIUM', 'N5584', 'Leo-P', 'SERPENS',
             'Sombrero', 'Sunflower', 'Tadpole', 'MESSIER', 'Whirlpool', 'VV', 'HORSEHEAD', 'IR07251', 'CLOUD',
-            'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB', 'CENA', 'M-4-shift',
+            'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB', 'CENA', 'M-4-shift', '2MASS-J04302705+3545505',
             'PSRJ', 'M31', 'M-31', 'M51', '2022ACKO', 'BRICK', 'SNAKE', 'SN-1987A', 'WR', 'M-82', 'M-81-MIRI',
             'N5468', 'M-87-MIRI', 'RM032', 'N5643', 'SGR', 'Y533', 'SQ=MRS', 'HOPS383', 'OMC', 'CB-26']
     patterns = [r'N\d{3,4}', r'^M(110|10[0-9]|[1-9][0-9]?)', r'^M-(110|10[0-9]|[1-9][0-9]?)']
