@@ -1,5 +1,5 @@
-from astro_list_ngc import *
+from astro_utils import *
 
-auto_plot('CB-26', exp = 'log', method='filt', deband='nircam', deband_flip=False,
-          png='both_filt6.jpg',adj_args={'factor':1}, func=None, fill=True, pkl=False, crop='y1=1930; y2=3496; x1=2074; x2=3663')
+auto_plot('2MASS-J04302705+3545505', exp = 'log', method='rrgggbb', deband=False, deband_flip=False,
+          png='rgb1nircam_crop_log.jpg',adj_args={'factor':1}, func=log, fill=True, pkl=True, crop='y1=2328; y2=3969; x1=2340; x2=4333')
 
