@@ -1655,10 +1655,6 @@ def resize_with_padding(img, target_size=(1200, 675)):
 
 
 if __name__ == '__main__':
-    auto_plot('OMC2-NW', exp = '*.fits', method='rrgggbb', deband='n', png='rgb1deband.jpg',adj_args={'factor':1}, func=log, fill=True, pkl=True)
-    # os.chdir('/media/innereye/My Passport/Data/JWST/Uranus24hr/')
-    # layers = auto_plot('Uranus24hr', exp='logUranus24all.csv', png='rgb_all1.png', pkl=False, resize=False, method='rrgggbb', blc=True, opvar='layers',
-    #           plot=False, fill=True, deband=False, adj_args={'factor': 1}, whiten=False, crop='y1=1862; y2=2382; x1=1902; x2=2397')
-    # with open('layers12.pkl', 'wb') as f:
-    #     pickle.dump(layers, f)
+    auto_plot('NGC2506G31', exp = '*fits', png='rgb4log_deband.jpg',adj_args={'factor':4},
+          func=log, method='rrgggbb', fill=False, pkl=False, deband=10, deband_flip=True)
 

@@ -1,6 +1,5 @@
 from astro_utils import *
-
-auto_plot('NGC-5139', exp = '*nircam*.fits', deband=10,
-          deband_flip=False, png='rgb1deband.jpg',adj_args={'factor':1}, func=None,
-          fill=True, pkl=True)
+# exp = ['jw06785-o001_t001_nircam_clear-f444w_i2d.fits', 'jw06785-o001_t001_nircam_clear-f335m_i2d.fits', 'jw06785-o001_t001_nircam_f444w-f470n_i2d.fits']
+auto_plot('SNIa_1', exp = '*fits', png='rgb4.jpg',adj_args={'factor':4, 'lims': [0.1, 0.99999]},
+          func=None, method='rrgggbb', fill=False, pkl=False, deband=False, deband_flip=False)
 
