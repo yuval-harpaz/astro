@@ -827,7 +827,7 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
     return img
 
 def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=False, png=None, resize=False,
-              plot=False, adj_args={'factor': 2}, fill=False, smooth=False, max_color=False, opvar='rgb', core=False,
+              plot=False, adj_args={'factor': 2}, fill=False, fill_func='max', smooth=False, max_color=False, opvar='rgb', core=False,
               crop=False, deband=False, deband_flip=False, blc=None, whiten=None, annotate=False, decimate=False, func=None, bar=False):
     '''
     finds fits files in path according to expression exp, and combine them to one RGB image.
@@ -1017,7 +1017,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     print('decimated')
                 img = hdu0[1].data
                 if fill:
-                    img = hole_func_fill(img)
+                    img = hole_func_fill(img, func=fill_func)
                 if resize:# make rescale size for wallpaper 1920 x 1080
                     wh = resize_wh(img.shape)
                     img = transform.resize(img, wh)
@@ -1033,7 +1033,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 if decimate:
                     hdu[1].data = hdu[1].data[::decimate, ::decimate]
                 if fill:
-                    hdu[1].data = hole_func_fill(hdu[1].data)
+                    hdu[1].data = hole_func_fill(hdu[1].data,  func=fill_func)
                 hdu = crval_fix(hdu)
                 if todeband[ii]:
                     hdu[1].data = deband_layer(hdu[1].data, **dbargs)

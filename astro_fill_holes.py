@@ -1,17 +1,12 @@
 from astropy.io import fits
 import os
-# import matplotlib
-
-# matplotlib.use('Qt5Agg')
-# matplotlib.use('TkAgg')
 from matplotlib import pyplot as plt
 import numpy as np
 from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
 from scipy.signal import find_peaks
 from skimage.morphology import disk
-# from scipy.ndimage import median_filter
-# from tqdm import tqdm
-
+from scipy.ndimage import label, binary_dilation
+import pandas as pd
 root = os.environ['HOME']+'/astro/'
 
 def hole_xy(layer, x_stddev=4):
@@ -233,6 +228,7 @@ def hole_conv_fill(img, n_pixels_around=4, ringsize=15, clean_below_local=0.75, 
 def hole_func_fill_above(img1, kernel_array=None, fill_below=0, fill_above=None, func='max', n_iter=100):
     '''
     fill holes with a maximum filter, conv, or a custom function
+    ignore fill values below fill_above
     Args:
         img1: 2D ndarray
         kernel_array: a square ndarray with an odd length.
@@ -306,26 +302,91 @@ def hole_func_fill_above(img1, kernel_array=None, fill_below=0, fill_above=None,
             # fill_val[izer] = np.nansum(sq*kernel.array)/np.nansum(kernel.array[~np.isnan(sq)])
         img1[zer[:, 0], zer[:, 1]] = fill_val
         img1[np.isnan(img1)] = 0
-
     return img1
 
 
-def hole_func_fill(img1, kernel_array=None, fill_below=0, func='max', n_iter=100):
-    '''
-    fill holes with a maximum filter, conv, or a custom function
+def largest_cluster_mask(labels, min_size=0.01):
+    """
+    Create a mask for the largest area of nans, to void trying to fill them.
+
+    Parameters
+    ----------
+    image : ndarray
+        A 2D image.
+    min_size : float, optional
+        Below this ratio, cluster size may be a star or something we want to
+        fill. When the largest cluster is below that we return no cluster.
+        The default is 100.
+
+    Returns
+    -------
+    ndarray
+        True for pixels with nans in the largest cluster.
+
+    """
+    # nan_mask = np.isnan(image)
+    # labeled_array, num_features = label(nan_mask)
+    if labels.max() == 0:
+        return np.zeros_like(labels, dtype=bool)
+    unique_labels, counts = np.unique(labels[labels > 0], return_counts=True)
+    if np.max(counts) < (labels.shape[0] * labels.shape[1] * min_size):
+        return np.zeros_like(labels, dtype=bool)
+    largest_label = unique_labels[np.argmax(counts)]
+    largest_cluster_mask = labels == largest_label
+    return largest_cluster_mask
+
+
+def cluster_neighbor_stats(img1, labels=None):
+    """
+    Check maximum value for cluster's neighborin pixels.
+
+    Parameters
+    ----------
+    img1: ndarray
+        2D image with nans
+    labels : ndarray
+        output of labels, _ = label(np.isnan(image)).
+
+    Returns
+    -------
+    max_values : ndarray
+        A vector with maximum value per cluster (of nans).
+
+    """
+    if labels is None:
+        labels, _ = label(np.isnan(img1))
+    stats = pd.DataFrame(columns=['size', 'max', 'min', 'median', 'mean'])
+    for region_label in range(1, labels.max()+1):
+        region_mask = labels == region_label  # Extract the region
+        stats.at[region_label, 'size'] = np.sum(region_mask)
+        expanded_mask = binary_dilation(region_mask)
+        neighbor_mask = expanded_mask & ~region_mask
+        stats.at[region_label, 'max'] = np.max(img1[neighbor_mask])
+        stats.at[region_label, 'min'] = np.min(img1[neighbor_mask])
+        stats.at[region_label, 'median'] = np.median(img1[neighbor_mask])
+        stats.at[region_label, 'mean'] = np.mean(img1[neighbor_mask])
+    return stats
+
+
+def hole_func_fill(img1, kernel_array=None, fill_below=None, func='max', n_iter=100):
+    """
+    Fill holes with a maximum filter, conv, or a custom function.
+
     Args:
         img1: 2D ndarray
         kernel_array: a square ndarray with an odd length.
-        fill_below: int | float, consider hole values at or below this
+        fill_below: int | float | None
+            consider hole values at or below this. When None take nanmin(img1)
         func: a function with input arguments for data patch sq and kernel_array. allow nans.
-        n_iter: int, how many times to run until filled
+        n_iter: int, how many times to run until stop filling
 
     Returns:
         img1 after filling its holes
-    '''
+    """
     if func == 'max':
+        size = 5  # 17 is okay but sometimes paints too much. 5 is slower
         if kernel_array is None:
-            kernel_array = np.ones((17, 17)) / 17 ** 2
+            kernel_array = np.ones((size, size)) / size ** 2
 
         def func(sq):
             return np.nanmax(sq)
@@ -337,86 +398,108 @@ def hole_func_fill(img1, kernel_array=None, fill_below=0, func='max', n_iter=100
         def func(sq):
             val = np.nansum(sq*kernel_array)  # /np.nansum(kernel_array[~np.isnan(sq)])
             return val
-    for iter in range(n_iter):
-        # change nans and negative to zeros to avoid treating black edged as holes
-        img1[np.isnan(img1)] = 0
-        img1[img1 <= 0] = 0
-        for ii in range(img1.shape[0]):
-            pos = np.where(img1[ii,:] > 0)[0]
-            if len(pos) == 0:
-                img1[ii,:] = np.nan
-            else:
-                img1[ii, :pos[0]] = np.nan
-                img1[ii, pos[-1]+1:] = np.nan
-        for jj in range(img1.shape[1]):
-            pos = np.where(img1[:, jj] > 0)[0]
-            if len(pos) == 0:
-                img1[:, jj] = np.nan
-            else:
-                img1[:pos[0], jj] = np.nan
-                img1[pos[-1]+1:, jj] = np.nan
-        if kernel_array.shape[0] != kernel_array.shape[1]:
-            raise Exception('kernel must be square')
-        kershape0 = kernel_array.shape[0]
-        if kershape0%2 == 0:
-            raise Exception('kernel array must have odd dimentions')
-        zer = np.where(img1 <= fill_below)
-        if len(zer[0]) == 0:
-            print(f'no more holes after {iter} iterations')
-            break
-        zer = np.asarray(zer).T
-        zer = zer[(zer[:,0] > np.floor(kershape0/2)) &
-                  (zer[:,1] > np.floor(kershape0/2)) &
-                  (zer[:,0] < img1.shape[0]-np.ceil(kershape0/2)) &
-                  (zer[:,1] < img1.shape[1]-np.ceil(kershape0/2)), :]
-        if len(zer) == 0:
-            print(f'no more holes after {iter} iterations')
-            break
-        img1[img1 <= fill_below] = np.nan  # turn zeros to nans to ignore when computing fill values
-        half = int(kershape0/2)
-        fill_val = np.zeros(zer.shape[0])
-        for izer in range(zer.shape[0]):
-            sq = img1[zer[izer, 0] - half:zer[izer, 0] + half + 1, zer[izer, 1] - half:zer[izer, 1] + half + 1]
-            fill_val[izer] = func(sq)
-            # img1[zer[izer, 0], zer[izer, 1]] = func(sq*kernel.array)
-            # fill_val[izer] = np.nansum(sq*kernel.array)/np.nansum(kernel.array[~np.isnan(sq)])
-        img1[zer[:, 0], zer[:, 1]] = fill_val
-        img1[np.isnan(img1)] = 0
-
+    if fill_below is None:
+        # fill_below = np.nanpercentile(img1, 0.1)
+        fill_below = np.nanmin(img1)
+    print('looking for nans clusters ', end='')
+    nan_labels, _ = label(np.isnan(img1))
+    nan_cluster = largest_cluster_mask(nan_labels, min_size=0.01)
+    if func == 'denan':
+        stats = cluster_neighbor_stats(img1, nan_labels)
+        for iclust in range(1, len(stats)+1):
+            img1[nan_labels == iclust] = stats['max'][iclust]
+        print('done')
+    else:
+        print('cluster size: '+str(np.sum(nan_cluster)))
+        for iter in range(n_iter):
+            # change nans and negative to zeros to avoid treating black edged as holes
+            img1[np.isnan(img1)] = fill_below
+            img1[img1 <= fill_below] = fill_below
+            for ii in range(img1.shape[0]):
+                pos = np.where(img1[ii,:] > fill_below)[0]
+                if len(pos) == 0:
+                    img1[ii,:] = np.nan
+                else:
+                    img1[ii, :pos[0]] = np.nan
+                    img1[ii, pos[-1]+1:] = np.nan
+            for jj in range(img1.shape[1]):
+                pos = np.where(img1[:, jj] > fill_below)[0]
+                if len(pos) == 0:
+                    img1[:, jj] = np.nan
+                else:
+                    img1[:pos[0], jj] = np.nan
+                    img1[pos[-1]+1:, jj] = np.nan
+            if kernel_array.shape[0] != kernel_array.shape[1]:
+                raise Exception('kernel must be square')
+            kershape0 = kernel_array.shape[0]
+            if kershape0 % 2 == 0:
+                raise Exception('kernel array must have odd dimentions')
+            to_clean = np.where((img1 <= fill_below) & ~nan_cluster)
+            if len(to_clean[0]) == 0:
+                print(f'no more holes after {iter} iterations')
+                break
+            to_clean = np.asarray(to_clean).T
+            to_clean = to_clean[(to_clean[:,0] > np.floor(kershape0/2)) &
+                      (to_clean[:,1] > np.floor(kershape0/2)) &
+                      (to_clean[:,0] < img1.shape[0]-np.ceil(kershape0/2)) &
+                      (to_clean[:,1] < img1.shape[1]-np.ceil(kershape0/2)), :]
+            if len(to_clean) == 0:
+                print(f'no more holes after {iter} iterations')
+                break
+            img1[img1 <= fill_below] = np.nan  # turn zeros to nans to ignore when computing fill values
+            half = int(kershape0/2)
+            fill_val = np.zeros(to_clean.shape[0])
+            for ito_clean in range(to_clean.shape[0]):
+                sq = img1[to_clean[ito_clean, 0] - half:to_clean[ito_clean, 0] + half + 1, to_clean[ito_clean, 1] - half:to_clean[ito_clean, 1] + half + 1]
+                fill_val[ito_clean] = func(sq)
+            img1[to_clean[:, 0], to_clean[:, 1]] = fill_val
+            img1[np.isnan(img1)] = fill_below
+    if np.sum(nan_cluster) > 0:
+        img1[nan_cluster] = np.nan
     return img1
 
+
 if __name__ == '__main__':
-    path = root+'jw01288-o001_t011_nircam_clear-f480m_cropped.fits'
-    # hdu = fits.open(path[8])
-    hdu = fits.open(path)
-    # img = hdu[1].data[3800:5000, 5600:7000]
-    img = hdu[0].data
-    xy = hole_xy(img)
-    size = hole_size(img, xy, plot=False)
-    orig = img.copy()
-    filled = hole_disk_fill(img, xy, size, larger_than=3)
-    # filled = hole_conv_fill(filled, x_stddev=4)
-    filled = hole_conv_fill(filled, n_pixels_around=3, ringsize=15, clean_below_local=0.75, clean_below=2)
-    plt.figure();
-    plt.imshow(filled, origin='lower');
-    plt.clim(0, 1000);
-    plt.show(block=False)
-    conved = orig.copy()
-    conved = hole_conv_fill(conved)
+    from bot_grabber import level_adjust
+    file = '/media/innereye/KINGSTON/JWST/data/NGC-5139/jw06632-o005_t001_nircam_clear-f212n_i2d.fits'
+    hdu = fits.open(file)
+    data = hdu[1].data
+    filled = data.copy()
+    filled = hole_func_fill(filled)
     plt.figure()
-    plt.subplot(1, 3, 1)
-    plt.imshow(orig[0:400, 0:400], origin='lower', cmap='gray')
-    plt.axis('off')
-    plt.title('orig')
-    plt.subplot(1, 3, 2)
-    plt.imshow(filled[0:400, 0:400], origin='lower', cmap='gray')
-    plt.axis('off')
-    plt.title('disks + conv')
-    plt.subplot(1, 3, 3)
-    plt.imshow(conved[0:400, 0:400], origin='lower', cmap='gray')
-    plt.axis('off')
-    plt.title('conv')
-    plt.show(block=False)
-    print('tada')
+    plt.imshow(level_adjust(filled))
+    plt.draw()
+    print('done')
+
+    # path = root+'jw01288-o001_t011_nircam_clear-f480m_cropped.fits'
+    # hdu = fits.open(path)
+    # img = hdu[0].data
+    # xy = hole_xy(img)
+    # size = hole_size(img, xy, plot=False)
+    # orig = img.copy()
+    # filled = hole_disk_fill(img, xy, size, larger_than=3)
+    # # filled = hole_conv_fill(filled, x_stddev=4)
+    # filled = hole_conv_fill(filled, n_pixels_around=3, ringsize=15, clean_below_local=0.75, clean_below=2)
+    # plt.figure();
+    # plt.imshow(filled, origin='lower');
+    # plt.clim(0, 1000);
+    # plt.show(block=False)
+    # conved = orig.copy()
+    # conved = hole_conv_fill(conved)
+    # plt.figure()
+    # plt.subplot(1, 3, 1)
+    # plt.imshow(orig[0:400, 0:400], origin='lower', cmap='gray')
+    # plt.axis('off')
+    # plt.title('orig')
+    # plt.subplot(1, 3, 2)
+    # plt.imshow(filled[0:400, 0:400], origin='lower', cmap='gray')
+    # plt.axis('off')
+    # plt.title('disks + conv')
+    # plt.subplot(1, 3, 3)
+    # plt.imshow(conved[0:400, 0:400], origin='lower', cmap='gray')
+    # plt.axis('off')
+    # plt.title('conv')
+    # plt.show(block=False)
+    # print('tada')
 
 
