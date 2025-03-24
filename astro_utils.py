@@ -801,12 +801,18 @@ def whiten_image(img):
     img[..., 0] = np.max([img[..., 0], np.min(img[..., 1:], 2)], 0)
     return img
 
-def reduce_color(img, bad=1, replace=np.min, thr=None, thratio=None):
+def reduce_color(img, bad=1, replace=np.min, thr='max', thratio=None):
     okay = [0, 1, 2]
     okay.pop(bad)
     good = replace(img[..., okay], 2)
     mask = np.ones(good.shape, bool)
-    if thr:
+    if thr is not None:
+        if type(thr) == str:
+            if thr == 'max':
+                mask[good > img[..., bad]] = False
+            else:
+                raise Exception('noly max is allowed for string threshold')
+    else:
         mask[good < thr] = False
     if thratio:
         rat = good/img[..., bad]
