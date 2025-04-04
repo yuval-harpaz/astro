@@ -1013,6 +1013,12 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 dbstr = ' n'
                 todeband = np.array(['n_i2d.' in x for x in path])
                 dbargs['func'] = np.nanpercentile
+            if deband_flip is None:
+                deband_flip = np.array(['miri' in x for x in path])
+            elif type(deband_flip) == bool:
+                deband_flip = [deband_flip] * len(path)
+            else:
+                raise Exception('deband flip unresolved')
 
         for ii in range(len(path)):
             if ii == 0:
@@ -1028,6 +1034,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     wh = resize_wh(img.shape)
                     img = transform.resize(img, wh)
                 if todeband[ii]:
+                    dbargs['flip'] = deband_flip[ii]
                     print('going to deband'+dbstr+str(dbargs))
                     img = deband_layer(img, **dbargs)
                     print('done deband 0')
@@ -1042,6 +1049,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     hdu[1].data = hole_func_fill(hdu[1].data,  func=fill_func)
                 hdu = crval_fix(hdu)
                 if todeband[ii]:
+                    dbargs['flip'] = deband_flip[ii]
                     hdu[1].data = deband_layer(hdu[1].data, **dbargs)
                     print(f'done deband {ii}')
                 img, _ = reproject_interp(hdu[1], hdr0)
