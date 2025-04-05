@@ -11,17 +11,40 @@
       padding: 20px;
     }
     .image-card {
-      background: #1f2833;
-      border-radius: 10px;
-      padding: 15px;
-      margin: 15px 0;
-      box-shadow: 0 0 10px #66fcf1;
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        background: #1f2833;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+        box-shadow: 0 0 10px #66fcf1;
+        max-height: 25vh;
+        overflow: hidden;
     }
-    img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 5px;
-      margin-top: 10px;
+    .image-card img {
+        max-height: 25vh;
+        max-width: 25%;
+        border-radius: 5px;
+        flex-shrink: 0;
+    }
+
+    .image-info {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .image-info h2 {
+        margin: 0 0 10px;
+    }
+
+    .image-info p {
+        margin: 4px 0;
+    }
+    #image-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
     }
   </style>
 </head>
@@ -48,7 +71,7 @@
             const obj = {};
             headers.forEach((header, index) => {
                 let value = values[index];
-                if (header === 'image_url') { console.log(value) }
+                // if (header === 'image_url') { console.log(value) }
                 // Replace 'mast:' with the full URL if it's an image_url
                 if (header === 'image_url' && value.startsWith('mast:')) {
                     value = value.replace(
@@ -82,11 +105,17 @@
 
       recent.reverse().forEach(item => {
         const card = document.createElement('div');
+        const fitsUrl = item.image_url.replace(/\.\w+$/, '.fits');
+        const filterMatch = item.image_url.match(/_f(.*?)_i2d/);
+        const filter = filterMatch ? filterMatch[1] : 'unknown filter';
         card.className = 'image-card';
         card.innerHTML = `
-          <h2>${item.target_name}</h2>
-          <p>Released: ${item.release_date}</p>
-          <img src="${item.image_url}" alt="${item.target_name}">
+            <img src="${item.image_url}" alt="${item.target_name}">
+            <div class="image-info">
+                <h2>${item.target_name} f${filter}</p></h2>
+                <p>Released: ${item.release_date}</p>
+                <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a></p>
+            </div>
         `;
         container.appendChild(card);
       });
