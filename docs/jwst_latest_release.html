@@ -47,13 +47,13 @@
             const obj = {};
             headers.forEach((header, index) => {
                 let value = values[index];
+                if (header === 'image_url') { console.log(value) }
                 // Replace 'mast:' with the full URL if it's an image_url
                 if (header === 'image_url' && value.startsWith('mast:')) {
                     value = value.replace(
                         'mast:',
                         'https://mast.stsci.edu/portal/Download/file/'
                     );
-                    console.log(value);
                 }
                 obj[header] = value;
             });
