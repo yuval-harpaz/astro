@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Latest Telescope Images</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b0c10;
+      color: #ffffff;
+      padding: 20px;
+    }
+    .image-card {
+      background: #1f2833;
+      border-radius: 10px;
+      padding: 15px;
+      margin: 15px 0;
+      box-shadow: 0 0 10px #66fcf1;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Latest JWST Image Releases (Past 7 Days)</h1>
+  <div id="image-container">Loading...</div>
+
+  <script>
+    async function fetchCSV() {
+      const response = await fetch('latest.csv');
+      const text = await response.text();
+      return text;
+    }
+
+    function parseCSV(csv) {
+      const lines = csv.trim().split('\n');
+      const headers = lines[0].split(',');
+      return lines.slice(1).map(line => {
+        const values = line.split(',');
+        const obj = {};
+        headers.forEach((header, index) => {
+          obj[header.trim()] = values[index].trim();
+        });
+        return obj;
+      });
+    }
+
+    function isWithinLast7Days(dateStr) {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const sevenDaysAgo = new Date(now);
+      sevenDaysAgo.setDate(now.getDate() - 7);
+      return date >= sevenDaysAgo && date <= now;
+    }
+
+    function displayImages(data) {
+      const container = document.getElementById('image-container');
+      container.innerHTML = ''; // Clear "Loading..."
+      const recent = data.filter(item => isWithinLast7Days(item.release_date));
+
+      if (recent.length === 0) {
+        container.innerHTML = '<p>No recent images.</p>';
+        return;
+      }
+
+      recent.reverse().forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'image-card';
+        card.innerHTML = `
+          <h2>${item.target_name}</h2>
+          <p>Released: ${item.release_date}</p>
+          <img src="${item.image_url}" alt="${item.target_name}">
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function init() {
+      const csv = await fetchCSV();
+      const data = parseCSV(csv);
+      displayImages(data);
+    }
+
+    init();
+  </script>
+</body>
+</html>

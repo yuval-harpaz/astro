@@ -106,7 +106,7 @@ for calib in [False, True]:
                   f'targets: {tgts}\n'
                   f'table row: {tblrow}\n'
                   f'new date: {new_date[:16]}, prev date: {last_date[:16]}')
-            toot = f'New {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
+            toot = f'New #JWST {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
             if len(toot) > 500:
                 toot = toot[:500]
 
@@ -147,9 +147,11 @@ for calib in [False, True]:
                     plt.imsave('tmp.jpg', img, cmap='gray')
                 if blue:
                     try:
+                        jpg_fn = page[first_image:page.index('.jpg')+4].split('/')[-1]
                         with open('tmprs.jpg', 'rb') as f:
                             img_data = f.read()
-                        alt = page[first_image:page.index('.jpg')+4].split('/')[-1]
+                        assert(jpg_fn in tbl['jpegURL'][0])
+                        alt = jpg_fn
                         tbl_row = np.where(tbl['jpegURL'].str.contains(alt))[0]
                         if len(tbl_row) == 1:
                             alt = f"{alt}\n{tbl.iloc[tbl_row[0]]['target_name']}\n{tbl.iloc[tbl_row[0]]['obs_title']}"
