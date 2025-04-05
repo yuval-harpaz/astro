@@ -203,8 +203,10 @@ for x in range(len(latest)):
 # inew = [x for x in  if int(latest['obsid'][x]) not in previd]
 if len(inew) > 0:
     new = latest.iloc[inew]
+    new = new.reset_index(drop=True)
     for col in ['t_obs_release', 't_max']:
-        new[col] = astropy.time.Time(new[col], format='mjd').utc.iso
+        for row in range(len(new)):
+            new.at[row, col] = astropy.time.Time(new[col][row], format='mjd').utc.iso
     latest_new = pd.concat([prev, new])
     latest_new = latest_new.sort_values('t_obs_release', ignore_index=True, ascending=False)
     latest.to_csv('docs/latest.csv', index=False)
