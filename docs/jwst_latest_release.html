@@ -37,16 +37,19 @@
     }
 
     function parseCSV(csv) {
-      const lines = csv.trim().split('\n');
-      const headers = lines[0].split(',');
-      return lines.slice(1).map(line => {
-        const values = line.split(',');
-        const obj = {};
-        headers.forEach((header, index) => {
-          obj[header.trim()] = values[index].trim();
-        });
-        return obj;
-      });
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+
+        return lines.slice(1).map(line => {
+            const values = line.split(',').map(v => v.trim());
+            if (values.length !== headers.length) return null;
+
+            const obj = {};
+            headers.forEach((header, index) => {
+                obj[header] = values[index];
+            });
+            return obj;
+        }).filter(item => item !== null);
     }
 
     function isWithinLast7Days(dateStr) {
