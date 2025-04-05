@@ -193,14 +193,19 @@ latest = pd.DataFrame(columns=keep)
 
 for col in keep:
     latest[col] = science[col]
+latest = latest.reset_index(drop=True)
 prev = pd.read_csv('docs/latest.csv')
 previd = prev['obsid'].values
-inew = [x for x in range(len(latest)) if int(latest['obsid'][x]) not in previd]
+inew = []
+for x in range(len(latest)):
+    if int(latest['obsid'][x]) not in previd:
+        inew.append(x)
+# inew = [x for x in  if int(latest['obsid'][x]) not in previd]
 if len(inew) > 0:
     new = latest.iloc[inew]
-    latest_new = pd.concat([prev, new])
     for col in ['t_obs_release', 't_max']:
-        latest_new[col] = astropy.time.Time(latest_new[col], format='mjd').utc.iso
+        new[col] = astropy.time.Time(new[col], format='mjd').utc.iso
+    latest_new = pd.concat([prev, new])
     latest_new = latest_new.sort_values('t_obs_release', ignore_index=True, ascending=False)
     latest.to_csv('docs/latest.csv', index=False)
     print('saved new latest')
