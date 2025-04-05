@@ -15,7 +15,7 @@ from astro_list_ngc import social, credits
 from atproto import Client as Blient
 from atproto import client_utils
 from astro_utils import resize_with_padding
-
+import pandas as pd
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -51,6 +51,7 @@ for calib in [False, True]:
         suf = ''
         tit = 'science'
         tbl = table[~calibration]
+        science = tbl.copy()
         other = '. see also <a href="https://yuval-harpaz.github.io/astro/news_by_date_calib.html" target="_blank">calibration images</a>'
         download = ', <a href="https://yuval-harpaz.github.io/astro/downloads_by_date.html" target="_blank">downloads</a>'
     html_name = 'docs/news_by_date' + suf + '.html'
@@ -186,6 +187,13 @@ for calib in [False, True]:
                     post = blient.send_post(boot)
                     print('boot')
 print('wrote image preview')
+## create a list for latest.csv
+keep = ['obsid', 'proposal_id', 'proposal_pi', 'target_name', 'instrument_name', 'obs_title', 'jpegURL', 't_max', 't_obs_release']
+latest = pd.DataFrame(columns=keep)
+for col in keep:
+    latest[col] = science[col]
+latest = latest.sort_values('t_obs_release', ignore_index=True)
+
 ## create a list of download links
 for calib in [False, True]:
     if calib:

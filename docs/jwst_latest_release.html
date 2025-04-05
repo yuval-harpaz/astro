@@ -55,87 +55,100 @@
   <div id="image-container">Loading...</div>
 
   <script>
-    async function fetchCSV() {
-      const response = await fetch('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/latest.csv');
+    async function loadCSV(url) {
+      const response = await fetch(url);
       const text = await response.text();
-      return text;
+      return parseCSV(text);
     }
 
-    function parseCSV(csv) {
-        const lines = csv.trim().split('\n');
-        const headers = lines[0].split(',').map(h => h.trim());
+function parseCSV(csv) {
+    const lines = csv.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
 
-        return lines.slice(1).map(line => {
-            const values = line.split(',').map(v => v.trim());
-            if (values.length !== headers.length) return null;
+    return lines.slice(1).map(line => {
+        const values = [];
+        let current = '';
+        let inQuotes = false;
 
-            const obj = {};
-            headers.forEach((header, index) => {
-                let value = values[index];
-                // if (header === 'jpegURL') { console.log(value) }
-                // Replace 'mast:' with the full URL if it's an jpegURL
-                if (header === 'jpegURL' && value.startsWith('mast:')) {
-                    value = value.replace(
-                        'mast:',
-                        'https://mast.stsci.edu/portal/Download/file/'
-                    );
-                }
-                obj[header] = value;
-            });
-            return obj;
-        }).filter(item => item !== null);
-    }
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"' && line[i + 1] === '"') {
+                current += '"'; // escaped quote
+                i++;
+            } else if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                values.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        values.push(current); // last value
 
-    function isWithinLast7Days(dateStr) {
-      const date = new Date(dateStr);
-      const now = new Date();
-      const sevenDaysAgo = new Date(now);
-      sevenDaysAgo.setDate(now.getDate() - 7);
-      return date >= sevenDaysAgo && date <= now;
-    }
+        const obj = {};
+        headers.forEach((header, i) => {
+            let value = values[i]?.trim() || '';
+
+            // Special case: convert mast: to full URL in jpegURL
+            if (header === 'jpegURL' && value.startsWith('mast:')) {
+                value = value.replace(
+                    'mast:',
+                    'https://mast.stsci.edu/portal/Download/file/'
+                );
+            }
+
+            obj[header] = value;
+        });
+
+        return obj;
+    });
+}
 
     function displayImages(data) {
       const container = document.getElementById('image-container');
-      container.innerHTML = ''; // Clear "Loading..."
-      // const recent = data.filter(item => isWithinLast7Days(item.t_obs_release));
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      console.log(oneWeekAgo)
-      //const recent = data.filter(item => new Date(item.release_date) > oneWeekAgo);
+      container.innerHTML = ''; // Clear previous content
+
+      const now = new Date();
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
       const recent = data.filter(item => {
-          const releaseDate = new Date(item.release_date);
-          return releaseDate > oneWeekAgo;
+        const date = new Date(item.t_obs_release);
+        return date.getTime() > oneWeekAgo.getTime();
       });
+
       if (recent.length === 0) {
         container.innerHTML = '<p>No recent images.</p>';
         return;
       }
 
-      recent.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release)).forEach(item => {
+      recent.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release));
+
+      recent.forEach(item => {
         const card = document.createElement('div');
-        const fitsUrl = item.jpegURL.replace(/\.\w+$/, '.fits');
-        const filterMatch = item.jpegURL.match(/_f(.*?)_i2d/);
+        const fitsUrl = item.jpegURL ? item.jpegURL.replace(/\.\w+$/, '.fits') : '#';
+        const filterMatch = item.jpegURL ? item.jpegURL.match(/_f(.*?)_i2d/) : null;
         const filter = filterMatch ? filterMatch[1] : 'unknown filter';
+        console.log(item.jpegURL)
         card.className = 'image-card';
         card.innerHTML = `
-            <img src="${item.jpegURL}" alt="${item.target_name}" title="${item.target_name}">
-            <div class="image-info">
-                <h2>${item.target_name} f${filter}</p></h2>
-                <p>Released: ${item.t_obs_release}</p>
-                <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a></p>
-            </div>
+          <img src="${item.jpegURL || ''}" alt="${item.target_name || ''}" title="${item.target_name || ''}">
+          <div class="image-info">
+              <p>Filter: f${filter}</p>
+              <h2>${item.target_name}</h2>
+              <p>Released: ${new Date(item.t_obs_release).toLocaleString()}</p>
+              <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a></p>
+          </div>
         `;
         container.appendChild(card);
       });
     }
 
-    async function init() {
-      const csv = await fetchCSV();
-      const data = parseCSV(csv);
-      displayImages(data);
-    }
-
-    init();
+    // Load your CSV (replace with your raw GitHub URL if needed)
+    loadCSV('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/latest.csv').then(displayImages).catch(err => {
+      document.getElementById('image-container').innerHTML = '<p>Error loading data.</p>';
+      console.error(err);
+    });
   </script>
 </body>
 </html>
