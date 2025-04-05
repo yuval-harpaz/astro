@@ -25,13 +25,14 @@
     }
   </style>
 </head>
+<link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/camelfav.ico">
 <body>
   <h1>Latest JWST Image Releases (Past 7 Days)</h1>
   <div id="image-container">Loading...</div>
 
   <script>
     async function fetchCSV() {
-      const response = await fetch('latest.csv');
+      const response = await fetch('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/latest.csv');
       const text = await response.text();
       return text;
     }

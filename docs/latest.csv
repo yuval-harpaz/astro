@@ -1,4 +1,4 @@
-release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal
+release_date,collected_from,collected_to,NGC,target_name,filters,image_url,proposal
 2025-04-02,2024-04-01 12:08:52.185,2024-04-01 13:18:09.329,0,OPH-10-BBRCG-39,770,mast:JWST/product/jw03034-o010_t010_miri_f770w_i2d.jpg,3034
 2025-04-02,2024-04-01 10:50:47.837,2024-04-01 11:44:51.894,0,OPH-7-IRAS-16285-2355,770,mast:JWST/product/jw03034-o007_t007_miri_f770w_i2d.jpg,3034
 2025-04-01,2024-04-01 06:26:30.829,2024-04-01 07:37:47.268,0,OPH-4-ELIA-2-32,770,mast:JWST/product/jw03034-o004_t004_miri_f770w_i2d.jpg,3034
