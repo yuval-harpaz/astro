@@ -127,17 +127,27 @@ function parseCSV(csv) {
       recent.forEach(item => {
         const card = document.createElement('div');
         const fitsUrl = item.jpegURL ? item.jpegURL.replace(/\.\w+$/, '.fits') : '#';
-        const filterMatch = item.jpegURL ? item.jpegURL.match(/_f(.*?)_i2d/) : null;
+        const filterMatch = item.jpegURL ? item.jpegURL.match(/[-_]f(.*?)_i2d/) : null;
         const filter = filterMatch ? filterMatch[1] : 'unknown filter';
-        console.log(item.jpegURL)
+        // console.log(item.jpegURL)
+        const releaseDate = new Date(item.t_obs_release);
+        const utcDateOnly = releaseDate.toISOString().split('T')[0];
+        const obsDate = new Date(item.t_max);
+        const utcMax = obsDate.toISOString().split('T')[0];
+        const instrument = item.instrument_name.replace("/IMAGE","")
+        const title = item.obs_title
+        const fits = fitsUrl.split('/')[8]
         card.className = 'image-card';
         card.innerHTML = `
-          <img src="${item.jpegURL || ''}" alt="${item.target_name || ''}" title="${item.target_name || ''}">
+          <img src="${item.jpegURL || ''}" alt="${item.target_name || ''}" title="${fits}">
           <div class="image-info">
-              <p>Filter: f${filter}</p>
               <h2>${item.target_name}</h2>
-              <p>Released: ${new Date(item.t_obs_release).toLocaleString()}</p>
+              <p>Instrument: ${instrument}. Filter: f${filter}.</p>
+              <Proposal ID: PI: ${item.proposal_id}, PI: ${item.proposal_pi}.</p>
+              <p>Observed: ${utcMax}. Released: ${utcDateOnly}</p>
+              <p>Title: ${title}
               <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a></p>
+              
           </div>
         `;
         container.appendChild(card);

@@ -190,10 +190,20 @@ print('wrote image preview')
 ## create a list for latest.csv
 keep = ['obsid', 'proposal_id', 'proposal_pi', 'target_name', 'instrument_name', 'obs_title', 'jpegURL', 't_max', 't_obs_release']
 latest = pd.DataFrame(columns=keep)
+
 for col in keep:
     latest[col] = science[col]
-latest = latest.sort_values('t_obs_release', ignore_index=True)
-
+prev = pd.read_csv('docs/latest.csv')
+previd = prev['obsid'].values
+inew = [x for x in range(len(latest)) if int(latest['obsid'][x]) not in previd]
+if len(inew) > 0:
+    new = latest.iloc[inew]
+    latest_new = pd.concat([prev, new])
+    for col in ['t_obs_release', 't_max']:
+        latest_new[col] = astropy.time.Time(latest_new[col], format='mjd').utc.iso
+    latest_new = latest_new.sort_values('t_obs_release', ignore_index=True, ascending=False)
+    latest.to_csv('docs/latest.csv', index=False)
+    print('saved new latest')
 ## create a list of download links
 for calib in [False, True]:
     if calib:
