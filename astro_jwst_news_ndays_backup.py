@@ -209,7 +209,7 @@ if len(inew) > 0:
             new.at[row, col] = astropy.time.Time(new[col][row], format='mjd').utc.iso
     latest_new = pd.concat([prev, new])
     latest_new = latest_new.sort_values('t_obs_release', ignore_index=True, ascending=False)
-    latest.to_csv('docs/latest.csv', index=False)
+    latest_new.to_csv('docs/latest.csv', index=False)
     print('saved new latest')
 ## create a list of download links
 for calib in [False, True]:
