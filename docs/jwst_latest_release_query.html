@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Latest Telescope Images</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b0c10;
+      color: #ffffff;
+      padding: 20px;
+    }
+    .image-card {
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        background: #1f2833;
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+        box-shadow: 0 0 10px #66fcf1;
+        max-height: 25vh;
+        overflow: hidden;
+    }
+    .image-card img {
+        max-height: 25vh;
+        max-width: 25%;
+        border-radius: 5px;
+        flex-shrink: 0;
+    }
+
+    .image-info {
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .image-info h2 {
+        margin: 0 0 10px;
+    }
+
+    .image-info p {
+        margin: 4px 0;
+    }
+    #image-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+        gap: 20px;
+    }
+  </style>
+</head>
+<link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/camelfav.ico">
+<body>
+  <h1>Latest JWST Image Releases (Past 7 Days)</h1>
+  Preview images and image information are from <a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" style="color:#66fcf1;"> STSci | MAST</a>. Credit to NASA (<a href="https://webbtelescope.org/copyright" target="_blank" style="color:#66fcf1;">ref</a>)
+  <div id="image-container">Loading...</div>
+
+  <script>
+const days = 7;
+console.log(`reading ${days} days`);
+
+const now = new Date();
+const endTime = now.getTime() / 86400000 + 40587; // Convert JS time to MJD
+const startTime = endTime - days;
+
+const args = {
+  obs_collection: "JWST",
+  calib_level: 3,
+  dataRights: "PUBLIC",
+  dataproduct_type: "image"
+};
+
+const mastUrl = "https://mast.stsci.edu/api/v0.1/panstarrs/dr2/mean.json";
+
+async function queryMAST(startTime, endTime, args) {
+  const baseUrl = "https://mast.stsci.edu/api/v0.1/portal/MashupQuery.ashx";
+
+  const queryTemplate = {
+    service: "Mast.Caom.Cone",
+    params: {
+      ...args,
+      t_obs_release_min: startTime,
+      t_obs_release_max: endTime
+    },
+    format: "json",
+    pagesize: 500,
+    page: 1
+  };
+
+  const responseRelease = await fetch(baseUrl, {
+    method: "POST",
+    body: JSON.stringify(queryTemplate),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+
+  const releaseData = await responseRelease.json();
+
+  // Do a second query for t_min
+  queryTemplate.params.t_obs_release_min = undefined;
+  queryTemplate.params.t_obs_release_max = undefined;
+  queryTemplate.params.t_min = startTime;
+  queryTemplate.params.t_max = endTime;
+
+  const responseMin = await fetch(baseUrl, {
+    method: "POST",
+    body: JSON.stringify(queryTemplate),
+    headers: {
+      "Content-Type": "application/json"
+    }
+  });
+
+  const minData = await responseMin.json();
+
+  // Combine results (simple merge by ID or position)
+  const combined = [...minData.data, ...releaseData.data];
+  console.log("Combined results:", combined);
+}
+
+queryMAST(startTime, endTime, args);
+console.log('XXXXXXXXXXXXXXXX got here XXXXXXXXXXXXXXXXXXXX')
+
+/*
+function parseCSV(csv) {
+    const lines = csv.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+
+    return lines.slice(1).map(line => {
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"' && line[i + 1] === '"') {
+                current += '"'; // escaped quote
+                i++;
+            } else if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                values.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        values.push(current); // last value
+
+        const obj = {};
+        headers.forEach((header, i) => {
+            let value = values[i]?.trim() || '';
+
+            // Special case: convert mast: to full URL in jpegURL
+            if (header === 'jpegURL' && value.startsWith('mast:')) {
+                value = value.replace(
+                    'mast:',
+                    'https://mast.stsci.edu/portal/Download/file/'
+                );
+            }
+
+            obj[header] = value;
+        });
+
+        return obj;
+    });
+}
+
+    function displayImages(data) {
+      const container = document.getElementById('image-container');
+      container.innerHTML = ''; // Clear previous content
+
+      const now = new Date();
+      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+      const recent = data.filter(item => {
+        const date = new Date(item.t_obs_release);
+        return date.getTime() > oneWeekAgo.getTime();
+      });
+
+      if (recent.length === 0) {
+        container.innerHTML = '<p>No recent images.</p>';
+        return;
+      }
+
+      recent.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release));
+
+      recent.forEach(item => {
+        const card = document.createElement('div');
+        const fitsUrl = item.jpegURL ? item.jpegURL.replace(/\.\w+$/, '.fits') : '#';
+        const filterMatch = item.jpegURL ? item.jpegURL.match(/[-_]f(.*?)_i2d/) : null;
+        const filter = filterMatch ? filterMatch[1] : 'unknown filter';
+        // console.log(item.jpegURL)
+        const releaseDate = new Date(item.t_obs_release);
+        const utcDateOnly = releaseDate.toISOString().split('T')[0];
+        const obsDate = new Date(item.t_max);
+        const utcMax = obsDate.toISOString().split('T')[0];
+        const instrument = item.instrument_name.replace("/IMAGE","")
+        const title = item.obs_title
+        const fits = fitsUrl.split('/')[8]
+        card.className = 'image-card';
+        card.innerHTML = `
+          <img src="${item.jpegURL || ''}" alt="${item.target_name || ''}" title="${fits}">
+          <div class="image-info">
+              <h2>${item.target_name}</h2>
+              <p>Instrument: ${instrument}. Filter: f${filter}.</p>
+              <Proposal ID: PI: ${item.proposal_id}, PI: ${item.proposal_pi}.</p>
+              <p>Observed: ${utcMax}. Released: ${utcDateOnly}</p>
+              <p>Title: ${title}
+              <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a></p>
+              
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Load your CSV (replace with your raw GitHub URL if needed)
+    loadCSV('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/latest.csv').then(displayImages).catch(err => {
+      document.getElementById('image-container').innerHTML = '<p>Error loading data.</p>';
+      console.error(err);
+    });
+    */
+  </script>
+</body>
+</html>
