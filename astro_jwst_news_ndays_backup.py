@@ -206,7 +206,7 @@ if len(inew) > 0:
     new = new.reset_index(drop=True)
     for col in ['t_obs_release', 't_max']:
         for row in range(len(new)):
-            new.at[row, col] = astropy.time.Time(float(new[col][row]), format='mjd').utc.iso
+            new.at[row, col] = astropy.time.Time(new[col][row], format='mjd').utc.iso
     latest_new = pd.concat([prev, new])
     latest_new = latest_new.sort_values('t_obs_release', ignore_index=True, ascending=False)
     latest.to_csv('docs/latest.csv', index=False)
