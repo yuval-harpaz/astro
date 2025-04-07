@@ -3,55 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <title>Latest Telescope Images</title>
+  <link rel="stylesheet" href="styles2025.css">
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #0b0c10;
-      color: #ffffff;
-      padding: 20px;
-    }
-    .image-card {
-        display: flex;
-        gap: 20px;
-        align-items: flex-start;
-        background: #1f2833;
-        border-radius: 10px;
-        padding: 15px;
-        margin: 15px 0;
-        box-shadow: 0 0 10px #66fcf1;
-        max-height: 25vh;
-        overflow: hidden;
-    }
-    .image-card img {
-        max-height: 25vh;
-        max-width: 25%;
-        border-radius: 5px;
-        flex-shrink: 0;
-    }
-
-    .image-info {
-        flex: 1;
-        overflow-y: auto;
-    }
-
-    .image-info h2 {
-        margin: 0 0 10px;
-    }
-
-    .image-info p {
-        margin: 4px 0;
-    }
-    #image-container {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-        gap: 20px;
-    }
   </style>
 </head>
 <link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/camelfav.ico">
 <body>
   <h1>Latest JWST Image Releases (Past 7 Days)</h1>
-  Preview images and image information are from <a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" style="color:#66fcf1;"> STSci | MAST</a>. Credit to NASA (<a href="https://webbtelescope.org/copyright" target="_blank" style="color:#66fcf1;">ref</a>)
+ <div class="container"><div class="social-links"><h2>By Yuval Harpaz
+    <a href="https://nerdculture.de/@yuvharpaz"><img src="mastodona.png" alt="nerdculture.de/@yuvharpaz" /></a>
+    <a href="https://bsky.app/profile/yuvharpaz.bsky.social"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/600px-Bluesky_Logo.svg.png" alt="yuvharpaz.bsky.social" /></a>
+    <a href="https://github.com/yuval-harpaz/astro/blob/main/README.md"><img src="github-mark.png" alt="github.com/yuval-harpaz" /></a>
+    <a href="https://github.com/yuval-harpaz/astro/blob/main/docs/latest.csv" target="_blank"> <img src="csv1.png" alt="csv logo"/></a>
+    Bots: mastodon<a href="https://botsin.space/@astrobot_jwst"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>
+    bluesky<a href="https://bsky.app/profile/astrobotjwst.bsky.social"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>    </h2>
+</div>
+Preview images and image information are from <a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" style="color:#66fcf1;"> STSci | MAST</a>. Credit
+ to NASA (<a href="https://webbtelescope.org/copyright" target="_blank" style="color:#66fcf1;">ref</a>)
   <div id="image-container">Loading...</div>
 
   <script>
