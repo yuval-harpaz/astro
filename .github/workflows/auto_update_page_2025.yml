@@ -1,4 +1,4 @@
-name: auto update page 
+name: auto update 2025 
 on:
   schedule:
     - cron: '0 */2 * * *'
