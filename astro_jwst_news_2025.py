@@ -68,20 +68,75 @@ if len(inew) > 0:
     prev_new = prev_new.sort_values('t_obs_release', ignore_index=True, ascending=False)
     prev_new.to_csv('docs/latest.csv', index=False)
     print('saved new latest')
-    new_targets = ', '.join(np.unique(new['target_name']))
-
-    toot = f'NASA / STScI released #JWST images ({new_targets}). Take a look at {url}'
-    first_image_url = new['jpegURL'][0].replace('mast:', mast_url)
-    err = os.system(f"wget -O tmp.jpg {first_image_url} >/dev/null 2>&1")
-    if err:
-        got_image = True
-    else:
-        got_image = False
-    img = plt.imread('tmp.jpg')
-    print('resizing')
-    _ = resize_to_under_2mb(img)
-
-
+    try:
+        new_targets = ', '.join(np.unique(new['target_name']))
+    
+        toot = f'NASA / STScI released #JWST images ({new_targets}). Take a look at {url}'
+        blient = Blient()
+        blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
+        boot = client_utils.TextBuilder()
+        blue = True
+        blim = 250  # should be 300 limit but failed once
+        if 'https' in toot:
+            txt = toot[:toot.index('https')]
+            if len(txt) > blim:
+                txt = txt[:blim]
+            boot.text(txt)
+            boot.link('news_by_date.html', toot[toot.index('https'):])
+        else:
+            txt = toot
+            if len(txt) > blim:
+                txt = txt[:blim]
+            boot.text(txt)
+        first_image_url = new['jpegURL'][0].replace('mast:', mast_url)
+        err = os.system(f"wget -O tmp.jpg {first_image_url} >/dev/null 2>&1")
+        if err:
+            got_image = True
+            toot_text_only_b = False
+            toot_text_only_m = False
+        else:
+            got_image = False
+            toot_text_only_b = True
+            toot_text_only_m = True
+        if got_image:
+            img = plt.imread('tmp.jpg')
+            print('resizing')
+            _ = resize_to_under_2mb(img, max_size_mb=1)
+            try:
+                jpg_fn = first_image_url.split('/')[-1]
+                with open('tmprs.jpg', 'rb') as f:
+                    img_data = f.read()
+                assert(jpg_fn in new['jpegURL'][0])
+                tbl_row = np.where(new['jpegURL'].str.contains(jpg_fn))[0]
+                if len(tbl_row) == 1:
+                    alt = f"{jpg_fn}\n{new.iloc[tbl_row[0]]['target_name']}\n{new.iloc[tbl_row[0]]['obs_title']}"
+                post = blient.send_image(text=boot, image=img_data, image_alt=alt)
+            except:
+                print('failed bluesky image post')
+                toot_text_only_b = True
+            masto, loc = connect_bot()
+            try:
+                metadata = masto.media_post("tmprs.jpg", "image/jpeg")
+                _ = masto.status_post(toot, media_ids=metadata["id"])
+                print('toot image')
+            except:
+                print('failed mastodon image post')
+                toot_text_only_m = True
+        if toot_text_only_b:
+            try:
+                post = blient.send_post(boot)
+                print('boot')
+            except:
+                print('failed bluesky text post')
+        if toot_text_only_m:
+            try:
+                _ = masto.status_post(toot)
+                print('toot')
+            except:
+                print('failed mastodon text post')
+    except:
+        print('something or other failed')
+print('done news updates')
     # imgrs = resize_with_padding(img)
     # plt.imsave('tmprs.jpg', imgrs, cmap='gray')
     # size = os.path.getsize('tmp.jpg')
