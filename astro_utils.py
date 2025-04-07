@@ -17,7 +17,7 @@ from scipy.ndimage import median_filter
 from scipy.signal import medfilt
 from bot_grabber import level_adjust, nanmask, get_JWST_products_from
 import pickle
-from skimage import transform
+from skimage import transform, img_as_ubyte
 from scipy.ndimage import label
 from scipy.spatial import KDTree
 from astro_fill_holes import *
@@ -1666,6 +1666,47 @@ def resize_with_padding(img, target_size=(1200, 675)):
     # Place the resized image in the center of the padded background
     padded_img[y_offset:y_offset + new_height, x_offset:x_offset + new_width] = resized_img
     return padded_img
+
+def resize_to_under_2mb(image: np.ndarray, max_size_mb: float = 2.0, min_scale: float = 0.1, step: float = 0.9) -> np.ndarray:
+    """
+    Resize a 2D or 3D image using skimage.transform to ensure it is under a given size when saved as JPEG.
+
+    Args:
+        image (np.ndarray): The input image (2D grayscale or 3D RGB).
+        max_size_mb (float): Max file size in MB. Default is 2MB.
+        min_scale (float): Minimum scaling factor allowed.
+        step (float): Scale reduction factor per iteration (e.g., 0.9 = reduce by 10% per step).
+
+    Returns:
+        np.ndarray: Resized image as a uint8 array.
+    """
+    scale = 1.0
+    max_bytes = max_size_mb * 1024 * 1024
+    while scale >= min_scale:
+        # Compute new shape
+        new_shape = (np.array(image.shape[:2]) * scale).astype(int)
+
+        # Resize with skimage
+        if image.ndim == 3:
+            resized = transform.resize(image, (*new_shape, image.shape[2]), anti_aliasing=True)
+        else:
+            resized = transform.resize(image, new_shape, anti_aliasing=True)
+
+        resized_uint8 = img_as_ubyte(resized)
+
+        # Save to a temp file using plt to check size
+        if len(image.shape) == 2:
+            plt.imsave('tmprs.jpg', resized_uint8, pil_kwargs={'quality': 95}, cmap='gray')
+        else:
+            plt.imsave('tmprs.jpg', resized_uint8, pil_kwargs={'quality': 95})
+        size = os.path.getsize('tmprs.jpg')
+        # os.remove(tmp_file.name)
+        # print(f"{new_shape}")
+        if size <= max_bytes:
+            return resized_uint8
+        scale *= step
+    raise ValueError("Could not resize image to be under 2MB within the given scale range.")
+
 
 
 if __name__ == '__main__':
