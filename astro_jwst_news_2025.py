@@ -51,6 +51,15 @@ latest = pd.DataFrame(columns=keep)
 for col in keep:
     latest[col] = science[col]
 latest = latest.reset_index(drop=True)
+nanjpeg = np.where(latest['jpegURL'].isnull())[0]
+if len(nanjpeg) > 0:
+    for ii in nanjpeg:
+        if '.fits' in str(latest['dataURL'][ii]):
+            repurl = latest['dataURL'][ii].replace('.fits','.jpg')
+        else:
+            repurl = 'docs/broken.jpg'
+        latest.at[ii, 'jpegURL'] = repurl
+
 prev = pd.read_csv('docs/latest.csv')
 previd = prev['obsid'].values
 inew = []
