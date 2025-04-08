@@ -23,7 +23,7 @@ jobs:
           Blueword: ${{ secrets.BWORD }}
           Bluehandle: ${{ secrets.BNDL }}
       run: |
-        python astro_jwst_news_ndays_2025.py
+        python astro_jwst_news_2025.py
     - name: check news
       env:
           MOAuth: ${{ secrets.MASTO }}
