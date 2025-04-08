@@ -1,5 +1,6 @@
-import os
+import astro_jwst_news_2025
 print('scrap done')
+
 # err = os.system('fitsheader https://mast.stsci.edu/portal/Download/file/JWST/product/jw05594-o047_t049_nircam_clear-f322w2_i2d.fits > tmp.txt')
 # with open('tmp.txt', 'r') as f:
 #     header = f.read()
