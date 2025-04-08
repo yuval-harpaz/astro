@@ -45,7 +45,7 @@ science = table[~calibration]
 ##
 url = 'https://yuval-harpaz.github.io/astro/jwst_latest_release.html'
 mast_url = 'https://mast.stsci.edu/portal/Download/file/'
-keep = ['obsid', 'proposal_id', 'proposal_pi', 'target_name', 'instrument_name', 'obs_title', 'jpegURL', 't_max', 't_obs_release']
+keep = ['obsid', 'proposal_id', 'proposal_pi', 'target_name', 'instrument_name', 'obs_title', 'jpegURL', 'dataURL', 't_max', 't_obs_release']
 latest = pd.DataFrame(columns=keep)
 
 for col in keep:
