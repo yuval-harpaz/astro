@@ -100,13 +100,14 @@ if len(inew) > 0:
         first_image_url = new['jpegURL'][0].replace('mast:', mast_url)
         err = os.system(f"wget -O tmp.jpg {first_image_url} >/dev/null 2>&1")
         if err:
-            got_image = True
-            toot_text_only_b = False
-            toot_text_only_m = False
-        else:
             got_image = False
             toot_text_only_b = True
             toot_text_only_m = True
+        else:
+            got_image = True
+            toot_text_only_b = False
+            toot_text_only_m = False
+        masto, loc = connect_bot()
         if got_image:
             img = plt.imread('tmp.jpg')
             print('resizing')
@@ -123,7 +124,7 @@ if len(inew) > 0:
             except:
                 print('failed bluesky image post')
                 toot_text_only_b = True
-            masto, loc = connect_bot()
+
             try:
                 metadata = masto.media_post("tmprs.jpg", "image/jpeg")
                 _ = masto.status_post(toot, media_ids=metadata["id"])
