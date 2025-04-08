@@ -1,11 +1,10 @@
 astropy
 astroquery
-pandas
-numpy
+pandas==1.4.3
+numpy==1.24.3
 reproject
-numpy
-scipy
+scipy==1.10.1
 matplotlib
-scikit-image
-pyongc
+scikit-image==0.19.3
+pyongc==1.0.1
 atproto
