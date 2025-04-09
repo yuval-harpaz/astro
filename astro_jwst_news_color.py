@@ -79,6 +79,7 @@ filt = filt[order]
 # download red first
 igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
 irgb = [0, igreen, len(files)-1]
+goon = False
 try:
     for jj, ii in enumerate(irgb):
         fn = files[ii]
@@ -102,7 +103,6 @@ try:
         layers[:, :, jj] = img
     goon = True
 except:
-    goon = False
     print('failed download or process color images')
 
 new_row = [target,sec_latest, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed']
