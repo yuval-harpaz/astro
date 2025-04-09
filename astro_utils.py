@@ -1709,6 +1709,32 @@ def resize_to_under_2mb(image: np.ndarray, max_size_mb: float = 2.0, min_scale: 
 
 
 
+def resize_to_under_1mp(image: np.ndarray, max_pix: int=1000000) -> np.ndarray:
+    """
+    Resizes an image so that its total number of pixels is less than 1,000,000,
+    preserving the aspect ratio. Uses skimage for resizing.
+    
+    Parameters:
+        image (np.ndarray): Input image as a NumPy array.
+    
+    Returns:
+        np.ndarray: Resized image as a NumPy array.
+    """
+    h, w = image.shape[:2]
+    total_pixels = h * w
+    if total_pixels <= max_pix:
+        return image  # No resizing needed
+    scale = (1_000_000 / total_pixels) ** 0.5
+    new_h = int(h * scale)
+    new_w = int(w * scale)
+    resized = transform.resize(image, (new_h, new_w), anti_aliasing=True)
+    # Convert to uint8 if original image was in uint8
+    if image.dtype == np.uint8:
+        resized = img_as_ubyte(resized)
+    return resized
+
+
+
 if __name__ == '__main__':
     auto_plot('NGC2506G31', exp = '*fits', png='rgb4log_deband.jpg',adj_args={'factor':4},
           func=log, method='rrgggbb', fill=False, pkl=False, deband=10, deband_flip=True)
