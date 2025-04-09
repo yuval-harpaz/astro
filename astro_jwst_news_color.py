@@ -54,6 +54,12 @@ for itarget in range(len(n_targets)):
     t_obs_release.append(np.max(science['t_obs_release'].values[rows]))
 t_obs_release = np.array(t_obs_release)
 
+if not os.path.isfile('docs/latest.csv'):
+    os.chdir(os.environ['HOME']+'/astro')
+    # raise Exception('am I in astro?')
+if not os.path.exists('data/tmp'):
+    os.makedirs('data/tmp')
+
 df = pd.read_csv('docs/bot_color_posts.csv')
 prev_target = df['target_name'].values[-1]
 # Exclude latest, Data may still be coming
@@ -63,83 +69,90 @@ include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
 sec_latest = max(t_obs_release[include])
 
 target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
-if not os.path.isfile('docs/latest.csv'):
-    raise Exception('am I in astro?')
-if not os.path.exists('data/tmp'):
-    os.makedirs('data/tmp')
+
 files = science['dataURL'][science['target_name'] == target].values
 files = [x.replace('mast:JWST/product/', '') for x in files]
 filt = filt_num(files)
 order = np.argsort(filt)[::-1]
 files = np.array(files)[order]
+filt = filt[order]
 # download red first
 igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
 irgb = [0, igreen, len(files)-1]
-for jj, ii in enumerate(irgb):
-    fn = files[ii]
-    download_fits_files([fn], 'data/tmp')
-    if ii == 0:
-        hdu0 = fits.open('data/tmp/' + fn)
-        img = hdu0[1].data
-        img = hole_func_fill(img)
-        img = resize_to_under_1mp(img)
-        layers = np.zeros((img.shape[0], img.shape[1], 3))
-        hdr0 = hdu0[1].header
-        hdu0.close()
-    else:
-        hdu = fits.open('data/tmp/' + fn)
-        hdu[1].data = hole_func_fill(hdu[1].data)
-        img, _ = reproject_interp(hdu[1], hdr0)
-        img = transform.resize(img, [layers.shape[0], layers.shape[1]])
-        hdu.close()
-    os.remove('data/tmp/' + fn)
-    img = level_adjust(img, factor=2)
-    layers[:, :, jj] = img
+try:
+    for jj, ii in enumerate(irgb):
+        fn = files[ii]
+        download_fits_files([fn], 'data/tmp')
+        if ii == 0:
+            hdu0 = fits.open('data/tmp/' + fn)
+            img = hdu0[1].data
+            img = hole_func_fill(img)
+            img = resize_to_under_1mp(img)
+            layers = np.zeros((img.shape[0], img.shape[1], 3))
+            hdr0 = hdu0[1].header
+            hdu0.close()
+        else:
+            hdu = fits.open('data/tmp/' + fn)
+            hdu[1].data = hole_func_fill(hdu[1].data)
+            img, _ = reproject_interp(hdu[1], hdr0)
+            img = transform.resize(img, [layers.shape[0], layers.shape[1]])
+            hdu.close()
+        os.remove('data/tmp/' + fn)
+        img = level_adjust(img, factor=2)
+        layers[:, :, jj] = img
+    goon = True
+except:
+    goon = False
+    print('failed download or process color images')
 
 new_row = [target,sec_latest, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed']
-
-plt.imsave('data/tmp/tmprs.jpg', layers, origin='lower', pil_kwargs={'quality':95})
-# new_targets = ', '.join(np.unique(new['target_name']))
-filt_str = ', '.join(filt[irgb].astype(int).astype(str))
-toot = f"Bot image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
-blient = Blient()
-blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
-boot = client_utils.TextBuilder()
-blue = True
-blim = 250  # should be 300 limit but failed once
-txt = toot
-if len(txt) > blim:
-    txt = txt[:blim]
-boot.text(txt)
-masto, loc = connect_bot()
-
-# img = plt.imread('tmp.jpg')
-# print('resizing')
-# _ = resize_to_under_2mb(img, max_size_mb=1)
-success = ''
-try:
-    # jpg_fn = first_image_url.split('/')[-1]
-    with open('data/tmp/tmprs.jpg', 'rb') as f:
-        img_data = f.read()
-    # assert(jpg_fn in new['jpegURL'][0])
-    # tbl_row = np.where(new['jpegURL'].str.contains(jpg_fn))[0]
-    alt = "Automatic color preview of JWST data"
-    post = blient.send_image(text=boot, image=img_data, image_alt=alt)
-    success += 'bsky;'
-    print('boot image')
-except:
-    print('failed bluesky color image post')
-
-try:
-    metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
-    _ = masto.status_post(toot, media_ids=metadata["id"])
-    success += 'masto;'
-    print('toot image')
-except:
-    print('failed mastodon color image post')
-if success:
-    success = success[:-1]
-    new_row[-1] = success
+if goon:
+    try:
+        layers[np.isnan(layers)] = 0
+        plt.imsave('data/tmp/tmprs.jpg', layers, origin='lower', pil_kwargs={'quality':95})
+        # new_targets = ', '.join(np.unique(new['target_name']))
+        filt_str = ', '.join(filt[irgb].astype(int).astype(str))
+        toot = f"Bot image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
+        blient = Blient()
+        blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
+        boot = client_utils.TextBuilder()
+        blue = True
+        blim = 250  # should be 300 limit but failed once
+        txt = toot
+        if len(txt) > blim:
+            txt = txt[:blim]
+        boot.text(txt)
+        masto, loc = connect_bot()
+    except:
+        print('failed preparing toot')
+        goon = False
+if goon:
+    # img = plt.imread('tmp.jpg')
+    # print('resizing')
+    # _ = resize_to_under_2mb(img, max_size_mb=1)
+    success = ''
+    try:
+        # jpg_fn = first_image_url.split('/')[-1]
+        with open('data/tmp/tmprs.jpg', 'rb') as f:
+            img_data = f.read()
+        # assert(jpg_fn in new['jpegURL'][0])
+        # tbl_row = np.where(new['jpegURL'].str.contains(jpg_fn))[0]
+        alt = "Automatic color preview of JWST data"
+        post = blient.send_image(text=boot, image=img_data, image_alt=alt)
+        success += 'bsky;'
+        print('boot image')
+    except:
+        print('failed bluesky color image post')
+    try:
+        metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
+        _ = masto.status_post(toot, media_ids=metadata["id"])
+        success += 'masto;'
+        print('toot image')
+    except:
+        print('failed mastodon color image post')
+    if success:
+        success = success[:-1]
+        new_row[-1] = success
 df.loc[len(df)] = new_row
 df.to_csv('docs/bot_color_posts.csv', index=False)
 print('done auto color processing')
