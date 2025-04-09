@@ -8,3 +8,4 @@ matplotlib
 scikit-image==0.19.3
 pyongc==1.0.1
 atproto
+aiohttp

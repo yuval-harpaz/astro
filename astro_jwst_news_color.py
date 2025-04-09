@@ -17,6 +17,7 @@ from atproto import client_utils
 # from astro_utils import resize_to_under_2mb, download_fits_files, filt_num
 from astro_utils import *
 import pandas as pd
+import requests
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -69,7 +70,7 @@ include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
 sec_latest = max(t_obs_release[include])
 
 target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
-
+mast_url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
 files = science['dataURL'][science['target_name'] == target].values
 files = [x.replace('mast:JWST/product/', '') for x in files]
 filt = filt_num(files)
@@ -83,22 +84,32 @@ goon = False
 try:
     for jj, ii in enumerate(irgb):
         fn = files[ii]
-        download_fits_files([fn], 'data/tmp')
+        # download_fits_files([fn], 'data/tmp')
         if ii == 0:
-            hdu0 = fits.open('data/tmp/' + fn)
-            img = hdu0[1].data
+            # hdu0 = fits.open('data/tmp/' + fn)
+            with fits.open(mast_url+fn, use_fsspec=True) as hdul:
+                hdr0 = hdul[1].header
+                img = hdul[1].data
+            # hdu0 = fits.open(mast_url+fn, )
+            # img = hdu0[1].data
             img = hole_func_fill(img)
             img = resize_to_under_1mp(img)
             layers = np.zeros((img.shape[0], img.shape[1], 3))
-            hdr0 = hdu0[1].header
-            hdu0.close()
+            # hdr0 = hdu0[1].header
+            # hdu0.close()
         else:
-            hdu = fits.open('data/tmp/' + fn)
-            hdu[1].data = hole_func_fill(hdu[1].data)
-            img, _ = reproject_interp(hdu[1], hdr0)
+            with fits.open(mast_url+fn, use_fsspec=True) as hdul:
+                hdr = hdul[1].header
+                img = hdul[1].data
+            hdu = fits.ImageHDU()
+            hdu.data = img
+            hdu.header = hdr
+            # hdu = fits.open('data/tmp/' + fn)
+            hdu.data = hole_func_fill(hdu.data)
+            img, _ = reproject_interp(hdu, hdr0)
             img = transform.resize(img, [layers.shape[0], layers.shape[1]])
-            hdu.close()
-        os.remove('data/tmp/' + fn)
+            # hdu.close()
+        # os.remove('data/tmp/' + fn)
         img = level_adjust(img, factor=2)
         layers[:, :, jj] = img
     goon = True
