@@ -1009,12 +1009,16 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             elif deband == 'nircam':
                 dbstr = ' nircam'
                 todeband = np.array(['nircam' in x for x in path])
+            elif deband == 'nircam':
+                todeband = np.array(['miri' in x for x in path])
             elif deband == 'n':
                 dbstr = ' n'
                 todeband = np.array(['n_i2d.' in x for x in path])
                 dbargs['func'] = np.nanpercentile
             if deband_flip is None:
                 deband_flip = np.array(['miri' in x for x in path])
+                print('deband_flip')
+                print(deband_flip)
             elif type(deband_flip) == bool:
                 deband_flip = [deband_flip] * len(path)
             else:
