@@ -7,3 +7,12 @@ FLYING-SAUCER,2025-04-10 00:12:58.997,jw04290-o026_t013_miri_f2100w-brightsky_i2
 2011HZ102,2025-04-10 05:41:55.003,jw03979-o021_t007_nircam_clear-f444w_i2d.fits,jw03979-o021_t007_nircam_clear-f277w_i2d.fits,jw03979-o021_t007_nircam_clear-f070w_i2d.fits,bsky;masto
 EGGR-250,2025-04-11 14:38:02.989,jw04403-o015_t015_miri_f2100w_i2d.fits,jw04403-o015_t015_miri_f1800w_i2d.fits,jw04403-o015_t015_miri_f770w_i2d.fits,bsky;masto
 2MASS-J16070384-3911113,2025-04-06 03:15:00.994,jw04290-o008_t004_miri_f770w-brightsky_i2d.fits,jw04290-o007_t004_nircam_clear-f460m_i2d.fits,jw04290-o007_t004_nircam_clear-f115w_i2d.fits,bsky
+2MASS-J16313679-2404200,2025-04-09 23:37:25.993,jw04290-o010_t005_miri_f770w-brightsky_i2d.fits,jw04290-o009_t005_nircam_clear-f460m_i2d.fits,jw04290-o009_t005_nircam_clear-f115w_i2d.fits,bsky
+AZTEC-3,2025-04-06 03:06:20.994,jw02417-o001_t001_nircam_clear-f444w_i2d.fits,jw02417-o001_t001_nircam_clear-f356w_i2d.fits,jw02417-o001_t001_nircam_clear-f200w_i2d.fits,bsky
+CD-32-5613,2025-04-10 00:23:39.998,jw04403-o010_t010_miri_f2100w_i2d.fits,jw04403-o010_t010_miri_f1800w_i2d.fits,jw04403-o010_t010_miri_f770w_i2d.fits,bsky
+SN2022JOX,2025-04-09 05:55:16.001,jw03295-o004_t009_miri_f2550w_i2d.fits,jw03295-o004_t009_miri_f1500w_i2d.fits,jw03295-o004_t009_miri_f560w_i2d.fits,bsky
+UVISTA-Y-001,2025-04-08 03:27:08.999,jw06480-o024_t024_nircam_clear-f444w_i2d.fits,jw06480-o024_t024_nircam_clear-f200w_i2d.fits,jw06480-o024_t024_nircam_clear-f090w_i2d.fits,bsky
+UVISTA-Y-002,2025-04-08 07:30:20.000,jw06480-o025_t025_nircam_clear-f444w_i2d.fits,jw06480-o025_t025_nircam_clear-f200w_i2d.fits,jw06480-o025_t025_nircam_clear-f090w_i2d.fits,bsky
+UVISTA-Y-004,2025-04-08 01:45:25.003,jw06480-o017_t017_nircam_clear-f360m_i2d.fits,jw06480-o017_t017_nircam_clear-f200w_i2d.fits,jw06480-o017_t017_nircam_clear-f070w_i2d.fits,bsky
+UVISTA-Y-879,2025-04-05 21:23:49.998,jw06480-o022_t022_nircam_clear-f444w_i2d.fits,jw06480-o022_t022_nircam_clear-f200w_i2d.fits,jw06480-o022_t022_nircam_clear-f090w_i2d.fits,bsky
+UVISTA-Z-002,2025-04-07 20:45:37.997,jw06480-o004_t004_nircam_clear-f444w_i2d.fits,jw06480-o004_t004_nircam_clear-f200w_i2d.fits,jw06480-o004_t004_nircam_clear-f070w_i2d.fits,bsky

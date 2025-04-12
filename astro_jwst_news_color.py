@@ -86,102 +86,105 @@ for itarget in range(len(new_targets)):
 include = ~already & (n_targets > 2) & (n_targets < 15)
 chosen_targets = new_targets[include]
 # sec_latest = max(t_obs_release[include])
-for target in chosen_targets:
-    # target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
-    row1 = np.where(science['target_name'].values == target)[0][0]
-    mast_url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
-    files = science['dataURL'][science['target_name'] == target].values
-    files = [x.replace('mast:JWST/product/', '') for x in files]
-    max_t_release = max(science['t_obs_release'][science['target_name'] == target].values)
-    filt = filt_num(files)
-    order = np.argsort(filt)[::-1]
-    files = np.array(files)[order]
-    filt = filt[order]
-    # download red first
-    igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
-    irgb = [0, igreen, len(files)-1]
-    if files[irgb[2]] in df['blue'].values:
-        raise Exception(f"{target} file laready used as blue:  {files[irgb[2]]}")
-    goon = False
-    try:
-        for jj, ii in enumerate(irgb):
-            fn = files[ii]
-            # download_fits_files([fn], 'data/tmp')
-            if ii == 0:
-                # hdu0 = fits.open('data/tmp/' + fn)
-                with fits.open(mast_url+fn, use_fsspec=True) as hdul:
-                    hdr0 = hdul[1].header
-                    img = hdul[1].data
-                # hdu0 = fits.open(mast_url+fn, )
-                # img = hdu0[1].data
-                img = hole_func_fill(img)
-                img = resize_to_under_1mp(img)
-                layers = np.zeros((img.shape[0], img.shape[1], 3))
-                # hdr0 = hdu0[1].header
-                # hdu0.close()
-            else:
-                with fits.open(mast_url+fn, use_fsspec=True) as hdul:
-                    hdr = hdul[1].header
-                    img = hdul[1].data
-                hdu = fits.ImageHDU()
-                hdu.data = img
-                hdu.header = hdr
-                # hdu = fits.open('data/tmp/' + fn)
-                hdu.data = hole_func_fill(hdu.data)
-                img, _ = reproject_interp(hdu, hdr0)
-                img = transform.resize(img, [layers.shape[0], layers.shape[1]])
-                # hdu.close()
-            # os.remove('data/tmp/' + fn)
-            img = level_adjust(img, factor=2)
-            layers[:, :, jj] = img
-        goon = True
-    except:
-        print('failed download or process color images')
-    new_row = [target, max_t_release, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed']
-    if goon:
+if len(chosen_targets) == 0:
+    print('no new targets for color processing')
+else:
+    for target in chosen_targets:
+        # target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
+        row1 = np.where(science['target_name'].values == target)[0][0]
+        mast_url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
+        files = science['dataURL'][science['target_name'] == target].values
+        files = [x.replace('mast:JWST/product/', '') for x in files]
+        max_t_release = max(science['t_obs_release'][science['target_name'] == target].values)
+        filt = filt_num(files)
+        order = np.argsort(filt)[::-1]
+        files = np.array(files)[order]
+        filt = filt[order]
+        # download red first
+        igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
+        irgb = [0, igreen, len(files)-1]
+        if files[irgb[2]] in df['blue'].values:
+            raise Exception(f"{target} file laready used as blue:  {files[irgb[2]]}")
+        goon = False
         try:
-            layers[np.isnan(layers)] = 0
-            plt.imsave('data/tmp/tmprs.jpg', layers, origin='lower', pil_kwargs={'quality':95})
-            # new_targets = ', '.join(np.unique(new['target_name']))
-            filt_str = ', '.join(filt[irgb].astype(int).astype(str))
-            toot = f"Bot image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
-            blient = Blient()
-            blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
-            boot = client_utils.TextBuilder()
-            blue = True
-            blim = 250  # should be 300 limit but failed once
-            txt = toot
-            if len(txt) > blim:
-                txt = txt[:blim]
-            boot.text(txt)
-            masto, loc = connect_bot()
+            for jj, ii in enumerate(irgb):
+                fn = files[ii]
+                # download_fits_files([fn], 'data/tmp')
+                if ii == 0:
+                    # hdu0 = fits.open('data/tmp/' + fn)
+                    with fits.open(mast_url+fn, use_fsspec=True) as hdul:
+                        hdr0 = hdul[1].header
+                        img = hdul[1].data
+                    # hdu0 = fits.open(mast_url+fn, )
+                    # img = hdu0[1].data
+                    img = hole_func_fill(img)
+                    img = resize_to_under_1mp(img)
+                    layers = np.zeros((img.shape[0], img.shape[1], 3))
+                    # hdr0 = hdu0[1].header
+                    # hdu0.close()
+                else:
+                    with fits.open(mast_url+fn, use_fsspec=True) as hdul:
+                        hdr = hdul[1].header
+                        img = hdul[1].data
+                    hdu = fits.ImageHDU()
+                    hdu.data = img
+                    hdu.header = hdr
+                    # hdu = fits.open('data/tmp/' + fn)
+                    hdu.data = hole_func_fill(hdu.data)
+                    img, _ = reproject_interp(hdu, hdr0)
+                    img = transform.resize(img, [layers.shape[0], layers.shape[1]])
+                    # hdu.close()
+                # os.remove('data/tmp/' + fn)
+                img = level_adjust(img, factor=2)
+                layers[:, :, jj] = img
+            goon = True
         except:
-            print('failed preparing toot')
-            goon = False
-    if goon:
-        success = ''
-        try:
-            with open('data/tmp/tmprs.jpg', 'rb') as f:
-                img_data = f.read()
-            alt = "Automatic color preview of JWST data"
-            post = blient.send_image(text=boot, image=img_data, image_alt=alt)
-            success += 'bsky;'
-            print('boot image')
-        except:
-            print('failed bluesky color image post')
-        # try:
-        #     metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
-        #     _ = masto.status_post(toot, media_ids=metadata["id"])
-        #     success += 'masto;'
-        #     print('toot image')
-        # except:
-        #     print('failed mastodon color image post')
-        if success:
-            success = success[:-1]
-            new_row[-1] = success
-    df.loc[len(df)] = new_row
-    df.to_csv('docs/bot_color_posts.csv', index=False)
-print('done auto color processing')
+            print(f'failed download or process color images for {target}')
+        new_row = [target, max_t_release, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed']
+        if goon:
+            try:
+                layers[np.isnan(layers)] = 0
+                plt.imsave('data/tmp/tmprs.jpg', layers, origin='lower', pil_kwargs={'quality':95})
+                # new_targets = ', '.join(np.unique(new['target_name']))
+                filt_str = ', '.join(filt[irgb].astype(int).astype(str))
+                toot = f"Bot image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
+                blient = Blient()
+                blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
+                boot = client_utils.TextBuilder()
+                blue = True
+                blim = 250  # should be 300 limit but failed once
+                txt = toot
+                if len(txt) > blim:
+                    txt = txt[:blim]
+                boot.text(txt)
+                masto, loc = connect_bot()
+            except:
+                print(f'failed preparing toot for {target}')
+                goon = False
+        if goon:
+            success = ''
+            try:
+                with open('data/tmp/tmprs.jpg', 'rb') as f:
+                    img_data = f.read()
+                alt = "Automatic color preview of JWST data"
+                post = blient.send_image(text=boot, image=img_data, image_alt=alt)
+                success += 'bsky;'
+                print('boot image')
+            except:
+                print(f'failed bluesky color image post for {target}')
+            try:
+                metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
+                _ = masto.status_post(toot, media_ids=metadata["id"])
+                success += 'masto;'
+                print('toot image')
+            except:
+                print(f'failed mastodon color image post for {target}')
+            if success:
+                success = success[:-1]
+                new_row[-1] = success
+        df.loc[len(df)] = new_row
+        df.to_csv('docs/bot_color_posts.csv', index=False)
+    print('done auto color processing')
     # imgrs = resize_with_padding(img)
     # plt.imsave('tmprs.jpg', imgrs, cmap='gray')
     # size = os.path.getsize('tmp.jpg')
