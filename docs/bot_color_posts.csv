@@ -1,8 +1,8 @@
-target_name,release,red,green,blue,posted
-EGGR-199,2025-04-08 11:51:32.000,jw04403-o063_t063_miri_f2100w_i2d.fits,jw04403-o063_t063_miri_f1800w_i2d.fits,jw04403-o063_t063_miri_f770w_i2d.fits,bsky;masto
-PLCK-G165,2025-04-08 15:59:09.998,jw04744-o003_t001_nircam_clear-f444w_i2d.fits,jw04744-o003_t001_nircam_clear-f444w_i2d.fits,jw04744-o003_t001_nircam_clear-f090w_i2d.fits,bsky;masto
-UVISTA-Z-009,2025-04-09 05:55:16.001,jw06480-o014_t014_nircam_clear-f360m_i2d.fits,jw06480-o014_t014_nircam_clear-f200w_i2d.fits,jw06480-o014_t014_nircam_clear-f070w_i2d.fits,bsky;masto
-FLYING-SAUCER,2025-04-10 00:12:58.997,jw04290-o026_t013_miri_f2100w-brightsky_i2d.fits,jw04290-o026_t013_miri_f770w-brightsky_i2d.fits,jw04290-o025_t013_nircam_clear-f115w_i2d.fits,bsky;masto
-2011JX31,2025-04-10 17:09:50.996,jw03979-o022_t003_nircam_clear-f444w_i2d.fits,jw03979-o022_t003_nircam_clear-f277w_i2d.fits,jw03979-o022_t003_nircam_clear-f070w_i2d.fits,bsky;masto
-2011HZ102,2025-04-10 05:41:55.003,jw03979-o021_t007_nircam_clear-f444w_i2d.fits,jw03979-o021_t007_nircam_clear-f277w_i2d.fits,jw03979-o021_t007_nircam_clear-f070w_i2d.fits,bsky;masto
-EGGR-250,2025-04-11 14:38:02.989,jw04403-o015_t015_miri_f2100w_i2d.fits,jw04403-o015_t015_miri_f1800w_i2d.fits,jw04403-o015_t015_miri_f770w_i2d.fits,bsky;masto
+target_name,release,red,green,blue,posted,obsid
+EGGR-199,2025-04-08 11:51:32.000,jw04403-o063_t063_miri_f2100w_i2d.fits,jw04403-o063_t063_miri_f1800w_i2d.fits,jw04403-o063_t063_miri_f770w_i2d.fits,bsky;masto,213041514
+PLCK-G165,2025-04-08 15:59:09.998,jw04744-o003_t001_nircam_clear-f444w_i2d.fits,jw04744-o003_t001_nircam_clear-f444w_i2d.fits,jw04744-o003_t001_nircam_clear-f090w_i2d.fits,bsky;masto,253889078
+UVISTA-Z-009,2025-04-09 05:55:16.001,jw06480-o014_t014_nircam_clear-f360m_i2d.fits,jw06480-o014_t014_nircam_clear-f200w_i2d.fits,jw06480-o014_t014_nircam_clear-f070w_i2d.fits,bsky;masto,253885897
+FLYING-SAUCER,2025-04-10 00:12:58.997,jw04290-o026_t013_miri_f2100w-brightsky_i2d.fits,jw04290-o026_t013_miri_f770w-brightsky_i2d.fits,jw04290-o025_t013_nircam_clear-f115w_i2d.fits,bsky;masto,213203873
+2011JX31,2025-04-10 17:09:50.996,jw03979-o022_t003_nircam_clear-f444w_i2d.fits,jw03979-o022_t003_nircam_clear-f277w_i2d.fits,jw03979-o022_t003_nircam_clear-f070w_i2d.fits,bsky;masto,213209196
+2011HZ102,2025-04-10 05:41:55.003,jw03979-o021_t007_nircam_clear-f444w_i2d.fits,jw03979-o021_t007_nircam_clear-f277w_i2d.fits,jw03979-o021_t007_nircam_clear-f070w_i2d.fits,bsky;masto,213205167
+EGGR-250,2025-04-11 14:38:02.989,jw04403-o015_t015_miri_f2100w_i2d.fits,jw04403-o015_t015_miri_f1800w_i2d.fits,jw04403-o015_t015_miri_f770w_i2d.fits,bsky;masto,213209798

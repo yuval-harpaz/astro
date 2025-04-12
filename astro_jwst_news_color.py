@@ -70,6 +70,8 @@ include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
 sec_latest = max(t_obs_release[include])
 
 target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
+row1 = np.where(science['target_name'].values == target)[0][0]
+obsid = int(science['obsid'][row1])
 mast_url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
 files = science['dataURL'][science['target_name'] == target].values
 files = [x.replace('mast:JWST/product/', '') for x in files]
@@ -118,7 +120,7 @@ try:
 except:
     print('failed download or process color images')
 
-new_row = [target,sec_latest, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed']
+new_row = [target,sec_latest, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed', obsid]
 if goon:
     try:
         layers[np.isnan(layers)] = 0
@@ -165,7 +167,7 @@ if goon:
         print('failed mastodon color image post')
     if success:
         success = success[:-1]
-        new_row[-1] = success
+        new_row[-2] = success
 df.loc[len(df)] = new_row
 df.to_csv('docs/bot_color_posts.csv', index=False)
 print('done auto color processing')
