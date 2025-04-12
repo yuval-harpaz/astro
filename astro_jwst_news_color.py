@@ -89,10 +89,10 @@ chosen_targets = new_targets[include]
 for target in chosen_targets:
     # target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
     row1 = np.where(science['target_name'].values == target)[0][0]
-    obsid = int(science['obsid'][row1])
     mast_url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
     files = science['dataURL'][science['target_name'] == target].values
     files = [x.replace('mast:JWST/product/', '') for x in files]
+    max_t_release = max(science['t_obs_release'][science['target_name'] == target].values)
     filt = filt_num(files)
     order = np.argsort(filt)[::-1]
     files = np.array(files)[order]
@@ -137,8 +137,7 @@ for target in chosen_targets:
         goon = True
     except:
         print('failed download or process color images')
-    
-    new_row = [target,sec_latest, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed', obsid]
+    new_row = [target, max_t_release, files[irgb[0]], files[irgb[1]], files[irgb[2]], 'failed']
     if goon:
         try:
             layers[np.isnan(layers)] = 0
