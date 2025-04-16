@@ -30,3 +30,7 @@ M101-H681,2025-04-15 19:25:25.993,jw03429-o014_t006_nircam_clear-f444w_i2d.fits,
 2011HJ103,2025-04-15 20:58:24.990,jw03979-o023_t009_nircam_clear-f444w_i2d.fits,jw03979-o023_t009_nircam_clear-f277w_i2d.fits,jw03979-o023_t009_nircam_clear-f070w_i2d.fits,bsky;masto
 SN-2021GMJ,2025-04-15 21:54:43.999,jw03295-o006_t003_miri_f2550w_i2d.fits,jw03295-o006_t003_miri_f1500w_i2d.fits,jw03295-o006_t003_miri_f560w_i2d.fits,bsky;masto
 TOP-CLOUD-EDGE-CO-FILTER-C,2025-04-15 20:33:46.991,jw04358-o002_t002_nircam_clear-f430m_i2d.fits,jw04358-o002_t002_nircam_clear-f200w_i2d.fits,jw04358-o002_t002_nircam_clear-f182m_i2d.fits,bsky;masto
+94,2025-04-16 00:23:45.997,jw01759-o024_t011_miri_f1000w_i2d.fits,jw01759-o024_t011_miri_f770w_i2d.fits,jw01759-o024_t011_miri_f560w_i2d.fits,bsky;masto
+ARAWN,2025-04-15 23:47:59.994,jw03979-o002_t001_nircam_clear-f444w_i2d.fits,jw03979-o002_t001_nircam_clear-f277w_i2d.fits,jw03979-o002_t001_nircam_clear-f070w_i2d.fits,bsky;masto
+COSMOS_cat,2025-04-15 23:13:09.990,jw06368-o001_t057_nircam_clear-f480m_i2d.fits,jw06368-o001_t057_nircam_clear-f335m_i2d.fits,jw06368-o013_t057_nircam_clear-f115w_i2d.fits,failed
+XTEJ1118+480,2025-04-15 22:37:42.990,jw03832-o002_t002_miri_f2550w_i2d.fits,jw03832-o002_t002_miri_f2100w_i2d.fits,jw03832-o002_t002_miri_f1500w_i2d.fits,bsky;masto
