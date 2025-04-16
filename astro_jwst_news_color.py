@@ -86,6 +86,7 @@ for itarget in range(len(new_targets)):
 include = ~already & (n_targets > 2) & (n_targets < 15)
 chosen_targets = new_targets[include]
 # sec_latest = max(t_obs_release[include])
+deband = False
 if len(chosen_targets) == 0:
     print('no new targets for color processing')
 else:
@@ -118,6 +119,8 @@ else:
                     # hdu0 = fits.open(mast_url+fn, )
                     # img = hdu0[1].data
                     img = hole_func_fill(img)
+                    if deband:
+                        img = deband_layer(img, func=np.percentile)
                     img = resize_to_under_1mp(img)
                     layers = np.zeros((img.shape[0], img.shape[1], 3))
                     # hdr0 = hdu0[1].header
@@ -131,6 +134,8 @@ else:
                     hdu.header = hdr
                     # hdu = fits.open('data/tmp/' + fn)
                     hdu.data = hole_func_fill(hdu.data)
+                    if deband:
+                        hdu.data = deband_layer(hdu.data, func=np.percentile)
                     img, _ = reproject_interp(hdu, hdr0)
                     img = transform.resize(img, [layers.shape[0], layers.shape[1]])
                     # hdu.close()

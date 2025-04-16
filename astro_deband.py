@@ -4,7 +4,7 @@ import numpy as np
 
 def smooth_width(layer, win=101, prct=50, func=np.median):
     '''
-    smooth image from left to right, uses nanmedian
+    smooth image from left to right
     Args:
         func: np function for smoothing
             median, nanmedian, percentile or nanpercentile. nan is slower but without it you loose 50 pixels on all sides
@@ -34,6 +34,30 @@ def smooth_width(layer, win=101, prct=50, func=np.median):
 
 
 def deband_layer(layer, win=101, prct=10, func=np.median, flip=False):
+    """
+    remove 1/f, banding noise. thin stripes.
+    func: percentile is safer than median, with nan* you don't lose the edges 
+          but it takes ages.
+
+    Parameters
+    ----------
+    layer : ndarray
+        2D image before reproject.
+    win : int, optional
+        window length for computing noise. The default is 101.
+    prct : int, optional
+        lower than 50 for precentile or nanpercentile func. The default is 10.
+    func : np function, optional
+        should be median, anamedian, percentile or nanpercentile. The default is np.median.
+    flip : bool, optional
+        use True for MIRI images. The default is False.
+
+    Returns
+    -------
+    clean : ndarray
+        data cleaned of stripes.
+
+    """
     if flip:
         layer = layer.T
     lp = smooth_width(layer, win=win, prct=prct, func=func)
