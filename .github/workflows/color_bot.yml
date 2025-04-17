@@ -1,7 +1,7 @@
 name: color bot 
 on:
     schedule:
-    - cron: '30 */2 * * *'
+    - cron: '30 * * * *'
 permissions: write-all
 jobs:
   astro-fig:
