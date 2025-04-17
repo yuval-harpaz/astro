@@ -116,6 +116,7 @@ else:
                     with fits.open(mast_url+fn, use_fsspec=True) as hdul:
                         hdr0 = hdul[1].header
                         img = hdul[1].data
+                        info = hdul[0].header
                     # hdu0 = fits.open(mast_url+fn, )
                     # img = hdu0[1].data
                     img = hole_func_fill(img)
@@ -153,6 +154,7 @@ else:
                 # new_targets = ', '.join(np.unique(new['target_name']))
                 filt_str = ', '.join(filt[irgb].astype(int).astype(str))
                 toot = f"\U0001F916 image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
+                toot = toot + f"\nPI: {info['PI_NAME']}, program {info['PROGRAM']}. CRVAL: {np.round(hdr0['CRVAL1'], 6)}, {np.round(hdr0['CRVAL2'], 6)}"
                 blient = Blient()
                 blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
                 boot = client_utils.TextBuilder()
