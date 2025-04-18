@@ -96,6 +96,7 @@ else:
         mast_url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
         files = science['dataURL'][science['target_name'] == target].values
         files = [x.replace('mast:JWST/product/', '') for x in files]
+        files = [x for x in files if 'niriss' not in x]
         max_t_release = max(science['t_obs_release'][science['target_name'] == target].values)
         filt = filt_num(files)
         order = np.argsort(filt)[::-1]
