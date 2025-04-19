@@ -44,3 +44,4 @@ TOP-CLOUD-EDGE-CO-FILTER-R,2025-04-18 08:06:28.000,jw04358-o001_t001_nircam_clea
 Clean_North_CVZ_MRS,2025-04-18 14:01:32.993,jw06616-o020_t001_miri_f2550w_i2d.fits,jw06616-o020_t001_miri_f2100w_i2d.fits,jw06616-o020_t001_miri_f1800w_i2d.fits,bsky;masto
 C3D-15_CWEBTILE-2-11,2025-04-18 18:23:15.998,jw05893-o015_t015_miri_f2100w_i2d.fits,jw05893-o015_t015_miri_f1000w_i2d.fits,jw05893-o015_t015_nircam_clear-f356w_i2d.fits,failed
 C3D-15_CWEBTILE-2-11,2025-04-18 18:23:39.998,jw05893-o015_t015_miri_f2100w_i2d.fits,jw05893-o015_t015_miri_f1000w_i2d.fits,jw05893-o015_t015_nircam_clear-f115w_i2d.fits,failed
+C3D-14_CWEBTILE-2-7,2025-04-19 02:23:40.004,jw05893-o014_t014_miri_f2100w_i2d.fits,jw05893-o014_t014_miri_f1000w_i2d.fits,jw05893-o014_t014_nircam_clear-f356w_i2d.fits,failed
