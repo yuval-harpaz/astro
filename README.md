@@ -3,16 +3,18 @@ Imaging astronomy data from JWST. Python code to download and do some post-proce
 ## Level 3 science images from the last 7 days
 A news page, showing level 3 releases [page](https://yuval-harpaz.github.io/astro/news_by_date.html). My [mastodon](https://botsin.space/@astrobot_jwst) and [bluesky](https://bsky.app/profile/astrobotjwst.bsky.social) bots
 announce updates (news check every 2 hours).
-[<img src="science.png" alt="Science images from the last 7 days" title="Science images from the last 7 days">>](https://yuval-harpaz.github.io/astro/news_by_date.html)
+[<img src="science.png" alt="Science images from the last 7 days" title="Science images from the last 7 days">](https://yuval-harpaz.github.io/astro/news_by_date.html)
+## NGC images by release date
+A page with preview images of NGC objects, nebulae, supernovae and other objects of interest. (I took the highest wavelength filter).
+[<img src="science.png" alt="Science images from the last 7 days" title="Science images from the last 7 days">](https://yuval-harpaz.github.io/astro/news_by_date.html)
+<br> [![Alt mastodon bot](docs/camelfav.ico)](https://botsin.space/@astrobot_jwst)
+[![Alt a stream preview of NGC objects](ngc_stream.png)](https://yuval-harpaz.github.io/astro/ngc.html)
+[![Alt a grid preview of NGC objects](ngc_grid.png)](https://yuval-harpaz.github.io/astro/ngc_grid.html)
 ## NGC color preview images
 NGC objects cover many galaxies and nebula, so here it just means interesting stuff. I allowed some objects that are not in the NGC catalogue to slip in.<br>
 Images here were automatically created from the data. They are saved with low resolution, and meant to allow us to see what data has been collected. For high resolution images I still need to overcome coregistration issues, and fill holes. With code. 
 [![Alt a color preview page for most NGC objects captured by JWST](ngc_thumb.png)](https://yuval-harpaz.github.io/astro/ngc_thumb.html)
-## NGC images by release date
-This is a news page, updated every 2 hours, showing example images from the latest release (I took the highest wavelength filter). You can get notified for new releases by following my 
-mastodon bot [@astrobot_jwst@botsin.space](https://botsin.space/@astrobot_jwst). I arranged the images in a "stream" and in a more dense "grid" layout.<br> [![Alt mastodon bot](docs/camelfav.ico)](https://botsin.space/@astrobot_jwst) 
-[![Alt a stream preview of NGC objects](ngc_stream.png)](https://yuval-harpaz.github.io/astro/ngc.html)
-[![Alt a grid preview of NGC objects](ngc_grid.png)](https://yuval-harpaz.github.io/astro/ngc_grid.html)
+
 ## Galleries
 See a [gallery](https://github.com/yuval-harpaz/astro/blob/main/GALLERY.md) with some work, or a [wallpaper gallery](https://github.com/yuval-harpaz/astro/blob/main/pics/wallpaper/wallpapers.md) with images cropped to fit a standard 16:9 computer screen <br>
 <img src="pics/wallpaper/collage.png" title="Nine galaxies captured by JWST, NIRCam + MIRI" alt="Nine galaxies captured by JWST, NIRCam + MIRI"/>
