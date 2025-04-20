@@ -446,7 +446,7 @@ if __name__ == "__main__":
     df = list_ngc()
     df_prev = pd.read_csv('ngc.csv', sep=',')
     df.to_csv('ngc.csv', sep=',', index=False)
-    ngc_html()
+    # ngc_html()
     if df.iloc[0]['target_name'] == df_prev.iloc[0]['target_name']:
         print('no new NGC')
     else:
@@ -468,6 +468,6 @@ if __name__ == "__main__":
             if last > 3:
                 print(f'sus, too many new additions ({last}): {tgts[:-2]}\nno tooting')
             else:
-                toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/ngc.html'
+                toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html'
                 masto, _ = connect_bot()
                 masto.status_post(toot)
