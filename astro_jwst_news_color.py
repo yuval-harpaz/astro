@@ -105,8 +105,8 @@ else:
         # download red first
         igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
         irgb = [0, igreen, len(files)-1]
-        if files[irgb[2]] in df['blue'].values:
-            raise Exception(f"{target} file laready used as blue:  {files[irgb[2]]}")
+        if files[irgb[2]] in df['blue'].values and files[irgb[0]] in df['red'].values:
+            raise Exception(f"{target} file laready used as blue:  {files[irgb[2]]} (also red was used)")
         goon = False
         try:
             for jj, ii in enumerate(irgb):
