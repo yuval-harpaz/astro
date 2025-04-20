@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Telescope Highlights</title>
+  <link rel="stylesheet" href="styles2025.css">
+  <style>
+  </style>
+</head>
+<link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/camelfav.ico">
+<body>
+  <h1>JWST highlights by release date</h1>
+ <div class="container"><div class="social-links"><h2>By Yuval Harpaz
+    <a href="https://nerdculture.de/@yuvharpaz"><img src="mastodona.png" alt="nerdculture.de/@yuvharpaz" /></a>
+    <a href="https://bsky.app/profile/yuvharpaz.bsky.social"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/600px-Bluesky_Logo.svg.png" alt="yuvharpaz.bsky.social" /></a>
+    <a href="https://github.com/yuval-harpaz/astro/blob/main/README.md"><img src="github-mark.png" alt="github.com/yuval-harpaz" /></a>
+    <a href="https://github.com/yuval-harpaz/astro/blob/main/ngc.csv" target="_blank"> <img src="csv1.png" alt="csv logo"/></a>
+    Bots: mastodon<a href="https://botsin.space/@astrobot_jwst"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>
+    bluesky<a href="https://bsky.app/profile/astrobotjwst.bsky.social"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>    </h2>
+</div>
+A selection of images from JWST, chosen semi-automatically according to elements of target name (e.g. containing "NGC", "SN"). Mostly galaxies and nebulae, ignoring lensing effects images.<br>
+Preview images and image information are from <a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" style="color:#66fcf1;"> STScI | MAST</a>. Credit
+ to NASA (<a href="https://webbtelescope.org/copyright" target="_blank" style="color:#66fcf1;">ref</a>)
+  <div id="image-container">Loading...</div>
+
+  <script>
+    async function loadCSV(url) {
+      const response = await fetch(url);
+      const text = await response.text();
+      return parseCSV(text);
+    }
+
+function parseCSV(csv) {
+    const lines = csv.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim());
+
+    return lines.slice(1).map(line => {
+        const values = [];
+        let current = '';
+        let inQuotes = false;
+
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"' && line[i + 1] === '"') {
+                current += '"'; // escaped quote
+                i++;
+            } else if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                values.push(current);
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        values.push(current); // last value
+
+        const obj = {};
+        headers.forEach((header, i) => {
+            let value = values[i]?.trim() || '';
+
+            // Special case: convert mast: to full URL in jpeg
+            if (header === 'jpeg' && value.startsWith('mast:')) {
+                value = value.replace(
+                    'mast:',
+                    'https://mast.stsci.edu/portal/Download/file/'
+                );
+            }
+
+            obj[header] = value;
+        });
+
+        return obj;
+    });
+}
+    function displayImages(data) {
+      const container = document.getElementById('image-container');
+      container.innerHTML = ''; // Clear previous content
+      // const now = new Date();
+      // const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      // const recent = data.filter(item => {
+      //   const date = new Date(item.release_date);
+      //   return date.getTime() > oneWeekAgo.getTime();
+      // });
+      if (data.length === 0) {
+        container.innerHTML = '<p>No images found.</p>';
+        return;
+      }
+      data.sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
+      data.forEach(item => {
+        const card = document.createElement('div');
+        const filter = item.filters
+        const releaseDate = new Date(item.release_date);
+        const obsDate = new Date(item.t_max);
+        const title = item.obs_title
+        card.className = 'image-card';
+        card.style.boxShadow = '0 0 10px orange';
+        card.innerHTML = `
+          <img src="${item.jpeg || ''}" alt="${item.target_name || ''}" title="${item.target_name}">
+          <div class="image-info">
+              <h2>${item.target_name}</h2>
+              <p>Filter: f${filter}.</p>
+              <Proposal ID: ${item.proposal}.</p>
+              <p>Observed: ${obsDate}. Released: ${releaseDate}</p>
+              <p>Title: ${title}
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // Load your CSV (replace with your raw GitHub URL if needed)
+    loadCSV('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/ngc.csv').then(displayImages).catch(err => {
+      document.getElementById('image-container').innerHTML = '<p>Error loading data.</p>';
+      console.error(err);
+    });
+  </script>
+</body>
+</html>
