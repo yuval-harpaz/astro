@@ -352,6 +352,10 @@ def choose_fits(file_names=None, folder=''):
         chosen[ifn] = use[idx]
     df = pd.DataFrame(list(zip(file_names, width, height, offset, chosen)),
                       columns=['file', 'width', 'height', 'offset', 'chosen'])
+    niriss = np.where(df['file'].str.contains('niriss'))[0]
+    for row in niriss:
+        df.at[row, 'chosen'] = False
+
     return df
 
 

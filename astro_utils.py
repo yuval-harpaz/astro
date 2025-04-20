@@ -379,7 +379,7 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include='', ptyp
     return manifest
 
 
-def download_fits_files(file_names, destination_folder='', overwrite=False):
+def download_fits_files(file_names, destination_folder='', overwrite=False, wget=True):
     if type(file_names) == str:
         file_names = [file_names]
     if len(destination_folder) > 0 and destination_folder[-1] not in '\/':
@@ -393,9 +393,26 @@ def download_fits_files(file_names, destination_folder='', overwrite=False):
         fn = fn.split('/')[-1]
         dfn = destination_folder+fn
         if not os.path.isfile(dfn) or overwrite or os.path.getsize(dfn) == 0:
-            a = os.system(f'wget -O {destination_folder+fn} {mast}{fn} {no_print}')
-            if a == 0:
-                success += 1
+            if wget:
+                a = os.system(f'wget -O {dfn} {mast}{fn} {no_print}')
+                if a == 0:
+                    success += 1
+            else:
+                try:
+                    with fits.open(mast+fn, use_fsspec=True) as hdul:
+                        hdr0 = hdul[0]
+                        hdr = hdul[1].header
+                        img = hdul[1].data
+                    hdulist = fits.HDUList()
+                    hdu = fits.ImageHDU()
+                    hdu.data = img.copy()
+                    hdu.header = hdr.copy()
+                    hdulist.append(hdr0.copy())
+                    hdulist.append(hdu)
+                    hdulist.writeto(dfn, overwrite=True)
+                    success += 1
+                except Exception as error:
+                    print(error)
     print(f'Downloaded {success} files to {destination_folder}')
 
 
