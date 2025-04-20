@@ -90,8 +90,8 @@ function parseCSV(csv) {
       data.forEach(item => {
         const card = document.createElement('div');
         const filter = item.filters
-        const releaseDate = new Date(item.release_date);
-        const obsDate = new Date(item.t_max);
+        // const releaseDate = new Date(item.release_date);
+        // const obsDate = new Date(item.collected_to);
         const title = item.obs_title
         card.className = 'image-card';
         card.style.boxShadow = '0 0 10px orange';
@@ -99,9 +99,9 @@ function parseCSV(csv) {
           <img src="${item.jpeg || ''}" alt="${item.target_name || ''}" title="${item.target_name}">
           <div class="image-info">
               <h2>${item.target_name}</h2>
-              <p>Filter: f${filter}.</p>
+              <p>Available filters: f${filter}.</p>
               <Proposal ID: ${item.proposal}.</p>
-              <p>Observed: ${obsDate}. Released: ${releaseDate}</p>
+              <p>Observed: ${item.collected_to.slice(0, 10)}. Released: ${item.release_date}</p>
               <p>Title: ${title}
           </div>
         `;
