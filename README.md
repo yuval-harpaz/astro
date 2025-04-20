@@ -1,15 +1,12 @@
-# astro  [<img src="docs/mastodona.png" title="@yuvharpaz@nerdculture.de" alt="@yuvharpaz@nerdculture.de" width="25"/>](https://nerdculture.de/@yuvharpaz)[<img src="docs/twitter-icon.png" title="@yuvharpaz" alt="@yuvharpaz" width="25"/>](https://twitter.com/yuvharpaz)[<img src="docs/camelfav.ico" alt="@astrobot_jwst@botsin.space" title="@astrobot_jwst@botsin.space" width="25"/>](https://botsin.space/@astrobot_jwst)[<img src="docs/flickr.png" title="yuval38" alt="yuval38" width="25"/>](https://www.flickr.com/photos/197886445@N03/albums/72177720309305254)
+# astro  [<img src="docs/bsky.png" title="@yuvharpaz.bsky.social" alt="@yuvharpaz.bsky.social" width="25"/>][<img src="docs/mastodona.png" title="@yuvharpaz@nerdculture.de" alt="@yuvharpaz@nerdculture.de" width="25"/>](https://nerdculture.de/@yuvharpaz)[<img src="docs/twitter-icon.png" title="@yuvharpaz" alt="@yuvharpaz" width="25"/>](https://twitter.com/yuvharpaz)[<img src="docs/camelfav.ico" alt="@astrobot_jwst@botsin.space" title="@astrobot_jwst@botsin.space" width="25"/>](https://botsin.space/@astrobot_jwst)[<img src="docs/flickr.png" title="yuval38" alt="yuval38" width="25"/>](https://www.flickr.com/photos/197886445@N03/albums/72177720309305254)
 Imaging astronomy data from JWST. Python code to download and do some post-processing for *.fits files, coming from James Webb Space Telescope (JWST) via NASA/ [mast](https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html).
 ## Level 3 science images from the last 7 days
-A news page, showing level 3 releases [page](https://yuval-harpaz.github.io/astro/news_by_date.html). My [mastodon](https://botsin.space/@astrobot_jwst) and [bluesky](https://bsky.app/profile/astrobotjwst.bsky.social) bots
+A news [page](https://yuval-harpaz.github.io/astro/news_by_date.html), showing level 3 science releases. My [mastodon](https://botsin.space/@astrobot_jwst) and [bluesky](https://bsky.app/profile/astrobotjwst.bsky.social) bots
 announce updates (news check every 2 hours).
 [<img src="science.png" alt="Science images from the last 7 days" title="Science images from the last 7 days">](https://yuval-harpaz.github.io/astro/news_by_date.html)
-## NGC images by release date
-A page with preview images of NGC objects, nebulae, supernovae and other objects of interest. (I took the highest wavelength filter).
-[<img src="science.png" alt="Science images from the last 7 days" title="Science images from the last 7 days">](https://yuval-harpaz.github.io/astro/news_by_date.html)
-<br> [![Alt mastodon bot](docs/camelfav.ico)](https://botsin.space/@astrobot_jwst)
-[![Alt a stream preview of NGC objects](ngc_stream.png)](https://yuval-harpaz.github.io/astro/ngc.html)
-[![Alt a grid preview of NGC objects](ngc_grid.png)](https://yuval-harpaz.github.io/astro/ngc_grid.html)
+## NGC images (and other highlights) by release date
+A [page](https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html) with preview images of NGC objects, nebulae, supernovae and other objects of interest. (I took the highest wavelength filter).
+[<img src="ngc_grid.png" alt="NGC images" title="NGC images">](https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html)
 ## NGC color preview images
 NGC objects cover many galaxies and nebula, so here it just means interesting stuff. I allowed some objects that are not in the NGC catalogue to slip in.<br>
 Images here were automatically created from the data. They are saved with low resolution, and meant to allow us to see what data has been collected. For high resolution images I still need to overcome coregistration issues, and fill holes. With code. 
