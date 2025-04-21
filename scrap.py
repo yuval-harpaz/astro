@@ -1,11 +1,7 @@
-import astro_jwst_news_color
-print('scrap done')
-
-# err = os.system('fitsheader https://mast.stsci.edu/portal/Download/file/JWST/product/jw05594-o047_t049_nircam_clear-f322w2_i2d.fits > tmp.txt')
-# with open('tmp.txt', 'r') as f:
-#     header = f.read()
-# print(header)
-# from astro_utils import *
-# exp = ['jw06785-o001_t001_nircam_clear-f444w_i2d.fits', 'jw06785-o001_t001_nircam_clear-f335m_i2d.fits', 'jw06785-o001_t001_nircam_f444w-f470n_i2d.fits']
-# auto_plot('M101-H27+H67', exp = '*.fits', method='rrgggbb', deband=10, deband_flip=False, png='rgb1db.jpg',adj_args={'factor':1}, func=None, fill=True, pkl=True)
-
+from astro_utils import *
+auto_plot('G286', exp ='log', method='rrgggbb',
+          deband=True, deband_flip=False, png='clear_rgb1bd.jpg',
+          adj_args={'factor':1}, func=None, fill=True, pkl=True, crop=False)
+auto_plot('G286', exp ='log', method='filt',
+          deband=False, deband_flip=False, png='clear_filt1bd.jpg',
+          adj_args={'factor':1}, func=None, fill=False, pkl=True, crop=False)
