@@ -14,7 +14,7 @@ if os.path.isdir('/home/innereye'):
         raise Exception('where is the drive?')
 else:
     print(os.getcwdb())
-    drive = os.getcwdb()  # os.environ['HOME']+'/astro'
+    drive = os.getcwdb().decode('utf-8')  # os.environ['HOME']+'/astro'
     path2logs = drive+'/logs/'
 os.chdir(drive)
 # raise Exception('where is the drive?')
