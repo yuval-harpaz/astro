@@ -14,6 +14,7 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements_ngc.txt
+        pip install git+https://github.com/halcy/Mastodon.py.git@1.8.1
     - name: dibug
       run: |
         python astro_ngc_preview_2025.py
