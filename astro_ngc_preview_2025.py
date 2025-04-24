@@ -8,15 +8,18 @@ from astro_ngc_align import add_crval_to_logs
 df = pd.read_csv('ngc.csv', sep=',')
 # drive = '/media/innereye/KINGSTON/JWST/'
 ##
-if os.path.isdir(drive):
+if os.path.isdir('/home/innereye'):
+    if not os.path.isdir(drive):
+        raise Exception('where is the drive?')
+    else:
+        drive = os.environ['HOME']+'/astro'
+os.chdir(drive)
+# raise Exception('where is the drive?')
+if not os.path.isfile('docs/latest.csv'):
     os.chdir(drive)
-else:
-    # raise Exception('where is the drive?')
-    if not os.path.isfile('docs/latest.csv'):
-        os.chdir(os.environ['HOME']+'/astro')
-        # raise Exception('am I in astro?')
-    if not os.path.exists('data/tmp'):
-        os.makedirs('data/tmp')
+    # raise Exception('am I in astro?')
+if not os.path.exists('data/tmp'):
+    os.makedirs('data/tmp')
 ##
 
 ##
