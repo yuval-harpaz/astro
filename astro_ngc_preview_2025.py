@@ -147,6 +147,10 @@ for row in range(len(df)):
                 if made_png:
                     make_thumb(plotted, date0)
                     print('DONE ' + date0 + '_' + tgt)
+                    os.system(f"curl -T {plotted} https://oshi.ec > tmp.txt")
+                    with open('tmp.txt', 'r') as tmp:
+                        dest = tmp.read()
+                    print(f"sent file to: {dest}")
                 else:
                     print('no plots for '+ date0 + '_' + tgt)
     except:

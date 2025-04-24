@@ -885,6 +885,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         what variable to return. 'rgb' or 'layers'
     deband: bool | int | list | ndarray
         remove banding noise 1/f. True or 1 for all layers, 2 or 'nircam' for nircam layers, False default. lots of time!
+    deband_flip: bool | None | list
+        True is intended for removing vertical stripes from MIRI data. None assigns True for filenames containing miri.
     blc: bool | None
         subtract non-zero minimum (baseline correction) and divide by maximum
     whiten: None | bool
@@ -896,12 +898,13 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
 
     '''
     # TODO: clean small holes fast without conv, remove red background
-    for search in ['/media/innereye/KINGSTON/JWST/data/',
-                   './',
+    for search in ['./',
                    '../',
+                   '/media/innereye/KINGSTON/JWST/data/',
                    '/home/innereye/astro/data/',
                    '/home/innereye/JWST/']:
         if os.path.isdir(search+folder):
+            print(f"cd {search}")
             os.chdir(search)
             break
     if not os.path.isdir(folder):
@@ -938,6 +941,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     else:
         path = exp
         os.chdir(folder)
+    if len(path) == 0:
+        raise Exception(f"no files in {os.getcwd()}")
     filt = filt_num(path)
     order = np.argsort(filt)
     path = np.asarray(path)[order]
@@ -1026,7 +1031,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             elif deband == 'nircam':
                 dbstr = ' nircam'
                 todeband = np.array(['nircam' in x for x in path])
-            elif deband == 'nircam':
+            elif deband == 'miri':
                 todeband = np.array(['miri' in x for x in path])
             elif deband == 'n':
                 dbstr = ' n'
@@ -1640,11 +1645,13 @@ def log(arr, small=0.01):
 
 
 drive = '/media/innereye/KINGSTON/JWST/'
-def download_by_log(log_csv, tgt=None):
+def download_by_log(log_csv, tgt=None, overwrite=False, wget=True, path2data=None):
     if log_csv[0] != '/':
         log_csv = '/home/innereye/astro/logs/' + log_csv
-    if os.path.isdir(drive):
-        os.chdir(drive)
+    if path2data is None:
+        path2data = drive
+    if os.path.isdir(path2data):
+        os.chdir(path2data)
     else:
         raise Exception('where is the drive?')
     if tgt is None:
@@ -1655,7 +1662,9 @@ def download_by_log(log_csv, tgt=None):
         chosen_df = pd.read_csv(log_csv)
         files = list(chosen_df['file'][chosen_df['chosen']])
         print(f'downloading {tgt} by log')
-        download_fits_files(files, destination_folder='data/' + tgt)
+        download_fits_files(files, destination_folder='data/' + tgt, overwrite=overwrite, wget=wget)
+    else:
+        print('where is the log file?')
 
 
 def resize_with_padding(img, target_size=(1200, 675)):
