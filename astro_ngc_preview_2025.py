@@ -11,7 +11,12 @@ df = pd.read_csv('ngc.csv', sep=',')
 if os.path.isdir(drive):
     os.chdir(drive)
 else:
-    raise Exception('where is the drive?')
+    # raise Exception('where is the drive?')
+    if not os.path.isfile('docs/latest.csv'):
+        os.chdir(os.environ['HOME']+'/astro')
+        # raise Exception('am I in astro?')
+    if not os.path.exists('data/tmp'):
+        os.makedirs('data/tmp')
 ##
 
 ##
