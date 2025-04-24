@@ -4,13 +4,14 @@
 run astro_ngc_preview first to create logs
 '''
 
+
+
 from astro_utils import *
-def add_crval_to_logs():
+def add_crval_to_logs(path2astro='/home/innereye/astro', drive='/media/innereye/KINGSTON/JWST/'):
     df = pd.read_csv('ngc.csv', sep=',')
     for row in range(len(df)):  # np.where(df['NGC'] == 3627)[0]:
         # pkl = True
         tgt = df['target_name'][row]
-        drive = '/media/innereye/KINGSTON/JWST/'
         if os.path.isdir(drive):
             os.chdir(drive)
         else:
@@ -25,7 +26,7 @@ def add_crval_to_logs():
             elif 'background' in tgt.lower() or 'BKG' in tgt:
                 print('no background for now '+tgt)
             else:
-                log_csv = f'/home/innereye/astro/logs/{tgt}_{date0}.csv'
+                log_csv = f'{path2astro}/logs/{tgt}_{date0}.csv'
                 if os.path.isfile(log_csv):
                     chosen_df = pd.read_csv(log_csv)
                     files = list(chosen_df['file'])

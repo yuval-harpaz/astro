@@ -9,8 +9,9 @@ df = pd.read_csv('ngc.csv', sep=',')
 # drive = '/media/innereye/KINGSTON/JWST/'
 ##
 if os.path.isdir('/home/innereye'):
-    path2log = 'home/innereye/astro/logs/'
-    path2thumb = 'home/innereye/astro/docs/thumb/'
+    path2astro ='home/innereye/astro'
+    path2log = path2astro+'/logs/'
+    path2thumb = path2astro+'/docs/thumb/'
     if not os.path.isdir(drive):
         raise Exception('where is the drive?')
 else:
@@ -18,6 +19,7 @@ else:
     drive = os.getcwdb().decode('utf-8')  # os.environ['HOME']+'/astro'
     path2logs = drive+'/logs/'
     path2thumb = drive+'/docs/thumb/'
+    path2astro = drive
 os.chdir(drive)
 # raise Exception('where is the drive?')
 # if not os.path.isfile('docs/latest.csv'):
@@ -160,10 +162,11 @@ for row in range(len(df)):
                 if made_png:
                     make_thumb(plotted, date0, path2thumb=path2thumb)
                     print('DONE ' + date0 + '_' + tgt)
-                    os.system(f"curl -T {plotted} https://oshi.ec > tmp.txt")
-                    with open('tmp.txt', 'r') as tmp:
-                        dest = tmp.read()
-                    print(f"sent file to: {dest}")
+                    for pic in plotted:
+                        os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
+                        with open('tmp.txt', 'r') as tmp:
+                            dest = tmp.read()
+                        print(f"sent file to: {dest}")
                 else:
                     print('no plots for '+ date0 + '_' + tgt)
     except Exception as error:
@@ -179,5 +182,5 @@ for row in range(len(df)):
         #     imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
         #     plt.imsave('/home/innereye/astro/docs/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
 
-ngc_html_thumb()
+ngc_html_thumb(path2astro=path2astro)
 add_crval_to_logs()

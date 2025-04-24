@@ -240,8 +240,8 @@ def ngc_html():
         with open(f'docs/ngc{grid}.html', "w") as text_file:
             text_file.write(page)
 
-def ngc_html_thumb():
-    os.chdir('/home/innereye/astro/')
+def ngc_html_thumb(path2astro='/home/innereye/astro/'):
+    os.chdir(path2astro)
     df = pd.read_csv('ngc.csv')
     # other = '<a href="https://yuval-harpaz.github.io/astro/ngc_thumb.html" target="_blank">stream view</a>'
     meta = '    <meta property="og:title" content="JWST color preview" />\n' \
