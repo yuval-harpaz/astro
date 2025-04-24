@@ -9,11 +9,13 @@ df = pd.read_csv('ngc.csv', sep=',')
 # drive = '/media/innereye/KINGSTON/JWST/'
 ##
 if os.path.isdir('/home/innereye'):
+    path2log = 'home/innereye/astro/logs/'
     if not os.path.isdir(drive):
         raise Exception('where is the drive?')
 else:
     print(os.getcwdb())
     drive = os.getcwdb()  # os.environ['HOME']+'/astro'
+    path2logs = drive+'/logs/'
 os.chdir(drive)
 # raise Exception('where is the drive?')
 # if not os.path.isfile('docs/latest.csv'):
@@ -30,7 +32,7 @@ for row in range(len(df)):
     try:
         os.chdir(drive)
         date0 = df["collected_from"][row][:10]
-        log_csv = f'/home/innereye/astro/logs/{tgt}_{date0}.csv'
+        log_csv = f'{path2logs}{tgt}_{date0}.csv'
         already = glob('/home/innereye/astro/docs/thumb/'+date0+'_'+tgt+'*')
         forbidden = False
         if 'TRAPEZIUM-CLUSTER-P1_2022-09-26.csv' in log_csv:  # too large
