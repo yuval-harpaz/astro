@@ -12,7 +12,8 @@ if os.path.isdir('/home/innereye'):
     if not os.path.isdir(drive):
         raise Exception('where is the drive?')
 else:
-    drive = os.environ['HOME']+'/astro'
+    print(os.getcwdb())
+    drive = os.getcwdb()  # os.environ['HOME']+'/astro'
 os.chdir(drive)
 # raise Exception('where is the drive?')
 # if not os.path.isfile('docs/latest.csv'):
