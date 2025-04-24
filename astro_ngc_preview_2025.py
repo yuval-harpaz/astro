@@ -158,8 +158,10 @@ for row in range(len(df)):
                     print(f"sent file to: {dest}")
                 else:
                     print('no plots for '+ date0 + '_' + tgt)
-    except:
+    except Exception as error:
         print('FAILED '+tgt)
+        print(error)
+        break
 
         # for ii in range(len(plotted)):
         #     img = plt.imread(plotted[ii])[..., :3]
