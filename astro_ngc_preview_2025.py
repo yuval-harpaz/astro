@@ -10,12 +10,14 @@ df = pd.read_csv('ngc.csv', sep=',')
 ##
 if os.path.isdir('/home/innereye'):
     path2log = 'home/innereye/astro/logs/'
+    path2thumb = 'home/innereye/astro/docs/thumb/'
     if not os.path.isdir(drive):
         raise Exception('where is the drive?')
 else:
     print(os.getcwdb())
     drive = os.getcwdb().decode('utf-8')  # os.environ['HOME']+'/astro'
     path2logs = drive+'/logs/'
+    path2thumb = drive+'/docs/thumb/'
 os.chdir(drive)
 # raise Exception('where is the drive?')
 # if not os.path.isfile('docs/latest.csv'):
@@ -156,7 +158,7 @@ for row in range(len(df)):
                             os.system('echo "no overlap" > nooverlap.txt')
                 ##
                 if made_png:
-                    make_thumb(plotted, date0)
+                    make_thumb(plotted, date0, path2thumb=path2thumb)
                     print('DONE ' + date0 + '_' + tgt)
                     os.system(f"curl -T {plotted} https://oshi.ec > tmp.txt")
                     with open('tmp.txt', 'r') as tmp:

@@ -359,7 +359,7 @@ def choose_fits(file_names=None, folder=''):
     return df
 
 
-def make_thumb(plotted, date0, flip=None):
+def make_thumb(plotted, date0, flip=None, path2thumb='/home/innereye/astro/docs/thumb/'):
     '''
     plotted:    str | list
         which files to downsample
@@ -388,7 +388,7 @@ def make_thumb(plotted, date0, flip=None):
             ratio = new_height / img.shape[0]
             imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
             fnnodate = plotted[ii].split('/')[-1].replace(date0[0] + '_', '')
-            plt.imsave('/home/innereye/astro/docs/thumb/' + date0[0] + '_' + fnnodate, imgrs, cmap='gray')
+            plt.imsave(path2thumb + date0[0] + '_' + fnnodate, imgrs, cmap='gray')
     else:
         raise Exception('too many dates')
 
