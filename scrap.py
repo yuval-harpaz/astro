@@ -1,4 +1,13 @@
-from astro_utils import *
+import os
+ err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
+ if err:
+     print('error sending to oshi')
+ else:
+     with open('tmp.txt', 'r') as tmp:
+         dest = tmp.read()
+     download_link = dest.split('\n')[2].split(' ')[0]
+     print(dest)
+# from astro_utils import *
 
 # from time import time
 

@@ -28,10 +28,12 @@ os.chdir(drive)
 if not os.path.exists('data/tmp'):
     os.makedirs('data/tmp')
 ##
-
+#TODO: pkl = Fslse, maybe change from rrrgggbb to filt or make both, make nice toot and boot
+#   File "/home/runner/work/astro/astro/astro_ngc_align.py", line 18, in add_crval_to_logs
+# Error:     raise Exception('where is the drive?')
 ##
 for row in range(len(df)):
-    pkl = True
+    pkl = False
     tgt = df['target_name'][row]
     try:
         os.chdir(drive)
@@ -142,31 +144,36 @@ for row in range(len(df)):
                 # TODO decide if to use 0.5 1 1
                 made_png = False
                 if np.nansum(mn[:, 0]) >= 2:
-                    auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
+                    auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=pkl, resize=True, method='rrgggbb', plot=False)
                     plotted.append(tgt+'_MIRI.png')
                     made_png = True
                 if np.nansum(mn[:,1]) >= 2:
-                    auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=False, resize=True, method='rrgggbb', plot=False)
+                    auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=pkl, resize=True, method='rrgggbb', plot=False)
                     plotted.append(tgt + '_NIRCam.png')
                     made_png = True
                 if '+' in instrument and np.nansum(mn) >= 2 and not both_apart:
                     if not os.path.isfile('nooverlap.txt'):
                         try:
-                            auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=True, resize=True, method='mnn', plot=False)
+                            auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=pkl, resize=True, method='mnn', plot=False)
                             plotted.append(tgt+'_'+instrument+'.png')
                             made_png = True
                         except:
                             print('no overlap???????????????')
-                            os.system('echo "no overlap" > nooverlap.txt')
+                            # os.system('echo "no overlap" > nooverlap.txt')
                 ##
                 if made_png:
                     make_thumb(plotted, date0, path2thumb=path2thumb)
                     print('DONE ' + date0 + '_' + tgt)
                     for pic in plotted:
-                        os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
-                        with open('tmp.txt', 'r') as tmp:
-                            dest = tmp.read()
-                        print(f"sent file to: {dest}")
+                        err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
+                        if err:
+                            print('error sending to oshi')
+                        else:
+                            with open('tmp.txt', 'r') as tmp:
+                                dest = tmp.read()
+                            download_link = dest.split('\n')[2].split(' ')[0]
+                            print(dest)
+                            print(f"sent {pic} to: {download_link}")
                 else:
                     print('no plots for '+ date0 + '_' + tgt)
     except Exception as error:
@@ -183,4 +190,4 @@ for row in range(len(df)):
         #     plt.imsave('/home/innereye/astro/docs/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
 
 ngc_html_thumb(path2astro=path2astro)
-add_crval_to_logs()
+add_crval_to_logs(path2astro=path2astro, drive=drive)
