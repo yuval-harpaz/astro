@@ -1,4 +1,4 @@
-name: scrap
+name: manual NGC preview
 on:
     workflow_dispatch:
 permissions: write-all
