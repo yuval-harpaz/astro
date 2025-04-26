@@ -16,9 +16,10 @@ def list_ngc():
             'dataRights': 'public',
             'intentType': 'science',
             'dataproduct_type': "image"}
-
+    end_time = Time.now().mjd
+    start_time = end_time - 7
     # search images by observation date and by release date
-    table = Observations.query_criteria(**args)
+    table = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
     isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
     table = table[isnotnirspec]
     isnotbackground = []
@@ -38,7 +39,7 @@ def list_ngc():
             'OPH', 'WESTERLUND', 'LDN', 'SGRA', 'HH', 'CASSIOPEIA', 'Gal', 'SN', 'CRAB', 'CENA', 'M-4-shift', '2MASS-J04302705+3545505', 'ST6',
             'PSRJ', 'M31', 'M-31', 'M51', '2022ACKO', 'BRICK', 'SNAKE', 'SN-1987A', 'WR', 'M-82', 'M-81-MIRI', 'IRAS07299',
             'N5468', 'M-87-MIRI', 'RM032', 'N5643', 'SGR', 'Y533', 'SQ=MRS', 'HOPS383', 'OMC', 'CB-26','HH24',
-            '2MASS-J16313679-2404200', 'FLYING-SAUCER','G286']
+            '2MASS-J16313679-2404200', 'FLYING-SAUCER','G286', 'SICKLE']
     patterns = [r'N\d{3,4}', r'^M(110|10[0-9]|[1-9][0-9]?)', r'^M-(110|10[0-9]|[1-9][0-9]?)']
     ismisc = np.zeros(len(isngc), bool)
     for ix, x in enumerate(table['target_name']):
@@ -448,30 +449,52 @@ def DQ_list():
 
 if __name__ == "__main__":
     df = list_ngc()
-    df_prev = pd.read_csv('ngc.csv', sep=',')
-    df.to_csv('ngc.csv', sep=',', index=False)
-    # ngc_html()
-    if df.iloc[0]['target_name'] == df_prev.iloc[0]['target_name']:
+    if len(df) == 0:
         print('no new NGC')
     else:
-        last_loc = np.where((df_prev['target_name'] == df.iloc[0]['target_name']) &
-                            (df_prev['collected_from'] == df.iloc[0]['collected_from']))[0]
-        if len(last_loc) > 0:
-            print(f'last target {df.iloc[0]["target_name"]} and acquisition date {df.iloc[0]["collected_from"]} already in df, but not the newest row')
+        df_prev = pd.read_csv('ngc.csv', sep=',')
+        prev_obsid = df_prev['obsid'].values
+        prev_jpeg = df_prev['jpeg'].values
+        prev_date = df_prev['release_date'].values
+        prev_target = df_prev['target_name'].values
+        inew = []
+        for x in range(len(df)):
+            jsame = np.where(prev_target == df['target_name'][x])[0]
+            if len(jsame) == 0:
+                inew.append(x)
+            else:
+                same = []
+                for ksame in jsame:
+                    if df['jpeg'][x] == prev_jpeg[ksame] or \
+                       int(df['obsid'][x]) == prev_obsid[ksame] or \
+                       df['release_date'][x] == prev_date[ksame]:
+                                                                                                                   same.append(True)
+                    else:
+                        same.append(False)
+                if sum(same) == 0:
+                    inew.append(x)
+        dfall = pd.concat([df.iloc[inew], df_prev])
+        dfall.to_csv('ngc.csv', sep=',', index=False)
+        # ngc_html()
+        tgts = df.iloc[inew]['target_name'].values
+        # last_loc = np.where((df_prev['target_name'] == df.iloc[0]['target_name']) &
+        #                     (df_prev['collected_from'] == df.iloc[0]['collected_from']))[0]
+        # if len(last_loc) > 0:
+        #     print(f'last target {df.iloc[0]["target_name"]} and acquisition date {df.iloc[0]["collected_from"]} already in df, but not the newest row')
+        # else:
+        #     last = np.where(df['target_name'] == df_prev['target_name'][0])[0][0]
+        if len(tgts) == 1:
+            s = ''
+            a = 'A n'
         else:
-            last = np.where(df['target_name'] == df_prev['target_name'][0])[0][0]
-            if last == 1:
-                s = ''
-                a = 'A n'
-            else:
-                s = 's'
-                a = 'N'
-            tgts = ''
-            for new in range(last):
-                tgts += df['target_name'][new]+', '
-            if last > 3:
-                print(f'sus, too many new additions ({last}): {tgts[:-2]}\nno tooting')
-            else:
-                toot = f'{a}ew NGC image{s} ({tgts[:-2]}), take a look at https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html'
-                masto, _ = connect_bot()
-                masto.status_post(toot)
+            s = 's'
+            a = 'N'
+        # tgts = ''
+        # for new in range(last):
+        #     tgts += df['target_name'][new]+', '
+        if last > 3:
+            print(f'sus, too many new additions ({last}): {tgts[:-2]}\nno tooting')
+        else:
+            toot = f"{a}ew NGC image{s} ({', '.join(tgts)}), take a look at https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html"
+            masto, _ = connect_bot()
+            masto.status_post(toot)

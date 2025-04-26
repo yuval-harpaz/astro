@@ -42,7 +42,7 @@ def reply_to_post(post, text):
     parent = models.create_strong_ref(post)
     root = models.create_strong_ref(post)
     rep = blient.send_post(
-        text=text,
+        text='123 test',
         reply_to=models.AppBskyFeedPost.ReplyRef(parent=parent, root=root)
     )
     return rep
