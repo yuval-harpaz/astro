@@ -4,13 +4,55 @@ from astropy.time import Time
 from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
 from glob import glob
 from astro_ngc_align import add_crval_to_logs
+from atproto import Client as Blient
+from atproto import client_utils, models
+
+blient = Blient()
+blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
+blim = 250  # should be 300 limit but failed once
+masto, loc = connect_bot()
+
+def post_image(message, image_path):
+    # toot = f"\U0001F916 image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
+    # toot = toot + f"\nPI: {info['PI_NAME']}, program {info['PROGRAM']}. CRVAL: {np.round(hdr0['CRVAL1'], 6)}, {np.round(hdr0['CRVAL2'], 6)}"
+    boot = client_utils.TextBuilder()
+    txt = message
+    if len(txt) > blim:
+        txt = txt[:blim]
+    # boot.text(txt)
+    try:
+        with open(image_path, 'rb') as f:
+            img_data = f.read()
+        alt = image_path.split('/')[-1]
+        post = blient.send_image(text=boot, image=img_data, image_alt=alt)
+        success += 'bsky;'
+        print('boot image')
+    except:
+        print(f'failed bluesky color image post for {target}')
+    try:
+        metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
+        _ = masto.status_post(message, media_ids=metadata["id"])
+        success += 'masto;'
+        print('toot image')
+    except:
+        print(f'failed mastodon color image post for {target}')
+    return post
+
+def reply_to_post(post, text):
+    parent = models.create_strong_ref(post)
+    root = models.create_strong_ref(post)
+    rep = blient.send_post(
+        text=text,
+        reply_to=models.AppBskyFeedPost.ReplyRef(parent=parent, root=root)
+    )
+    return rep
 ##
 df = pd.read_csv('ngc.csv', sep=',')
 # drive = '/media/innereye/KINGSTON/JWST/'
 ##
 if os.path.isdir('/home/innereye'):
-    path2astro ='home/innereye/astro'
-    path2log = path2astro+'/logs/'
+    path2astro ='/home/innereye/astro'
+    path2logs = path2astro+'/logs/'
     path2thumb = path2astro+'/docs/thumb/'
     if not os.path.isdir(drive):
         raise Exception('where is the drive?')
@@ -25,8 +67,7 @@ os.chdir(drive)
 # if not os.path.isfile('docs/latest.csv'):
 #     os.chdir(drive)
     # raise Exception('am I in astro?')
-if not os.path.exists('data/tmp'):
-    os.makedirs('data/tmp')
+
 ##
 #TODO: pkl = Fslse, maybe change from rrrgggbb to filt or make both, make nice toot and boot
 #   File "/home/runner/work/astro/astro/astro_ngc_align.py", line 18, in add_crval_to_logs
@@ -144,17 +185,19 @@ for row in range(len(df)):
                 # TODO decide if to use 0.5 1 1
                 made_png = False
                 if np.nansum(mn[:, 0]) >= 2:
-                    auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=tgt+'_MIRI.png', pow=[1, 1, 1], pkl=pkl, resize=True, method='rrgggbb', plot=False)
+                    auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=tgt+'_MIRI.png', pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1})
                     plotted.append(tgt+'_MIRI.png')
                     made_png = True
                 if np.nansum(mn[:,1]) >= 2:
-                    auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=tgt + '_NIRCam.png', pow=[1, 1, 1], pkl=pkl, resize=True, method='rrgggbb', plot=False)
+                    img = auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=tgt + '_NIRCam.png', pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1}, deband=True)
+                    img = grey_zeros(img, replace=np.max)
+                    plt.imsave(tgt + '_NIRCam.png', img, origin='lower')
                     plotted.append(tgt + '_NIRCam.png')
                     made_png = True
                 if '+' in instrument and np.nansum(mn) >= 2 and not both_apart:
                     if not os.path.isfile('nooverlap.txt'):
                         try:
-                            auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.png', pow=[1, 1, 1], pkl=pkl, resize=True, method='mnn', plot=False)
+                            auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.png', pkl=pkl, method='mnn', fill=True, adj_args={'factor':1})
                             plotted.append(tgt+'_'+instrument+'.png')
                             made_png = True
                         except:
@@ -163,17 +206,20 @@ for row in range(len(df)):
                 ##
                 if made_png:
                     make_thumb(plotted, date0, path2thumb=path2thumb)
-                    print('DONE ' + date0 + '_' + tgt)
                     for pic in plotted:
+                        print('trying sending to oshi')
                         err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
                         if err:
                             print('error sending to oshi')
                         else:
+                            print('sent to oshi')
                             with open('tmp.txt', 'r') as tmp:
                                 dest = tmp.read()
                             download_link = dest.split('\n')[2].split(' ')[0]
                             print(dest)
                             print(f"sent {pic} to: {download_link}")
+                    print('DONE ' + date0 + '_' + tgt)
+
                 else:
                     print('no plots for '+ date0 + '_' + tgt)
     except Exception as error:

@@ -168,13 +168,13 @@ def list_ngc():
             # t_max = t_max[:10]
             release = Time(df2['t_obs_release'].iloc[0], format='mjd').utc.iso
             release = release[:10]
-            row.append([release, t_min, t_max, ngc[ii], tt, filt[1:-1], url, int(df2['proposal_id'][bluer]), df2['obs_title'][0]])
+            row.append([release, t_min, t_max, ngc[ii], tt, filt[1:-1], url, int(df2['proposal_id'][bluer]), df2['obs_title'][0], df2['obsid'][0], 'not yet'])
             # else:
             #     if df2['target_name'][0] == '2022ACKO':
             #         print('bad acko')
             #     else:
             #         raise Exception('where is the URL? for ' + df2['target_name'][0])
-    df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg','proposal', 'title'])
+    df = pd.DataFrame(row, columns=['release_date', 'collected_from', 'collected_to', 'NGC','target_name','filters','jpeg','proposal', 'title', 'obsid', 'posted'])
     df = df.sort_values('release_date', ignore_index=True, ascending=False)
     return df
 ##
