@@ -492,9 +492,10 @@ if __name__ == "__main__":
         # tgts = ''
         # for new in range(last):
         #     tgts += df['target_name'][new]+', '
-        if last > 3:
-            print(f'sus, too many new additions ({last}): {tgts[:-2]}\nno tooting')
-        else:
-            toot = f"{a}ew NGC image{s} ({', '.join(tgts)}), take a look at https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html"
-            masto, _ = connect_bot()
-            masto.status_post(toot)
+        # if last > 3:
+        #     print(f'sus, too many new additions ({last}): {tgts[:-2]}\nno tooting')
+        # else:
+        toot = f"{a}ew NGC image{s} ({', '.join(tgts)}), take a look at https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html"
+        masto, _ = connect_bot()
+        masto.status_post(toot)
+        print('announced new NGC')
