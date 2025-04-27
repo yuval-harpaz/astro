@@ -449,30 +449,31 @@ def DQ_list():
 
 if __name__ == "__main__":
     df = list_ngc()
-    if len(df) == 0:
+
+    df_prev = pd.read_csv('ngc.csv', sep=',')
+    prev_obsid = df_prev['obsid'].values
+    prev_jpeg = df_prev['jpeg'].values
+    prev_date = df_prev['release_date'].values
+    prev_target = df_prev['target_name'].values
+    inew = []
+    for x in range(len(df)):
+        jsame = np.where(prev_target == df['target_name'][x])[0]
+        if len(jsame) == 0:
+            inew.append(x)
+        else:
+            same = []
+            for ksame in jsame:
+                if df['jpeg'][x] == prev_jpeg[ksame] or \
+                   int(df['obsid'][x]) == prev_obsid[ksame] or \
+                   df['release_date'][x] == prev_date[ksame]:
+                                                                                                               same.append(True)
+                else:
+                    same.append(False)
+            if sum(same) == 0:
+                inew.append(x)
+    if len(inew) == 0:
         print('no new NGC')
     else:
-        df_prev = pd.read_csv('ngc.csv', sep=',')
-        prev_obsid = df_prev['obsid'].values
-        prev_jpeg = df_prev['jpeg'].values
-        prev_date = df_prev['release_date'].values
-        prev_target = df_prev['target_name'].values
-        inew = []
-        for x in range(len(df)):
-            jsame = np.where(prev_target == df['target_name'][x])[0]
-            if len(jsame) == 0:
-                inew.append(x)
-            else:
-                same = []
-                for ksame in jsame:
-                    if df['jpeg'][x] == prev_jpeg[ksame] or \
-                       int(df['obsid'][x]) == prev_obsid[ksame] or \
-                       df['release_date'][x] == prev_date[ksame]:
-                                                                                                                   same.append(True)
-                    else:
-                        same.append(False)
-                if sum(same) == 0:
-                    inew.append(x)
         dfall = pd.concat([df.iloc[inew], df_prev])
         dfall.to_csv('ngc.csv', sep=',', index=False)
         # ngc_html()
@@ -500,3 +501,5 @@ if __name__ == "__main__":
             masto, _ = connect_bot()
             masto.status_post(toot)
             print('announced new NGC')
+        else:
+            raise Exception('wtf? should have been SOME targets')
