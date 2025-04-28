@@ -65,3 +65,4 @@ CatAfterPreImaging,2025-04-24 21:12:05.997,jw04265-o002_t003_nircam_clear-f444w_
 SICKLE-MIRI-POS2,2025-04-25 05:47:27.998,jw03958-o002_t002_miri_f1500w-brightsky_i2d.fits,jw03958-o002_t002_miri_f1130w-brightsky_i2d.fits,jw03958-o002_t002_miri_f770w-brightsky_i2d.fits,bsky;masto
 SICKLE-MIR-BACKGROUND,2025-04-28 01:14:01.001,jw03958-o003_t003_miri_f1500w-brightsky_i2d.fits,jw03958-o003_t003_miri_f1130w-brightsky_i2d.fits,jw03958-o003_t003_miri_f770w-brightsky_i2d.fits,bsky;masto
 C3D-01_CWEBTILE-6-3,2025-04-28 12:23:22.998,jw05893-o001_t001_miri_f2100w_i2d.fits,jw05893-o001_t001_miri_f1000w_i2d.fits,jw05893-o001_t001_nircam_clear-f200w_i2d.fits,failed
+C3D-01_CWEBTILE-6-3,2025-04-28 12:23:49.998,jw05893-o001_t001_miri_f2100w_i2d.fits,jw05893-o001_t001_miri_f1000w_i2d.fits,jw05893-o001_t001_nircam_clear-f115w_i2d.fits,failed
