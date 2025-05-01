@@ -31,7 +31,8 @@ def add_crval_to_logs(path2astro='/home/innereye/astro', drive='/media/innereye/
                     chosen_df = pd.read_csv(log_csv)
                     files = list(chosen_df['file'])
                     if 'CRVAL1' in chosen_df.columns:
-                        print(f'{tgt} got CRVAL1')
+                        # print(f'{tgt} got CRVAL1')
+                        pass
                     else:
                         chosen_df['CRVAL1'] = 0
                         chosen_df['CRVAL2'] = 0

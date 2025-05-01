@@ -371,6 +371,7 @@ def make_thumb(plotted, date0, flip=None, path2thumb='/home/innereye/astro/docs/
         plotted = [plotted]
         date0 = [date0]
     date0 = np.unique(date0)
+    path2images = []
     if len(date0) == 1:
         new_height = 300
         if len(plotted) > 3:
@@ -389,9 +390,12 @@ def make_thumb(plotted, date0, flip=None, path2thumb='/home/innereye/astro/docs/
             ratio = new_height / img.shape[0]
             imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
             fnnodate = plotted[ii].split('/')[-1].replace(date0[0] + '_', '')
-            plt.imsave(path2thumb + date0[0] + '_' + fnnodate, imgrs, cmap='gray')
+            p2f = path2thumb + date0[0] + '_' + fnnodate
+            plt.imsave(p2f, imgrs, cmap='gray')
+            path2images.append(p2f)
     else:
         raise Exception('too many dates')
+    return path2images
 
 
 def remake_thumb(collect_orig=False):
