@@ -1,10 +1,11 @@
-name: manual NGC preview
+name: manual NGC preview 2025
 on:
     workflow_dispatch:
 permissions: write-all
 jobs:
   astro-fig:
     runs-on: ubuntu-latest
+    environment: mastodon
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
