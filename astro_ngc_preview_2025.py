@@ -235,6 +235,7 @@ else:
                                 download_link = dest.split('\n')[2].split(' ')[0]
                                 print(dest)
                                 print(f"sent {pic} to: {download_link}")
+
                                 message = f"testing new code, processing JWST STScI data for {tgt} {pic.split('_')[-1][:-4]}"
                                 post = post_image(message, path2images[ipic])
                                 text = 'A high resolution image will be available for a few days at '

@@ -8,7 +8,7 @@ run astro_ngc_preview first to create logs
 
 from astro_utils import *
 def add_crval_to_logs(path2astro='/home/innereye/astro', drive='/media/innereye/KINGSTON/JWST/'):
-    df = pd.read_csv('ngc.csv', sep=',')
+    df = pd.read_csv(path2astro+'/ngc.csv', sep=',')
     for row in range(len(df)):  # np.where(df['NGC'] == 3627)[0]:
         # pkl = True
         tgt = df['target_name'][row]
