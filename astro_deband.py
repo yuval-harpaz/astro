@@ -2,7 +2,7 @@ import numpy as np
 # from astropy.io import fits
 
 
-def smooth_width(layer, win=101, prct=50, func=np.median):
+def smooth_width(layer, win=101, prct=50, func=np.median, verbose=False):
     '''
     smooth image from left to right
     Args:
@@ -29,11 +29,12 @@ def smooth_width(layer, win=101, prct=50, func=np.median):
             toavg[shift:layer.shape[1] + shift, shift] = layer[ii, :]
         smoothed[ii, :] = func(toavg, **args)[half0:-half1 + 1]
         # smoothed[ii, :] = np.nanpercentile(toavg, prct, axis=1)[half0:-half1 + 1]
-        print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
+        if verbose:
+            print(f'{ii}/{smoothed.shape[0]-1}', end='\r')
     return smoothed
 
 
-def deband_layer(layer, win=101, prct=10, func=np.median, flip=False):
+def deband_layer(layer, win=101, prct=10, func=np.median, flip=False, verbose=False):
     """
     remove 1/f, banding noise. thin stripes.
     func: percentile is safer than median, with nan* you don't lose the edges 
@@ -60,9 +61,9 @@ def deband_layer(layer, win=101, prct=10, func=np.median, flip=False):
     """
     if flip:
         layer = layer.T
-    lp = smooth_width(layer, win=win, prct=prct, func=func)
+    lp = smooth_width(layer, win=win, prct=prct, func=func, verbose=verbose)
     hp = layer - lp
-    lp = smooth_width(lp.T, win=win, prct=prct, func=func).T
+    lp = smooth_width(lp.T, win=win, prct=prct, func=func, verbose=verbose).T
     clean = lp + hp
     clean[clean < 0] = 0
     if flip:
