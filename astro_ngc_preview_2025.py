@@ -111,6 +111,8 @@ else:
                 elif 'background' in tgt.lower() or 'BKG' in tgt:
                     print('no background for now '+tgt)
                 else:
+                    if not os.path.isdir('data'):
+                        os.system('mkdir data')
                     if not os.path.isdir('data/' + tgt):
                         os.system('mkdir data/' + tgt)
                     if os.path.isfile(log_csv):
