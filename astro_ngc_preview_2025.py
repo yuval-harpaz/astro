@@ -82,7 +82,7 @@ os.chdir(drive)
 #   File "/home/runner/work/astro/astro/astro_ngc_align.py", line 18, in add_crval_to_logs
 # Error:     raise Exception('where is the drive?')
 ##
-last_post_row = np.where(df['posted'].str.contains('http'))[0][0]
+last_post_row = np.where((df['posted'].str.contains('http')) | (df['posted'].values == 'failed'))[0][0]
 if last_post_row == 0:
     print(f"last NGC already posted ({df['target_name'][last_post_row]})")
 else:
@@ -245,6 +245,8 @@ else:
                         df.to_csv(path2astro+'/ngc.csv', index=False)
                     else:
                         print('no plots for '+ date0 + '_' + tgt)
+                        df.at[row, 'posted'] = 'failed'
+                        df.to_csv(path2astro+'/ngc.csv', index=False)
         except Exception as error:
             print('FAILED '+tgt)
             print(error)
