@@ -21,13 +21,10 @@ from skimage import transform, img_as_ubyte
 from scipy.ndimage import label
 from scipy.spatial import KDTree
 from astro_fill_holes import *
-# from astropy.convolution import Ring2DKernel, Gaussian2DKernel, convolve
-# from skimage.morphology import disk
-# from astropy.io import fits
-# root = __file__[:-14]
-# root = list_files.__code__.co_filename[:-14]
-root = os.environ['HOME']+'/astro/'
+import networkx as nx
 
+root = os.environ['HOME']+'/astro/'
+mast_url = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
 def list_files(parent, search='*_i2d.fits', exclude='', include=''):
     """
     List all fits files in subfolders of path.
@@ -386,7 +383,7 @@ def download_fits_files(file_names, destination_folder='', overwrite=False, wget
         destination_folder += '/'
     if not os.path.isdir(destination_folder):
         os.system('mkdir '+destination_folder)
-    mast = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
+
     no_print = '>/dev/null 2>&1'
     success = 0
     for fn in file_names:
@@ -394,12 +391,12 @@ def download_fits_files(file_names, destination_folder='', overwrite=False, wget
         dfn = destination_folder+fn
         if not os.path.isfile(dfn) or overwrite or os.path.getsize(dfn) == 0:
             if wget:
-                a = os.system(f'wget -O {dfn} {mast}{fn} {no_print}')
+                a = os.system(f'wget -O {dfn} {mast_url}{fn} {no_print}')
                 if a == 0:
                     success += 1
             else:
                 try:
-                    with fits.open(mast+fn, use_fsspec=True) as hdul:
+                    with fits.open(mast_url+fn, use_fsspec=True) as hdul:
                         hdr0 = hdul[0]
                         hdr = hdul[1].header
                         img = hdul[1].data
@@ -1762,6 +1759,85 @@ def resize_to_under_1mp(image: np.ndarray, max_pix: int=1000000) -> np.ndarray:
     if image.dtype == np.uint8:
         resized = img_as_ubyte(resized)
     return resized
+
+
+
+def overlap(files):
+    """Check if images overlap"""
+    def get_corners(wcs, shape):
+        ny, nx = shape[-2], shape[-1]
+        pix_coords = np.array([[0, 0], [0, ny], [nx, 0], [nx, ny]])
+        world_coords = wcs.pixel_to_world(pix_coords[:, 0], pix_coords[:, 1])
+    
+        # If WCS is celestial + extra (e.g., spectral), extract just celestial
+        if hasattr(world_coords, 'ra') and hasattr(world_coords, 'dec'):
+            pass  # Already a SkyCoord or similar object
+        elif isinstance(world_coords, tuple):
+            world_coords = world_coords[0]  # Assumes 1st element is celestial
+        else:
+            raise ValueError("Could not extract celestial coordinates from WCS output.")
+        corners = {'ra_min': world_coords.ra.min(),
+                   'ra_max': world_coords.ra.max(),
+                   'dec_min': world_coords.dec.min(),
+                   'dec_max': world_coords.dec.max()}
+        return corners
+    def area(c):
+        return (c['ra_max'] - c['ra_min']) * (c['dec_max'] - c['dec_min'])
+
+    if not os.path.isfile(files[0]):
+        if '/' in files[0]:
+            files = [f.split('/')[-1] for f in files]
+        files = [mast_url+f for f in files]
+    # get headers to evaluate overlap (could be faster f=with fitsheader)
+    headers = []
+    for file in files:
+        with fits.open(file, use_fsspec=True) as hdul:
+            headers.append(hdul[1].header)
+            # shapes.append(hdul[1].shape)
+    shapes = []
+    for header in headers:
+        naxis = header['NAXIS']
+        shapes.append(tuple(header[f'NAXIS{i}'] for i in range(naxis, 0, -1)))
+    corners = []
+    for iheader in range(len(headers)):
+        wcs = WCS(headers[iheader])
+        shape = shapes[iheader]
+        corners.append(get_corners(wcs, shape))
+    percent_overlap = np.zeros((len(headers), len(headers)))
+    for ii in range(len(headers)):
+        for jj in range(len(headers)):
+            corners1 = corners[ii]
+            corners2 = corners[jj]
+            if area(corners1) <= area(corners2):
+                small, large = corners1, corners2
+            else:
+                large, small = corners1, corners2
+            ra_overlap_min = max(small['ra_min'], large['ra_min'])
+            ra_overlap_max = min(small['ra_max'], large['ra_max'])
+            dec_overlap_min = max(small['dec_min'], large['dec_min'])
+            dec_overlap_max = min(small['dec_max'], large['dec_max'])
+            # Check if there's any overlap at all
+            if ra_overlap_max <= ra_overlap_min or dec_overlap_max <= dec_overlap_min:
+                overlap_fraction = 0.0
+            else:
+                overlap_area = (ra_overlap_max - ra_overlap_min) * (dec_overlap_max - dec_overlap_min)
+                small_area = area(small)
+                overlap_fraction = overlap_area / small_area
+            percent_overlap[ii, jj] = overlap_fraction
+    threshold = 0.5
+    # Build graph
+    G = nx.Graph()
+    n = percent_overlap.shape[0]
+    G.add_nodes_from(range(n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            if percent_overlap[i, j] > threshold:
+                G.add_edge(i, j)
+    # Get connected components (groups)
+    groups = list(nx.connected_components(G))
+    groups = [list(g) for g in groups]
+    # Print groups
+    return groups, percent_overlap
 
 
 
