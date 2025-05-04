@@ -83,7 +83,7 @@ for itarget in range(len(new_targets)):
 # not_prev = new_targets != prev_target
 # not_latest = np.array(t_obs_release < max(t_obs_release))
 # include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
-include = ~already & (n_targets > 2)  # & (n_targets < 15)
+include = ~already & (n_targets > 2) & (n_targets < 15)
 chosen_targets = new_targets[include]
 # sec_latest = max(t_obs_release[include])
 deband = False
@@ -111,7 +111,7 @@ else:
             igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
             irgb = [0, igreen, len(group_files)-1]
             if group_files[irgb[2]] in df['blue'].values and group_files[irgb[0]] in df['red'].values:
-                print(f"{target} file laready used as blue:  {group_files[irgb[2]]} (also red was used)")  # sometimes already fails to detect extra MIRI with no overlap
+                print(f"{target} file already used as blue:  {group_files[irgb[2]]} (also red was used)")  # sometimes already fails to detect extra MIRI with no overlap
             else:
                 goon = False
                 try:
