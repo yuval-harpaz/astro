@@ -1,7 +1,6 @@
 '''
 The code creates a web page to view the latest JWST images
-https://yuval-harpaz.github.io/astro/jwst_latest_release.html
-previus: https://yuval-harpaz.github.io/astro/news_by_date.html
+See here: https://bsky.app/profile/astrobotjwst.bsky.social
 @Author: Yuval Harpaz
 '''
 # requires pandas as well, no need to import
@@ -84,7 +83,7 @@ for itarget in range(len(new_targets)):
 # not_prev = new_targets != prev_target
 # not_latest = np.array(t_obs_release < max(t_obs_release))
 # include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
-include = ~already & (n_targets > 2) & (n_targets < 15)
+include = ~already & (n_targets > 2)  # & (n_targets < 15)
 chosen_targets = new_targets[include]
 # sec_latest = max(t_obs_release[include])
 deband = False
