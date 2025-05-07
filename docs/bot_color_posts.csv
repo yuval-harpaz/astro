@@ -76,3 +76,5 @@ GAL-CENTER,2025-05-01 16:52:17.993,jw03571-o001_t001_miri_f1500w_i2d.fits,jw0357
 C3D-02_CWEBTILE-6-7-Tile-4,2025-05-02 17:56:33.989,jw05893-o022_t021_nircam_clear-f356w_i2d.fits,jw05893-o022_t021_nircam_clear-f200w_i2d.fits,jw05893-o022_t021_nircam_clear-f115w_i2d.fits,bsky;masto
 C3D-04_CWEBTILE-6-15,2025-05-02 17:52:20.996,jw05893-o004_t004_nircam_clear-f356w_i2d.fits,jw05893-o004_t004_nircam_clear-f200w_i2d.fits,jw05893-o004_t004_nircam_clear-f115w_i2d.fits,failed
 LP-726-1,2025-05-04 22:02:04.987,jw04403-o044_t044_miri_f2100w_i2d.fits,jw04403-o044_t044_miri_f1800w_i2d.fits,jw04403-o044_t044_miri_f770w_i2d.fits,bsky;masto
+NGC2981-BACKGROUND,2025-05-07 05:45:03.006,jw03696-o008_t008_miri_f1800w_i2d.fits,jw03696-o008_t008_miri_f1130w_i2d.fits,jw03696-o008_t008_miri_f560w_i2d.fits,bsky;masto
+NGC-2981,2025-05-07 09:15:33.994,jw03696-o007_t004_miri_f1800w_i2d.fits,jw03696-o007_t004_miri_f1130w_i2d.fits,jw03696-o007_t004_miri_f560w_i2d.fits,bsky;masto
