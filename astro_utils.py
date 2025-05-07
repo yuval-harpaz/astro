@@ -1183,6 +1183,11 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         ib = np.where(~np.asarray(ismiri))[0]
         ig = np.arange(layers.shape[2]).astype(int)
         iii = [ir, ig, ib]
+    elif method == 'filt05':
+        rgb = assign_colors_by_filt(layers, filt)
+        rgb = rgb*255
+        rgb = rgb.astype('uint8')
+        blc = False
     elif method[:4] == 'filt':
         col = matplotlib.cm.jet(filt / np.max(filt))[:, :3]  # [:, ::-1]
         rgb = assign_colors(layers, col)
@@ -1474,6 +1479,71 @@ def assign_colors(images, colors):
     # Normalize the RGB values to the range [0, 1]
     rgb_arr /= np.max(rgb_arr)
     return rgb_arr
+
+
+def assign_colors_by_filt(layers, filt, legend=True, subtract_blue=0.5, colormap='hsv', udflip=True):
+    """
+    Assign color according to frequency
+
+    Parameters
+    ----------
+    layers : 3D ndarray
+        Adjusted data between 0 and 1
+    filt : list | ndarray
+        A vector of filter numbers
+    legend : bool, optional
+        True for making a legend at the bottom
+    subtract_blue : float | Nםמק, optional
+        Subtract the blue color before considering frequencies. 0.5 would 
+        subtract half of blue. 0 = no action, None to subtract 50 (visible blue)
+
+    Returns
+    -------
+    rgb : ndarray
+        0 to 1 color image.
+
+    """
+    # col = matplotlib.cm.jet(filt / np.max(filt))[:, :3]
+    if udflip:
+        layers=layers[::-1, ...]
+    if subtract_blue is None:
+        filt = filt - 50
+        subtract_blue = 0
+    filtnorm = filt-min(filt)*subtract_blue
+    filtnorm = filtnorm/max(filtnorm)
+    if colormap == 'jet':
+        col = matplotlib.cm.jet(filtnorm)[:, :3]
+    elif colormap == 'rainbow':
+        col = matplotlib.cm.rainbow(filtnorm)[:, :3]
+    elif colormap == 'hsv':
+        filtnorm = (1-filtnorm)*0.680
+        col = matplotlib.cm.hsv(filtnorm)[:, :3]
+    if legend:
+        from cv2 import putText, FONT_HERSHEY_SIMPLEX, LINE_AA, getTextSize
+        square_length = int(layers.shape[0]/10/layers.shape[2])
+        for ilayer in range(layers.shape[2]):
+            start = square_length*ilayer + layers.shape[0] - layers.shape[2] * square_length
+            end = start + square_length
+            layers[start:end, :square_length, :] = 0
+            layers[start:end, :square_length, ilayer] = 1
+            txt = str(int(filt[ilayer])).zfill(3)
+            org = (int(square_length), int(start+square_length+2))
+            thickness = int(square_length/8)
+            ((fw,fh), baseline) = getTextSize(
+                "", fontFace=FONT_HERSHEY_SIMPLEX, fontScale=100, thickness=thickness) # empty string is good enough
+            factor = (fh-1) / 100
+            height_in_pixels = square_length - 4 # or 20, code works either way
+            fontScale = (height_in_pixels - thickness) / factor
+            for jlayer in range(layers.shape[2]):
+                layer = layers[..., jlayer]
+                layer = putText(layer*255, txt, org,
+                          FONT_HERSHEY_SIMPLEX, fontScale, 255, thickness, LINE_AA)
+                layers[..., jlayer] = layer/255
+    rgb = assign_colors(layers, col)
+    rgb = blc_image(rgb)
+    if udflip:
+        rgb = rgb[::-1, ...]
+    return rgb
 
 
 def smooth_yx(img, win=5, passes=2):

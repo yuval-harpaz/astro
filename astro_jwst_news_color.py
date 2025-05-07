@@ -117,7 +117,6 @@ else:
                 try:
                     for jj, ii in enumerate(irgb):
                         fn = group_files[ii]
-        
                         # download_fits_files([fn], 'data/tmp')
                         if ii == 0:
                             # hdu0 = fits.open('data/tmp/' + fn)
