@@ -224,23 +224,23 @@ else:
                         ipic = -1
                         for pic in plotted:
                             ipic += 1
-                            print('trying sending to oshi')
-                            err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
-                            if err:
-                                print('error sending to oshi')
-                            else:
-                                print('sent to oshi')
-                                with open('tmp.txt', 'r') as tmp:
-                                    dest = tmp.read()
-                                download_link = dest.split('\n')[2].split(' ')[0]
-                                print(dest)
-                                print(f"sent {pic} to: {download_link}")
+                            # print('trying sending to oshi')
+                            # err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
+                            # if err:
+                            #    print('error sending to oshi')
+                            #else:
+                            # print('sent to oshi')
+                            #with open('tmp.txt', 'r') as tmp:
+                            #    dest = tmp.read()
+                            #download_link = dest.split('\n')[2].split(' ')[0]
+                            #print(dest)
+                            #print(f"sent {pic} to: {download_link}")
 
-                                message = f"testing new code, processing JWST STScI data for {tgt} {pic.split('_')[-1][:-4]}"
-                                post = post_image(message, path2images[ipic])
-                                text = 'A high resolution image will be available for a few days at '
-                                link = ['https://oshi.ec', download_link]
-                                rep = reply_to_post(post, text, link)
+                            message = f"testing new code, processing JWST STScI data for {tgt} {pic.split('_')[-1][:-4]}"
+                            post = post_image(message, path2images[ipic])
+                            # text = 'A high resolution image will be available for a few days at '
+                            # link = ['https://oshi.ec', download_link]
+                            # rep = reply_to_post(post, text, link)
                         print('DONE ' + date0 + '_' + tgt)
                         df.at[row, 'posted'] = 'https://bsky.app/profile/astrobotjwst.bsky.social/post/'+post['uri'].split('/')[-1]
                         df.to_csv(path2astro+'/ngc.csv', index=False)
