@@ -1493,7 +1493,7 @@ def assign_colors_by_filt(layers, filt, legend=True, subtract_blue=0.5, colormap
         A vector of filter numbers
     legend : bool, optional
         True for making a legend at the bottom
-    subtract_blue : float | Nםמק, optional
+    subtract_blue : float | None, optional
         Subtract the blue color before considering frequencies. 0.5 would 
         subtract half of blue. 0 = no action, None to subtract 50 (visible blue)
 
