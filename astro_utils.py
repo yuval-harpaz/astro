@@ -1481,9 +1481,9 @@ def assign_colors(images, colors):
     return rgb_arr
 
 
-def assign_colors_by_filt(layers, filt, legend=True, subtract_blue=0.5, colormap='hsv', udflip=True):
+def assign_colors_by_filt(layers, filt, legend=True, subtract_blue=0.5, colormap='hsv', udflip=True, blc=True):
     """
-    Assign color according to frequency
+    Assign color according to frequency.
 
     Parameters
     ----------
@@ -1540,7 +1540,8 @@ def assign_colors_by_filt(layers, filt, legend=True, subtract_blue=0.5, colormap
                           FONT_HERSHEY_SIMPLEX, fontScale, 255, thickness, LINE_AA)
                 layers[..., jlayer] = layer/255
     rgb = assign_colors(layers, col)
-    rgb = blc_image(rgb)
+    if blc:
+        rgb = blc_image(rgb)
     if udflip:
         rgb = rgb[::-1, ...]
     return rgb
