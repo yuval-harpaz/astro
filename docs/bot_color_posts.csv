@@ -84,3 +84,4 @@ NGC-4548,2025-05-08 12:29:53.992,jw04793-o013_t013_nircam_f405n-f444w_i2d.fits,j
 NGC-4548,2025-05-08 12:22:19.993,jw04793-o013_t013_nircam_f405n-f444w_i2d.fits,jw04793-o013_t013_nircam_clear-f277w_i2d.fits,jw04793-o013_t013_nircam_clear-f150w_i2d.fits,bsky;masto
 C3D-05_CWEBTILE-5-3,2025-05-09 01:38:50.995,jw05893-o005_t005_nircam_clear-f356w_i2d.fits,jw05893-o005_t005_nircam_clear-f200w_i2d.fits,jw05893-o005_t005_nircam_clear-f115w_i2d.fits,bsky;masto
 EC53-epoch2,2025-05-10 04:17:31.998,jw03477-o002_t006_miri_f1000w_i2d.fits,jw03477-o002_t006_miri_f770w_i2d.fits,jw03477-o002_t006_miri_f560w_i2d.fits,bsky;masto
+EC53-background-epoch2,2025-05-10 04:28:06.998,jw03477-o006_t008_miri_f1000w_i2d.fits,jw03477-o006_t008_miri_f770w_i2d.fits,jw03477-o006_t008_miri_f560w_i2d.fits,bsky;masto
