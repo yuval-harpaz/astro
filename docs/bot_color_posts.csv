@@ -91,3 +91,5 @@ NGC-4051-BKG,2025-05-11 00:39:39.997,jw03535-o001_t004_miri_f1130w_i2d.fits,jw03
 MACS0940-IMAGING,2025-05-11 08:40:55.998,jw03433-o006_t011_nircam_clear-f444w_i2d.fits,jw03433-o006_t011_nircam_clear-f277w_i2d.fits,jw03433-o006_t011_nircam_clear-f115w_i2d.fits,bsky;masto
 SN2023ixf,2025-05-11 13:01:32.990,jw05290-o006_t001_miri_f2550w_i2d.fits,jw05290-o006_t001_miri_f2100w_i2d.fits,jw05290-o006_t001_miri_f1500w_i2d.fits,bsky;masto
 C3D-07_CWEBTILE-5-11,2025-05-12 10:58:05.996,jw05893-o007_t007_nircam_clear-f356w_i2d.fits,jw05893-o007_t007_nircam_clear-f200w_i2d.fits,jw05893-o007_t007_nircam_clear-f115w_i2d.fits,bsky;masto
+N83-2A,2025-05-12 18:05:59.994,jw03702-o007_t004_miri_f1000w_i2d.fits,jw03702-o007_t004_miri_f770w_i2d.fits,jw03702-o007_t004_miri_f560w_i2d.fits,bsky;masto
+N83-2A-SKY-MIRI,2025-05-12 18:06:17.994,jw03702-o008_t006_miri_f1000w_i2d.fits,jw03702-o008_t006_miri_f770w_i2d.fits,jw03702-o008_t006_miri_f560w_i2d.fits,bsky;masto
