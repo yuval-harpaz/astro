@@ -74,7 +74,7 @@ def list_ngc():
                         num1 = jchar
                     else:
                         break
-            # m = ongc.get(tt.replace('-', ''))
+            m = ongc.get(tt.replace('-', '').replace('MESSIER', 'M'))
             if num1 > 0:
                 m = ongc.get(ttm[:num1+1])
             if m is None:
