@@ -50,7 +50,11 @@ tgt = choicebox(text, title, sorted(new_targets))
 rows = np.where(science['target_name'] == tgt)[0]
 files = science['dataURL'].values[rows]
 files = [f.split('/')[-1] for f in files]
-download_fits_files(files, destination_folder='data/' + tgt, wget=False)
+if os.path.isdir(drive):
+    destination_folder = drive+'data/' + tgt
+else:
+    destination_folder = 'data/' + tgt
+download_fits_files(files, destination_folder=destination_folder, wget=False)
 
 
 
