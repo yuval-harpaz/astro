@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted
+2025-05-18,2024-05-18 09:23:20.800,2024-05-18 18:30:34.857,4449,NGC-4449, 70 150 250 480,mast:JWST/product/jw03589-o001_t002_nircam_clear-f070w-sub640_i2d.jpg,3589,"How big do stars get? A NIRCam view of cool supergiants in, NGC 4449, a key low-metallicity environment",215048108,not yet
 2025-05-15,2024-05-15 10:50:18.065,2024-05-15 12:59:08.629,4636,NGC-4636, 90 150 277 356,mast:JWST/product/jw03055-o014_t014_nircam_clear-f090w_i2d.jpg,3055,A TRGB calibration of Surface Brightness Fluctuations,214658679,not yet
 2025-05-15,2024-05-15 13:20:03.886,2024-05-15 14:39:00.943,0,SN-2020JFO, 560  770 1000 1130 1280 1500 1800 2100 2550,mast:JWST/product/jw03295-o007_t004_miri_f560w_i2d.jpg,3295,Is there enough? Cosmic dust formation in normal core-collapse supernovae in the first ~5 years post-explosion,214657373,not yet
 2025-05-13,2024-05-12 20:32:07.244,2024-05-12 22:31:48.481,4374,MESSIER-084, 90 150 277 356,mast:JWST/product/jw03055-o004_t004_nircam_clear-f090w_i2d.jpg,3055,A TRGB calibration of Surface Brightness Fluctuations,214654184,not yet
