@@ -109,3 +109,7 @@ UVISTA-Z-068,2025-05-21 04:02:34.995,jw06480-o011_t011_nircam_clear-f444w_i2d.fi
 2MASS-J09490073-7138034-A,2025-05-22 05:32:31.003,jw03153-o011_t006_miri_f1130w_i2d.fits,jw03153-o011_t006_miri_f1000w_i2d.fits,jw03153-o011_t006_miri_f770w_i2d.fits,bsky;masto
 2MASS-J09490073-7138034-B,2025-05-22 05:28:00.002,jw03153-o011_t007_miri_f1130w_i2d.fits,jw03153-o011_t007_miri_f1000w_i2d.fits,jw03153-o011_t007_miri_f770w_i2d.fits,bsky;masto
 C3D-12_CWEBTILE-4-15,2025-05-22 20:28:36.993,jw05893-o012_t012_nircam_clear-f356w_i2d.fits,jw05893-o012_t012_nircam_clear-f200w_i2d.fits,jw05893-o012_t012_nircam_clear-f115w_i2d.fits,bsky;masto
+LEO-P,2025-05-23 05:26:20.001,jw03449-o001_t001_miri_f2100w_i2d.fits,jw03449-o001_t001_miri_f770w_i2d.fits,jw03449-o001_t001_miri_f560w_i2d.fits,bsky;masto
+LEO-P-OFF,2025-05-23 05:49:14.999,jw03449-o002_t002_miri_f2100w_i2d.fits,jw03449-o002_t002_miri_f770w_i2d.fits,jw03449-o002_t002_miri_f560w_i2d.fits,bsky;masto
+NGC-3227,2025-05-23 05:38:40.997,jw03535-o005_t002_miri_f1130w_i2d.fits,jw03535-o005_t002_miri_f770w_i2d.fits,jw03535-o005_t002_miri_f560w_i2d.fits,bsky;masto
+NGC-3227-BKG,2025-05-23 05:38:11.997,jw03535-o004_t005_miri_f1130w_i2d.fits,jw03535-o004_t005_miri_f770w_i2d.fits,jw03535-o004_t005_miri_f560w_i2d.fits,bsky;masto
