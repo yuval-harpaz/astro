@@ -1,4 +1,6 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted
+2025-05-23,2024-05-22 09:07:16.576,2024-05-22 19:14:53.437,0,LEO-P, 560  770 2100,mast:JWST/product/jw03449-o001_t001_miri_f560w_i2d.jpg,3449,Direct Detection of Molecular Gas in the Extremely Metal-Poor Galaxy Leo P,215215706,not yet
+2025-05-23,2024-05-22 23:59:15.186,2024-05-23 01:15:28.603,3227,NGC-3227, 560  770 1130,mast:JWST/product/jw03535-o005_t002_miri_f560w_i2d.jpg,3535,Unveiling the AGN-host connection with PAH molecules,215263102,not yet
 2025-05-21,2025-05-20 11:29:41.818,2025-05-20 13:39:47.520,0,SNH0pe-Repeat-TARGET,277 356 444,,4744,SN H0pe: Doubling the Time Delay Precision of a z=1.78 Multiply-imaged Type Ia Supernova,266332953,not yet
 2025-05-20,2023-05-16 22:46:28.121,2024-05-20 17:06:25.265,4449,NGC4449-MIRI,560 770,mast:JWST/product/jw01783-c1016_t012_miri_f560w_i2d.jpg,1783,JWST probes Feedback in Emerging extrAgalactic Star clusTers: JWST-FEAST,218220699,not yet
 2025-05-20,2024-05-20 16:49:37.875,2024-05-20 17:06:25.265,4449,NGC4449-MIRI,560 770,mast:JWST/product/jw01783-o916_t012_miri_f560w_i2d.jpg,1783,JWST probes Feedback in Emerging extrAgalactic Star clusTers: JWST-FEAST,214776510,not yet
