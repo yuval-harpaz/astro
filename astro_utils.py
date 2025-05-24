@@ -1713,7 +1713,7 @@ def log(arr, small=0.01):
 
 
 drive = '/media/innereye/KINGSTON/JWST/'
-def download_by_log(log_csv, tgt=None, overwrite=False, wget=True, path2data=None):
+def download_by_log(log_csv, tgt=None, overwrite=False, wget=False, path2data=None):
     if log_csv[0] != '/':
         log_csv = '/home/innereye/astro/logs/' + log_csv
     if path2data is None:

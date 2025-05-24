@@ -13,30 +13,33 @@ blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
 blim = 250  # should be 300 limit but failed once
 masto, loc = connect_bot()
 
-def post_image(message, image_path):
+def post_image(message, image_path, mastodon=True, bluesky=False):
     # toot = f"\U0001F916 image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
     # toot = toot + f"\nPI: {info['PI_NAME']}, program {info['PROGRAM']}. CRVAL: {np.round(hdr0['CRVAL1'], 6)}, {np.round(hdr0['CRVAL2'], 6)}"
-    boot = client_utils.TextBuilder()
-    txt = message
-    if len(txt) > blim:
-        txt = txt[:blim]
-    boot.text(txt)
-    try:
-        with open(image_path, 'rb') as f:
-            img_data = f.read()
-        alt = image_path.split('/')[-1]
-        post = blient.send_image(text=boot, image=img_data, image_alt=alt)
-        # success += 'bsky;'
-        print('boot image')
-    except:
-        print(f'failed bluesky post for {image_path}')
-    # try:
-    #     metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
-    #     _ = masto.status_post(message, media_ids=metadata["id"])
-    #     # success += 'masto;'
-    #     print('toot image')
-    # except:
-    #     print(f'failed mastodon post for {image_path}')
+    post = {}
+    if bluesky:
+        boot = client_utils.TextBuilder()
+        txt = message
+        if len(txt) > blim:
+            txt = txt[:blim]
+        boot.text(txt)
+
+        try:
+            with open(image_path, 'rb') as f:
+                img_data = f.read()
+            alt = image_path.split('/')[-1]
+            post['bsky'] = blient.send_image(text=boot, image=img_data, image_alt=alt)
+            # success += 'bsky;'
+            print('boot image')
+        except:
+            print(f'failed bluesky post for {image_path}')
+    if mastodon:
+        try:
+            metadata = masto.media_post(image_path, "image/jpeg")
+            post['masto'] = masto.status_post(message, media_ids=metadata["id"])
+            print('toot image')
+        except:
+            print(f'failed mastodon post for {image_path}')
     return post
 
 
@@ -86,7 +89,7 @@ last_post_row = np.where((df['posted'].str.contains('http')) | (df['posted'].val
 if last_post_row == 0:
     print(f"last NGC already posted ({df['target_name'][last_post_row]})")
 else:
-    for row in range(last_post_row):
+    for row in range(1, 13):  # range(last_post_row):
         pkl = False
         tgt = df['target_name'][row]
         try:
@@ -160,7 +163,7 @@ else:
                                 df2[idf] = df2[idf].iloc[order]
                             chosen_df = pd.concat(df2)
                         chosen_df.to_csv(log_csv, index=False, sep=',')
-    
+
                         # os.chdir('data/'+tgt)
                     # check if pkl was saved locally
     
@@ -224,25 +227,17 @@ else:
                         ipic = -1
                         for pic in plotted:
                             ipic += 1
-                            # print('trying sending to oshi')
-                            # err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
-                            # if err:
-                            #    print('error sending to oshi')
-                            #else:
-                            # print('sent to oshi')
-                            #with open('tmp.txt', 'r') as tmp:
-                            #    dest = tmp.read()
-                            #download_link = dest.split('\n')[2].split(' ')[0]
-                            #print(dest)
-                            #print(f"sent {pic} to: {download_link}")
-
                             message = f"testing new code, processing JWST STScI data for {tgt} {pic.split('_')[-1][:-4]}"
                             post = post_image(message, path2images[ipic])
-                            # text = 'A high resolution image will be available for a few days at '
-                            # link = ['https://oshi.ec', download_link]
-                            # rep = reply_to_post(post, text, link)
+                            if 'masto' in post.keys():
+                                url = post['masto']['url']+';'
+                            else:
+                                url = ''
+                            if 'bsky' in post.keys():
+                                url = url + 'https://bsky.app/profile/astrobotjwst.bsky.social/post/'+post['uri'].split('/')[-1] + ';'
+                            url = url[:-1]
                         print('DONE ' + date0 + '_' + tgt)
-                        df.at[row, 'posted'] = 'https://bsky.app/profile/astrobotjwst.bsky.social/post/'+post['uri'].split('/')[-1]
+                        df.at[row, 'posted'] = url
                         df.to_csv(path2astro+'/ngc.csv', index=False)
                     else:
                         print('no plots for '+ date0 + '_' + tgt)
@@ -263,3 +258,19 @@ else:
 
 # ngc_html_thumb(path2astro=path2astro)
 add_crval_to_logs(path2astro=path2astro, drive=drive)
+
+
+# print('trying sending to oshi')
+# err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
+# if err:
+#    print('error sending to oshi')
+#else:
+# print('sent to oshi')
+#with open('tmp.txt', 'r') as tmp:
+#    dest = tmp.read()
+#download_link = dest.split('\n')[2].split(' ')[0]
+#print(dest)
+#print(f"sent {pic} to: {download_link}")
+# text = 'A high resolution image will be available for a few days at '
+# link = ['https://oshi.ec', download_link]
+# rep = reply_to_post(post, text, link)
