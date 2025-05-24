@@ -75,21 +75,12 @@ else:
     path2thumb = drive+'/docs/thumb/'
     path2astro = drive
 os.chdir(drive)
-# raise Exception('where is the drive?')
-# if not os.path.isfile('docs/latest.csv'):
-#     os.chdir(drive)
-    # raise Exception('am I in astro?')
-
-##
-#TODO: pkl = Fslse, maybe change from rrrgggbb to filt or make both, make nice toot and boot
-#   File "/home/runner/work/astro/astro/astro_ngc_align.py", line 18, in add_crval_to_logs
-# Error:     raise Exception('where is the drive?')
 ##
 last_post_row = np.where((df['posted'].str.contains('http')) | (df['posted'].values == 'failed'))[0][0]
 if last_post_row == 0:
     print(f"last NGC already posted ({df['target_name'][last_post_row]})")
 else:
-    for row in range(1, 13):  # range(last_post_row):
+    for row in range(last_post_row):
         pkl = False
         tgt = df['target_name'][row]
         try:
@@ -121,16 +112,6 @@ else:
                     if os.path.isfile(log_csv):
                         download_by_log(log_csv, tgt=tgt)
                         chosen_df = pd.read_csv(log_csv)
-                        # if date0 == '2022-09-18':
-                        #     prev = '/home/innereye/astro/logs/ORIBAR-IMAGING-MIRI_2022-09-11.csv'
-                        #     prev = pd.read_csv(prev)
-                        #     prev['chosen'] = False
-                        #     prev['chosen'].at[np.where([prev['file'].str.contains('miri_f1500w')])[0][0]] = True
-                        #     chosen_df = pd.concat([prev, chosen_df], ignore_index=True)
-                        #     both_apart = True
-                        # files = list(chosen_df['file'][chosen_df['chosen']])
-                        # print(f'[{row}] downloading {tgt} by log')
-                        # download_fits_files(files, destination_folder='data/' + tgt)
                     else:
                         t_min = [np.floor(Time(df['collected_from'][row]).mjd),
                                  np.ceil(Time(df['collected_to'][row]).mjd)]
@@ -142,8 +123,6 @@ else:
                                 'intentType': 'science',
                                 'dataproduct_type': "image"}
                         table = Observations.query_criteria(**args)
-                        # files = list(table['dataURL'])
-                        # files = [x.split('/')[-1] for x in files]
                         files = list(table['obs_id'])
                         files = [x + '_i2d.fits' for x in files]
                         print(f'[{row}] downloading {tgt} by query')
@@ -163,14 +142,8 @@ else:
                                 df2[idf] = df2[idf].iloc[order]
                             chosen_df = pd.concat(df2)
                         chosen_df.to_csv(log_csv, index=False, sep=',')
-
-                        # os.chdir('data/'+tgt)
-                    # check if pkl was saved locally
-    
-    
                     ## make image
                     # read the files and for each filter, choose smaller and close to target images
-    
                     use = chosen_df['chosen'].to_numpy()
                     files = np.asarray(chosen_df['file'])
                     # see if we have both MIRI and NIRCam, choose RGB method accordingly
@@ -247,17 +220,7 @@ else:
             print('FAILED '+tgt)
             print(error)
             break
-
-        # for ii in range(len(plotted)):
-        #     img = plt.imread(plotted[ii])[..., :3]
-        #     # edge = np.where(np.mean(np.mean(img, 2), 1))[0][0]
-        #     new_height = 300
-        #     ratio = new_height / img.shape[0]
-        #     imgrs = resize(img, (new_height, int(ratio * img.shape[1])))
-        #     plt.imsave('/home/innereye/astro/docs/thumb/'+date0+'_'+plotted[ii], imgrs, cmap='gray')
-
-# ngc_html_thumb(path2astro=path2astro)
-add_crval_to_logs(path2astro=path2astro, drive=drive)
+    add_crval_to_logs(path2astro=path2astro, drive=drive)
 
 
 # print('trying sending to oshi')
