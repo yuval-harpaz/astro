@@ -160,8 +160,9 @@ else:
                         plt.imsave('data/tmp/tmprs.jpg', layers, origin='lower', pil_kwargs={'quality':95})
                         # new_targets = ', '.join(np.unique(new['target_name']))
                         filt_str = ', '.join(filt[irgb].astype(int).astype(str))
-                        toot = f"\U0001F916 image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
+                        toot = f"\U0001F916 image processing for #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
                         toot = toot + f"\nPI: {info['PI_NAME']}, program {info['PROGRAM']}. CRVAL: {np.round(hdr0['CRVAL1'], 6)}, {np.round(hdr0['CRVAL2'], 6)}"
+                        toot = toot+'\nCredits: NASA, ESA, CSA, STScI.'
                         blient = Blient()
                         blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
                         boot = client_utils.TextBuilder()
