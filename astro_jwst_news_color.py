@@ -98,15 +98,24 @@ else:
         files = [x.replace('mast:JWST/product/', '') for x in files]
         files = [x for x in files if 'niriss' not in x]
         max_t_release = max(science['t_obs_release'][science['target_name'] == target].values)
-        filt = filt_num(files)
-        order = np.argsort(-filt)
-        files = np.array(files)[order]
-        filt = filt[order]
-        groups, _ = overlap(files)
-        groups = [g for g in groups if len(g) > 2]
-        for group in groups:
 
-            group_files = files[group]
+        crval = []
+        for file in files:
+            with fits.open(mast_url+file, use_fsspec=True) as hdul:
+                header = hdul[1].header
+                crval.append([header['CRVAL1'], header['CRVAL2']])
+        label = cluster_coordinates(crval)
+        groups = []
+        for g in range(max(label)+1):
+            groups.append(files[label == g])
+        # groups, _ = overlap(files)
+        groups = [g for g in groups if len(g) > 2]
+        for group_files in groups:
+            filt = filt_num(group_files)
+            order = np.argsort(-filt)
+            files = np.array(group_files)[order]
+            filt = filt[order]
+            # group_files = files[group]
             # download red first
             igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
             irgb = [0, igreen, len(group_files)-1]

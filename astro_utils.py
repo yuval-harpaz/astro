@@ -1834,7 +1834,7 @@ def resize_to_under_1mp(image: np.ndarray, max_pix: int=1000000) -> np.ndarray:
 
 
 def overlap(files):
-    """Check if images overlap"""
+    """Check if images overlap, chat GPT, not very good"""
     def get_corners(wcs, shape):
         ny, nx = shape[-2], shape[-1]
         pix_coords = np.array([[0, 0], [0, ny], [nx, 0], [nx, ny]])
@@ -1910,7 +1910,29 @@ def overlap(files):
     # Print groups
     return groups, percent_overlap
 
-
+def cluster_coordinates(coords, threshold=0.001):
+    coords = np.array(coords)
+    n = len(coords)
+    visited = np.zeros(n, dtype=bool)
+    labels = np.full(n, -1, dtype=int)  # -1 for unassigned
+    cluster_id = 0
+    def is_close(p1, p2):
+        return abs(p1[0] - p2[0]) <= threshold and abs(p1[1] - p2[1]) <= threshold
+    for i in range(n):
+        if visited[i]:
+            continue
+        visited[i] = True
+        labels[i] = cluster_id
+        queue = [i]
+        while queue:
+            current = queue.pop()
+            for j in range(n):
+                if not visited[j] and is_close(coords[current], coords[j]):
+                    visited[j] = True
+                    labels[j] = cluster_id
+                    queue.append(j)
+        cluster_id += 1
+    return labels
 
 if __name__ == '__main__':
     auto_plot('NGC2506G31', exp = '*fits', png='rgb4log_deband.jpg',adj_args={'factor':4},
