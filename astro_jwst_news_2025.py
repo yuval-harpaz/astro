@@ -80,7 +80,7 @@ if len(inew) > 0:
     try:
         new_targets = ', '.join(np.unique(new['target_name']))
     
-        toot = f'NASA / STScI released #JWST \U0001F52D images ({new_targets}). Take a look at {url}'
+        toot = f'New #JWST \U0001F52D data release targt names: {new_targets}.\nCredit: NASA, ESA, CSA, STScI. Take a look at {url}'
         blient = Blient()
         blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
         boot = client_utils.TextBuilder()
