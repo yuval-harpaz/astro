@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted
+2025-06-03,2025-05-20 19:37:15.066,2025-05-20 20:08:29.161,0,Lenticular_Galaxy_Tile,90,mast:JWST/product/jw06565-o005_t002_nircam_clear-f090w_i2d.jpg,6565,Narrow and broadband imaging of an edge on galaxy,266333805,not yet
 2025-05-30,2024-05-30 09:36:22.971,2024-05-30 11:36:16.752,4406,MESSIER-086, 90 150 277 356,mast:JWST/product/jw03055-o005_t005_nircam_clear-f090w_i2d.jpg,3055,A TRGB calibration of Surface Brightness Fluctuations,215480866,not yet
 2025-05-27,2025-05-27 02:54:52.566,2025-05-27 03:42:39.388,0,C3D_SN,150 200 277 356 444,,9372,"A Luminous, Red Transient at  z = 3: An Extreme Test Bed for Supernova Evolution",266472466,not yet
 2025-05-27,2024-05-26 21:56:33.239,2024-05-26 23:16:14.261,3379,MESSIER-105, 90 150 277 356,mast:JWST/product/jw03055-o013_t013_niriss_clear-f090w_i2d.jpg,3055,A TRGB calibration of Surface Brightness Fluctuations,215452285,not yet
