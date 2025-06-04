@@ -18,6 +18,7 @@ from atproto import client_utils
 from astro_utils import *
 import pandas as pd
 import requests
+from astro_ngc_preview_2025 import post_image
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -87,6 +88,7 @@ include = ~already & (n_targets > 2) & (n_targets < 15)
 chosen_targets = new_targets[include]
 # sec_latest = max(t_obs_release[include])
 deband = False
+bsky = True
 if len(chosen_targets) == 0:
     print('no new targets for color processing')
 else:
@@ -113,7 +115,7 @@ else:
         for group_files in groups:
             filt = filt_num(group_files)
             order = np.argsort(-filt)
-            files = np.array(group_files)[order]
+            group_files = np.array(group_files)[order]
             filt = filt[order]
             # group_files = files[group]
             # download red first
@@ -186,26 +188,35 @@ else:
                         print(f'failed preparing toot for {target}')
                         goon = False
                 if goon:
-                    success = ''
-                    try:
-                        with open('data/tmp/tmprs.jpg', 'rb') as f:
-                            img_data = f.read()
-                        alt = "Automatic color preview of JWST data"
-                        post = blient.send_image(text=boot, image=img_data, image_alt=alt)
-                        success += 'bsky;'
-                        print('boot image')
-                    except:
-                        print(f'failed bluesky color image post for {target}')
-                    try:
-                        metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
-                        _ = masto.status_post(toot, media_ids=metadata["id"])
-                        success += 'masto;'
-                        print('toot image')
-                    except:
-                        print(f'failed mastodon color image post for {target}')
-                    if success:
-                        success = success[:-1]
-                        new_row[-1] = success
+                    # success = ''
+                    post = post_image(txt, 'data/tmp/tmprs.jpg', mastodon=True, bluesky=bsky)
+                    if 'masto' in post.keys():
+                        url = post['masto']['url']+';'
+                    else:
+                        url = ''
+                    if 'bsky' in post.keys():
+                        url = url + 'https://bsky.app/profile/astrobotjwst.bsky.social/post/'+post['bsky']['uri'].split('/')[-1] + ';'
+                    url = url[:-1]
+                    # if bsky:
+                    #     try:
+                    #         with open('data/tmp/tmprs.jpg', 'rb') as f:
+                    #             img_data = f.read()
+                    #         alt = "Automatic color preview of JWST data"
+                    #         post = blient.send_image(text=boot, image=img_data, image_alt=alt)
+                    #         success += 'bsky;'
+                    #         print('boot image')
+                    #     except:
+                    #         print(f'failed bluesky color image post for {target}')
+                    # try:
+                    #     metadata = masto.media_post("data/tmp/tmprs.jpg", "image/jpeg")
+                    #     _ = masto.status_post(toot, media_ids=metadata["id"])
+                    #     success += 'masto;'
+                    #     print('toot image')
+                    # except:
+                    #     print(f'failed mastodon color image post for {target}')
+                    if url:
+                        # success = success[:-1]
+                        new_row[-1] = url
                 df.loc[len(df)] = new_row
                 df.to_csv('docs/bot_color_posts.csv', index=False)
         print('done auto color processing for '+target)
