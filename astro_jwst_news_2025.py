@@ -32,6 +32,9 @@ args = {'obs_collection': "JWST",
 table_release = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
 table_min = Observations.query_criteria(t_min=[start_time, end_time], **args)
 table = table_min.to_pandas().merge(table_release.to_pandas(), how='outer')
+instrument = table['instrument_name'].str.lower().values
+inst_ok = [ (('nircam' in x) | ('miri' in x) | ('niriss' in x)) for x in instrument]
+table = table[inst_ok]
 # Rewrite the web page if there's any data from the last 14 days. Set titles to show description when
 # hover over images
 if len(table) == 0:
