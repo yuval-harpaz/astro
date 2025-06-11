@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted
+2025-06-11,2024-12-11 08:42:21.536,2024-12-11 09:13:40.508,1482,NGC-1482,182 335,mast:JWST/product/jw05627-o011_t004_nircam_clear-f182m_i2d.jpg,5627,Dust and Molecular Gas in Galactic Winds and Fountains: A JWST Survey of Nearby Highly Inclined Starburst and Active Disk Galaxies,233404088,not yet
 2025-06-10,2025-06-09 20:56:59.169,2025-06-09 23:01:12.736,5194,M51-NIRCAM-justSkipped,182 210 250 360 430,,3435,The JWST Whirlpool Galaxy Treasury,268698684,not yet
 2025-06-09,2024-06-09 06:38:34.161,2024-06-09 08:52:20.782,4472,MESSIER-049, 90 150 277 356,mast:JWST/product/jw03055-o006_t006_niriss_clear-f090w_i2d.jpg,3055,A TRGB calibration of Surface Brightness Fluctuations,215785803,not yet
 2025-06-08,2024-12-07 13:54:05.226,2024-12-07 16:02:01.973,3079,NGC-3079, 187  335  560  770 1130 1500 1800,mast:JWST/product/jw05627-o019_t006_nircam_clear-f187n_i2d.jpg,5627,Dust and Molecular Gas in Galactic Winds and Fountains: A JWST Survey of Nearby Highly Inclined Starburst and Active Disk Galaxies,233338429,not yet
