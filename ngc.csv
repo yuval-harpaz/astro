@@ -1,4 +1,6 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted
+2025-06-18,2024-06-18 10:23:23.265,2024-06-18 11:24:56.870,5457,M101-NGC5462, 90 187 200 300 335 360 444,mast:JWST/product/jw03429-o110_t002_nircam_clear-f090w_i2d.jpg,3429,One-Stop Shopping: Pan-Metallicity PAH Benchmarking in M101,216575855,not yet
+2025-06-18,2025-06-18 12:38:32.241,2025-06-18 13:37:37.573,5248,NGC5248, 150  187  300  335  770 2100,,3707,A JWST Census of the Local Galaxy Population: Anchoring the Physics of the Matter Cycle,278830282,not yet
 2025-06-18,2024-06-18 09:32:18.564,2024-06-18 09:56:38.891,5457,M101-NUCLEUS+H602,187 444,mast:JWST/product/jw03429-o109_t001_nircam_clear-f187n_i2d.jpg,3429,One-Stop Shopping: Pan-Metallicity PAH Benchmarking in M101,216573323,not yet
 2025-06-17,2024-09-09 14:03:10.727,2024-12-17 12:42:10.269,0,SNIa_1,150 200 277 356,mast:JWST/product/jw05324-c1017_t012_nircam_clear-f150w_i2d.jpg,5324,"Do Pass z=2, Do Collect Type Ia Supernovae: Breaking Out of Redshift Jail with JWST",233666616,not yet
 2025-06-17,2024-12-17 11:33:27.271,2024-12-17 12:42:10.269,0,SNIa_1,150 200 277 356,mast:JWST/product/jw05324-o003_t012_nircam_clear-f150w_i2d.jpg,5324,"Do Pass z=2, Do Collect Type Ia Supernovae: Breaking Out of Redshift Jail with JWST",233666878,not yet
