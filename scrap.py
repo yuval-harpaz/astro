@@ -1,23 +1,15 @@
 from astro_utils import *
-os.chdir('/media/innereye/KINGSTON/JWST/SERPENS-MAIN')
-auto_plot('SERPENS-MAIN', exp='*.fits', method='rrgggbb', png='rgb1.jpg', crop=False, func=None, adj_args={'factor':1}, fill=True, deband=False, deband_flip=None, pkl=True)
-
-auto_plot('SERPENS-MAIN', exp='*.fits', method='rrgggbb', png='rgb1crop_log.jpg', crop="y1=4300; y2=5700; x1=750; x2=2750", func=log, adj_args={'factor':1}, fill=False, deband=False, deband_flip=None, pkl=True)
-
-# from astro_utils import *
-# layers = auto_plot('WR112', exp='*.fits', method='filt05log', png='tmp.jpg', crop=False, func=log, adj_args={'factor':1}, fill=False, deband=False, deband_flip=None, pkl=False, opvar='layers')
-# for ii in range(3):
-#     layers[..., ii] = level_adjust(layers[..., ii], factor=1)
-
-# filt = np.array([770, 1500, 2100])
-# plt.figure()
-# for ii in range(2):
-#     for jj in range(3):
-#         rgb = assign_colors_by_filt(layers, filt, blc=ii, subtract_blue=[0, 0.5, 1][jj])
-#         plt.subplot(2, 3, jj+1 + 3*ii)
-#         plt.imshow(rgb, origin='lower')
-#         plt.axis('off')
-#         plt.title(f"blc={ii}, subtract_blue={[0, 0.5, 1][jj]}")
-
-
-
+os.chdir('/media/innereye/KINGSTON/JWST/data/NGC-3079')
+files = glob('*.fits')
+exp = ['jw05627-o019_t006_nircam_clear-f335m_i2d.fits', 'jw05627-o018_t006_miri_f560w-sub128_i2d.fits', 'jw05627-o018_t006_miri_f770w-sub128_i2d.fits']
+auto_plot('NGC-3079', exp=exp, method='filt05', png='2.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True, deband=False, deband_flip=True, pkl=False)
+# plt.plot([1, 3, 1])
+plt.figure()
+for ii in range(4):
+    print(ii)
+    hdu = fits.open(files[ii])
+    plt.subplot(2, 2, ii+1)
+    plt.imshow(level_adjust(hdu[1].data))
+    plt.title(files[ii].split('nircam')[1])
+plt.show()
+a = 1
