@@ -1831,7 +1831,50 @@ def resize_to_under_1mp(image: np.ndarray, max_pix: int=1000000) -> np.ndarray:
         resized = img_as_ubyte(resized)
     return resized
 
+def resize_jpg_to_1mb(path2image, step: float = 0.9, verbose: bool = False):
+    """
+    Resize a jpg image by lowering the shape in iterraations.
 
+    Args:
+        path2image (str): Path to the input image file.
+        step (float): Scale reduction factor per iteration (e.g., 0.9 = reduce by 10% per step).
+
+    Returns:
+        np.ndarray: Resized image as a uint8 array.
+    """
+    size = os.path.getsize(path2image)
+    if size <= 1_000_000:
+        if verbose:
+            print(f"Image {path2image} is already under 1MB, no resizing needed.")
+        return path2image
+    image = plt.imread(path2image)
+    scale = 17_500_000 / (image.shape[0] * image.shape[1])  # initial scale to get close to 20M pixels
+    new_shape = (np.array(image.shape[:2]) * scale).astype(int)
+    # first guess resize to 20,000,000 pixels
+    image_rs = transform.resize(image, (*new_shape, image.shape[2]), anti_aliasing=True)
+    plt.imsave('tmprs.jpg', image_rs, pil_kwargs={'quality': 95})
+    plt.pause(0.1)
+    size = os.path.getsize('tmprs.jpg')
+    if size <= 1_000_000:
+        if verbose:
+            print(f"Image {path2image} resized to {new_shape} in one go.")
+        return 'tmprs.jpg'
+    # continue scale from first guess
+    while size > 1_000_000:
+        scale = scale * step
+        new_shape = (np.array(image.shape[:2]) * scale).astype(int)
+        image_rs = transform.resize(image, (*new_shape, image.shape[2]), anti_aliasing=True)
+        plt.imsave('tmprs.jpg', image_rs, pil_kwargs={'quality': 95})
+        plt.pause(0.1)
+        size = os.path.getsize('tmprs.jpg')
+        if verbose:
+            # print with comas
+            print(f"Resizing {path2image} to {new_shape}, size: {size:,} bytes")
+        if size <= 1_000_000:
+            if verbose:
+                print('done')
+            return 'tmprs.jpg'
+    raise ValueError("Error resizing jpg.")
 
 def overlap(files):
     """Check if images overlap, chat GPT, not very good"""

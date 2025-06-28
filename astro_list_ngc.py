@@ -20,8 +20,9 @@ def list_ngc():
     start_time = end_time - 7
     # search images by observation date and by release date
     table = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
-    isnotnirspec = ['NIRSPEC' not in x.upper() for x in table['instrument_name']]
-    table = table[isnotnirspec]
+    isnotnirspec = np.array(['NIRSPEC' not in x.upper() for x in table['instrument_name']])
+    isnotniriss = np.array(['NIRISS' not in x.upper() for x in table['instrument_name']])
+    table = table[isnotnirspec & isnotniriss]
     isnotbackground = []
     background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF', 'SKY', 'J0305M3150', 'M0416']
     for x in table['target_name']:
