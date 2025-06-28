@@ -33,7 +33,7 @@ def post_image(message, image_path, alt=None, mastodon=True, bluesky=True):
         txt = message
         if len(txt) > blim:
             txt = txt[:blim]
-        if 'http' in boot:
+        if 'http' in message and 'html' in message:
             txt1 = txt[:txt.index('http')]
             txt2 = txt[txt.index('html')+4:]
             if len(txt1) > blim:
@@ -257,9 +257,9 @@ if __name__ == '__main__':
                                 if 'bsky' in post.keys():
                                     url = url + 'https://bsky.app/profile/astrobotjwst.bsky.social/post/'+post['bsky']['uri'].split('/')[-1] + ';'
                                 url = url[:-1]
-                            print('DONE ' + date0 + '_' + tgt)
                             df.at[row, 'posted'] = url
                             df.to_csv(path2astro+'/ngc.csv', index=False)
+                            print('DONE ' + date0 + '_' + tgt)
                         else:
                             print('no plots for '+ date0 + '_' + tgt)
                             df.at[row, 'posted'] = 'failed'
