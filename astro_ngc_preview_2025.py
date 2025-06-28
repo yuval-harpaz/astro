@@ -130,35 +130,30 @@ if __name__ == '__main__':
                     both_apart = False  # no overlap between MIRI and NIRCam
                     if tgt == 'NGC-6822-MIRI-TILE-2-COPY' or tgt == 'NGC-346-TILE-6':
                         both_apart = True
-                    if len(already) > 0:
-                        msg = 'pictures exist:    '
-                        for alr in already:
-                            msg += '\n    ' + alr.split('/')[-1]
-                        print(msg)
-                    elif 'background' in tgt.lower() or 'BKG' in tgt:
+                    if 'background' in tgt.lower() or 'BKG' in tgt:
                         print('no background for now '+tgt)
                     else:
                         if not os.path.isdir('data'):
                             os.system('mkdir data')
                         if not os.path.isdir('data/' + tgt):
                             os.system('mkdir data/' + tgt)
+                        t_min = [np.floor(Time(df['collected_from'][row]).mjd),
+                                    np.ceil(Time(df['collected_to'][row]).mjd)]
+                        args = {'target_name': tgt,
+                                't_min': t_min,
+                                'obs_collection': "JWST",
+                                'calib_level': 3,
+                                'dataRights': 'public',
+                                'intentType': 'science',
+                                'dataproduct_type': "image"}
+                        table = Observations.query_criteria(**args)
+                        isnotnirspec = np.array(['NIRSPEC' not in x.upper() for x in table['instrument_name']])
+                        isnotniriss = np.array(['NIRISS' not in x.upper() for x in table['instrument_name']])
+                        table = table[isnotnirspec & isnotniriss]
                         if os.path.isfile(log_csv):
                             download_by_log(log_csv, tgt=tgt)
                             chosen_df = pd.read_csv(log_csv)
                         else:
-                            t_min = [np.floor(Time(df['collected_from'][row]).mjd),
-                                     np.ceil(Time(df['collected_to'][row]).mjd)]
-                            args = {'target_name': tgt,
-                                    't_min': t_min,
-                                    'obs_collection': "JWST",
-                                    'calib_level': 3,
-                                    'dataRights': 'public',
-                                    'intentType': 'science',
-                                    'dataproduct_type': "image"}
-                            table = Observations.query_criteria(**args)
-                            isnotnirspec = np.array(['NIRSPEC' not in x.upper() for x in table['instrument_name']])
-                            isnotniriss = np.array(['NIRISS' not in x.upper() for x in table['instrument_name']])
-                            table = table[isnotnirspec & isnotniriss]
                             files = list(table['obs_id'])
                             files = [x + '_i2d.fits' for x in files]
                             print(f'[{row}] downloading {tgt} by query')
@@ -212,20 +207,46 @@ if __name__ == '__main__':
                         # TODO decide if to use 0.5 1 1
                         made_png = False
                         if np.nansum(mn[:, 0]) >= 2:
-                            auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=tgt+'_MIRI.jpg', pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1})
-                            plotted.append(tgt+'_MIRI.jpg')
+                            output_jpg = tgt+'_MIRI.jpg'
+                            make_image = True
+                            if os.path.isfile(drive+'data/'+tgt+'/'+output_jpg):
+                                remake = input(f"File {output_jpg} already exists. Do you want to remake it? (y/n): ")
+                                if remake.lower() != 'y':
+                                    make_image = False
+                                    os.chdir(drive+'/data/'+tgt)
+                            if make_image:
+                                auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=output_jpg, pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1})
+                            else:
+                                os.chdir(drive+'/data/'+tgt)
+                            plotted.append(output_jpg)
                             made_png = True
                         if np.nansum(mn[:,1]) >= 2:
-                            img = auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=tgt + '_NIRCam.jpg', pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1}, deband=deband)
-                            img = grey_zeros(img, replace=np.max)
-                            plt.imsave(tgt + '_NIRCam.jpg', img, origin='lower')
-                            plotted.append(tgt + '_NIRCam.jpg')
+                            output_jpg = tgt+'_NIRCam.jpg'
+                            make_image = True
+                            if os.path.isfile(drive+'data/'+tgt+'/'+output_jpg):
+                                remake = input(f"File {output_jpg} already exists. Do you want to remake it? (y/n): ")
+                                if remake.lower() != 'y':
+                                    make_image = False
+                                    os.chdir(drive+'/data/'+tgt)
+                            if make_image:
+                                img = auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=output_jpg, pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1}, deband=deband)
+                                img = grey_zeros(img, replace=np.max)
+                                plt.imsave(output_jpg, img, origin='lower')
+                            plotted.append(output_jpg)
                             made_png = True
                         if '+' in instrument and np.nansum(mn) >= 2 and not both_apart:
                             if not os.path.isfile('nooverlap.txt'):
                                 try:
-                                    auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=tgt+'_'+instrument+'.jpg', pkl=pkl, method='mnn', fill=True, adj_args={'factor':1})
-                                    plotted.append(tgt+'_'+instrument+'.jpg')
+                                    output_jpg = tgt+'_'+instrument+'.jpg'
+                                    make_image = True
+                                    if os.path.isfile(drive+'data/'+tgt+'/'+output_jpg):
+                                        remake = input(f"File {output_jpg} already exists. Do you want to remake it? (y/n): ")
+                                        if remake.lower() != 'y':
+                                            make_image = False
+                                            os.chdir(drive+'/data/'+tgt)
+                                    if make_image:
+                                        auto_plot(tgt, exp=list(files[~np.isnan(mn[:, 0])]), png=output_jpg, pkl=pkl, method='mnn', fill=True, adj_args={'factor':1})
+                                    plotted.append(output_jpg)
                                     made_png = True
                                 except:
                                     print('no overlap???????????????')
