@@ -268,7 +268,8 @@ if __name__ == '__main__':
                                 crval2 = hdu[1].header['CRVAL2']
                                 message = f'\U0001F916 processing for highlight #JWST \U0001F52D {instrument} data, target name: {tgt}.'  # .\nCredit: NASA, ESA, CSA, STScI.\nTake a look at {url}'
                                 message = message + f'\nPI: {table["proposal_pi"][0]}, program {table["proposal_id"][0]}. CRVAL: {np.round(crval1, 6)}, {np.round(crval2, 6)}'
-                                message = message + f'\nSee more highlights at {highlight_url}'
+                                message = message + f'\nSee more highlights at {highlight_url}.'
+                                message = message + f'\nCredits: NASA, ESA, CSA, STScI.'
                                 alt = f'chatGPT: Generate Alt Text for JWST {instrument} image of {tgt}.'
                                 post = post_image(message, path2resize, alt=alt, mastodon=True, bluesky=True)
                                 if 'masto' in post.keys():

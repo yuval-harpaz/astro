@@ -1711,6 +1711,11 @@ def log(arr, small=0.01):
     arr = np.log10(arr)
     return arr
 
+def log1(arr):
+    arr[arr < 0] = 0
+    arr += 1
+    arr = np.log10(arr)
+    return arr
 
 drive = '/media/innereye/KINGSTON/JWST/'
 def download_by_log(log_csv, tgt=None, overwrite=False, wget=False, path2data=None):

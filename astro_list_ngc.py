@@ -31,6 +31,12 @@ def list_ngc():
             if bg in x.upper():
                 isnotbackground[-1] = False
     table = table[isnotbackground]
+    interesting_class = np.zeros(len(table), bool)
+    find_in = ['nebula', 'protoplanetary disk']
+    for ii, x in enumerate(table['target_classification']):
+         for f in find_in:
+            if f in str(x).lower():
+                interesting_class[ii] = True
     isngc = [x[:3].upper() == 'NGC' for x in table['target_name']]
     isori = [x[:3].upper() == 'ORI' for x in table['target_name']]
     ism = [x[0] == 'M' and x[1:].replace('-', '').isnumeric() for x in table['target_name']]
@@ -52,7 +58,7 @@ def list_ngc():
         for pattern in patterns:
             if re.search(pattern, x):
                 ispattern[ix] = True
-    table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic) | ismisc | ispattern]
+    table = table[np.array(isngc) | np.array(ism) | np.array(isori) | np.array(isic) | ismisc | ispattern | interesting_class]
     target_name = np.asarray(table['target_name'])
     target = np.unique(target_name)
     ##
