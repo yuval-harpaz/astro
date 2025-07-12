@@ -99,7 +99,7 @@ function parseCSV(csv) {
           <img src="${item.jpeg || ''}" alt="${item.target_name || ''}" title="${item.target_name}">
           <div class="image-info">
               <h2>${item.target_name}</h2>
-              <p>Available filters: f${filter}.</p>
+              <p>Available filters: ${filter}.</p>
               <Proposal ID: ${item.proposal}.</p>
               <p>Observed: ${item.collected_to.slice(0, 10)}. Released: ${item.release_date}</p>
               <p>Title: ${title}
