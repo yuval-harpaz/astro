@@ -846,7 +846,7 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
         img[..., bd] = layer
     return img
 
-def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=False, png=None, resize=False,
+def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1], pkl=False, png=None, resize=False, reproject_to=0,
               plot=False, adj_args={'factor': 2}, fill=False, fill_func='max', smooth=False, max_color=False, opvar='rgb', core=False,
               crop=False, deband=False, deband_flip=False, blc=None, whiten=None, annotate=False, decimate=False, func=None, bar=False):
     '''
@@ -1042,28 +1042,35 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 deband_flip = [deband_flip] * len(path)
             else:
                 raise Exception('deband flip unresolved')
-
+        if type(reproject_to) == str:
+            reproject_to = [ff for ff in range(len(path)) if reproject_to in path[ff]]
+            if len(reproject_to) != 1:
+                raise Exception(f'Expected one {reproject_to} in file names, got {len(reproject_to)}')
+            else:
+                reproject_to = reproject_to
+        hdu0 = fits.open(path[reproject_to])
+        hdu0 = crval_fix(hdu0)
+        if decimate:
+            hdu0[1].data = hdu0[1].data[::decimate, ::decimate]
+            print('decimated')
+        img = hdu0[1].data
+        if fill:
+            img = hole_func_fill(img, func=fill_func)
+        if resize:# make rescale size for wallpaper 1920 x 1080
+            wh = resize_wh(img.shape)
+            img = transform.resize(img, wh)
+        if todeband[ii]:
+            dbargs['flip'] = deband_flip[ii]
+            print('going to deband'+dbstr+str(dbargs))
+            img = deband_layer(img, **dbargs)
+            print('done deband 0')
+        layers = np.zeros((img.shape[0], img.shape[1], len(path)))
+        hdr0 = hdu0[1].header
+        hdu0.close()
+        layers[:, :, reproject_to] = img
         for ii in range(len(path)):
-            if ii == 0:
-                hdu0 = fits.open(path[ii])
-                hdu0 = crval_fix(hdu0)
-                if decimate:
-                    hdu0[1].data = hdu0[1].data[::decimate, ::decimate]
-                    print('decimated')
-                img = hdu0[1].data
-                if fill:
-                    img = hole_func_fill(img, func=fill_func)
-                if resize:# make rescale size for wallpaper 1920 x 1080
-                    wh = resize_wh(img.shape)
-                    img = transform.resize(img, wh)
-                if todeband[ii]:
-                    dbargs['flip'] = deband_flip[ii]
-                    print('going to deband'+dbstr+str(dbargs))
-                    img = deband_layer(img, **dbargs)
-                    print('done deband 0')
-                layers = np.zeros((img.shape[0], img.shape[1], len(path)))
-                hdr0 = hdu0[1].header
-                hdu0.close()
+            if ii == reproject_to:
+                pass
             else:
                 hdu = fits.open(path[ii])
                 if decimate:
@@ -1078,7 +1085,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                 img, _ = reproject_interp(hdu[1], hdr0)
                 if resize:
                     img = transform.resize(img, wh)
-            layers[:, :, ii] = img
+                layers[:, :, ii] = img
         if pkl:
             if os.path.isfile(pkl_name):
                 print('not saving pickle')
