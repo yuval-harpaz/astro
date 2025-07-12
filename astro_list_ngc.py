@@ -31,8 +31,10 @@ def list_ngc():
             if bg in x.upper():
                 isnotbackground[-1] = False
     table = table[isnotbackground]
+    # for ii in range(len(table)):
+    #      print(f"{table[ii]['target_name']} {table[ii]['target_classification']}")
     interesting_class = np.zeros(len(table), bool)
-    find_in = ['nebula', 'protoplanetary disk']
+    find_in = ['nebula', 'protoplanetary disk', 'galaxy;']
     for ii, x in enumerate(table['target_classification']):
          for f in find_in:
             if f in str(x).lower():
