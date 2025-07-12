@@ -1047,7 +1047,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             if len(reproject_to) != 1:
                 raise Exception(f'Expected one {reproject_to} in file names, got {len(reproject_to)}')
             else:
-                reproject_to = reproject_to
+                reproject_to = reproject_to[0]
         hdu0 = fits.open(path[reproject_to])
         hdu0 = crval_fix(hdu0)
         if decimate:
@@ -1059,8 +1059,8 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         if resize:# make rescale size for wallpaper 1920 x 1080
             wh = resize_wh(img.shape)
             img = transform.resize(img, wh)
-        if todeband[ii]:
-            dbargs['flip'] = deband_flip[ii]
+        if todeband[reproject_to]:
+            dbargs['flip'] = deband_flip[reproject_to]
             print('going to deband'+dbstr+str(dbargs))
             img = deband_layer(img, **dbargs)
             print('done deband 0')
@@ -1990,6 +1990,5 @@ def cluster_coordinates(coords, threshold=0.001):
     return labels
 
 if __name__ == '__main__':
-    auto_plot('NGC2506G31', exp = '*fits', png='rgb4log_deband.jpg',adj_args={'factor':4},
-          func=log, method='rrgggbb', fill=False, pkl=False, deband=10, deband_flip=True)
+    auto_plot('SF_reg_1', exp='*clear*.fits', method='filt05', png='reproj227.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True, deband=False, deband_flip=None, pkl=True, reproject_to='f277w')
 
