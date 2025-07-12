@@ -213,7 +213,7 @@
 
             try {
                 // Load CSV file
-                const csvResponse = await fetch('ngc.csv');
+                const csvResponse = await fetch('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/ngc.csv');
                 if (!csvResponse.ok) throw new Error('Failed to load CSV file');
                 const csvText = await csvResponse.text();
                 const csvData = parseCSV(csvText);
