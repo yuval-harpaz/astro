@@ -1,3 +1,3 @@
-file,width,height,offset,chosen
-jw03849-o001_t001_nircam_clear-f150w_i2d.fits,19976.0,13028.0,152.2789341,True
-jw03849-o001_t001_nircam_clear-f322w2_i2d.fits,9844.0,6361.0,152.2789341,True
+file,width,height,offset,chosen,CRVAL1,CRVAL2
+jw03849-o001_t001_nircam_clear-f150w_i2d.fits,19976.0,13028.0,152.2789341,True,210.016343802066,14.513047316474507
+jw03849-o001_t001_nircam_clear-f322w2_i2d.fits,9844.0,6361.0,152.2789341,True,210.01651565487543,14.51313903738802
