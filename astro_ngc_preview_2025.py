@@ -31,14 +31,14 @@ def post_image(message, image_path, alt=None, mastodon=True, bluesky=True):
     if bluesky:
         boot = client_utils.TextBuilder()
         txt = message
-        if len(txt) > blim:
-            txt = txt[:blim]
+        # if len(txt) > blim:
+        #     txt = txt[:blim]
         if 'http' in message and 'html' in message:
             txt1 = txt[:txt.index('http')]
             txt2 = txt[txt.index('html')+4:]
-            if len(txt1) > blim:
-                txt1 = txt1[:blim]
             link_str = txt[txt.index('http'):txt.index('html')+4]
+            if len(txt1)+len(txt2) > blim:
+                txt1 = txt1[:blim]
             boot.text(txt1)
             boot.link(link_str.split('/')[-1], link_str)
             boot.text(txt2)
@@ -268,8 +268,8 @@ if __name__ == '__main__':
                                 crval2 = hdu[1].header['CRVAL2']
                                 message = f'\U0001F916 processing for highlight #JWST \U0001F52D {instrument} data, target name: {tgt}.'  # .\nCredit: NASA, ESA, CSA, STScI.\nTake a look at {url}'
                                 message = message + f'\nPI: {table["proposal_pi"][0]}, program {table["proposal_id"][0]}. CRVAL: {np.round(crval1, 6)}, {np.round(crval2, 6)}'
-                                message = message + f'\nSee more highlights at {highlight_url}.'
                                 message = message + f'\nCredits: NASA, ESA, CSA, STScI.'
+                                message = message + f'\nSee more highlights at {highlight_url}.'
                                 alt = f'chatGPT: Generate Alt Text for JWST {instrument} image of {tgt}.'
                                 post = post_image(message, path2resize, alt=alt, mastodon=True, bluesky=True)
                                 if 'masto' in post.keys():
