@@ -35,7 +35,7 @@ def list_ngc():
     #      print(f"{table[ii]['target_name']} {table[ii]['target_classification']}")
     interesting_class = np.zeros(len(table), bool)
     # got to be lower
-    find_in = ['nebula', 'protoplanetary disk', 'galaxy;', 'wolf-rayet']
+    find_in = ['nebula', 'protostars', 'galaxy;', 'wolf-rayet']
     for ii, x in enumerate(table['target_classification']):
          for f in find_in:
             if f in str(x).lower():
