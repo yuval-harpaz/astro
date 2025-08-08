@@ -215,7 +215,7 @@ if __name__ == '__main__':
                                     make_image = False
                                     os.chdir(drive+'/data/'+tgt)
                             if make_image:
-                                auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=output_jpg, pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1}, deband=debandTrue)
+                                auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=output_jpg, pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1}, deband=True)
                             else:
                                 os.chdir(drive+'/data/'+tgt)
                             plotted.append(output_jpg)
