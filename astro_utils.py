@@ -979,9 +979,9 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             wh = [h, w]  # rotate later
         return wh
 
-    def crval_fix(hd):
+    def crval_fix(hd, row):
         if from_log and 'CRVAL1fix' in log.columns:
-            logrow = np.where(log['file'] == path[ii])[0]
+            logrow = np.where(log['file'] == path[row])[0]
             if len(logrow) == 1:
                 for cr in [1, 2]:
                     correct = log.iloc[logrow][f'CRVAL{cr}fix'].to_numpy()[0]
@@ -1049,7 +1049,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             else:
                 reproject_to = reproject_to[0]
         hdu0 = fits.open(path[reproject_to])
-        hdu0 = crval_fix(hdu0)
+        hdu0 = crval_fix(hdu0, reproject_to)
         if decimate:
             hdu0[1].data = hdu0[1].data[::decimate, ::decimate]
             print('decimated')
@@ -1077,7 +1077,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     hdu[1].data = hdu[1].data[::decimate, ::decimate]
                 if fill:
                     hdu[1].data = hole_func_fill(hdu[1].data,  func=fill_func)
-                hdu = crval_fix(hdu)
+                hdu = crval_fix(hdu, ii)
                 if todeband[ii]:
                     dbargs['flip'] = deband_flip[ii]
                     hdu[1].data = deband_layer(hdu[1].data, **dbargs)
@@ -1114,7 +1114,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
             for i3 in range(3):
                 imtochoose[..., i3] = level_adjust(imtochoose[..., i3])
             plt.figure()
-            plt.imshow(level_adjust(imtochoose), origin='lower')
+            plt.imshow(imtochoose[..., ::-1], origin='lower')
             plt.axis('off')
             click_coordinates = []
             def onclick(event):
