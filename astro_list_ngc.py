@@ -24,7 +24,7 @@ def list_ngc():
     isnotniriss = np.array(['NIRISS' not in x.upper() for x in table['instrument_name']])
     table = table[isnotnirspec & isnotniriss]
     isnotbackground = []
-    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF', 'SKY', 'J0305M3150', 'M0416']
+    background = ['BACKGROUND', 'BCKGND', 'BG', 'BK', 'OFFSET', '-OFF', 'SKY', 'J0305M3150', 'M0416', 'MRGP0918']
     for x in table['target_name']:
         isnotbackground.append(True)
         for bg in background:
