@@ -1,4 +1,7 @@
 from astro_utils import *
-# os.chdir('/media/innereye/KINGSTON/JWST/data/PN-CTR')
-auto_plot('Ser-emb-11E', exp='*.fits', method='filt05', png='filt2db.jpg', crop=False,
-           adj_args={'factor':2}, fill=True, deband=True, deband_flip=None, pkl=True, func=None)
+
+os.chdir('/media/innereye/KINGSTON/JWST/data/NAME-GAL-CENTER')
+df = annotate_simbad('NAME-GAL-CENTER_NIRCam.jpg', 'jw04515-o101_t001_nircam_clear-f182m_i2d.fits', filter='NAME Galactic Circ')
+df.to_csv('ann.csv', index=False)
+
+
