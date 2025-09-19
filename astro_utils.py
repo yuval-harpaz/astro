@@ -1971,10 +1971,20 @@ def cluster_coordinates(coords, threshold=0.001):
     visited = np.zeros(n, dtype=bool)
     labels = np.full(n, -1, dtype=int)  # -1 for unassigned
     cluster_id = 0
+
     def is_close(p1, p2):
+        # If either coordinate is nan, they are not close
+        if np.any(np.isnan(p1)) or np.any(np.isnan(p2)):
+            return False
         return abs(p1[0] - p2[0]) <= threshold and abs(p1[1] - p2[1]) <= threshold
+
     for i in range(n):
         if visited[i]:
+            continue
+        if np.any(np.isnan(coords[i])):
+            labels[i] = cluster_id
+            visited[i] = True
+            cluster_id += 1
             continue
         visited[i] = True
         labels[i] = cluster_id

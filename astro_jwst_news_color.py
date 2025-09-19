@@ -103,9 +103,13 @@ else:
 
         crval = []
         for file in files:
-            with fits.open(mast_url+file, use_fsspec=True) as hdul:
-                header = hdul[1].header
-                crval.append([header['CRVAL1'], header['CRVAL2']])
+            try:
+                with fits.open(mast_url+file, use_fsspec=True) as hdul:
+                    header = hdul[1].header
+                    crval.append([header['CRVAL1'], header['CRVAL2']])
+            except Exception as e:
+                print(f"Error processing {file}: {e}")
+                crval.append([np.nan, np.nan])
         label = cluster_coordinates(crval)
         groups = []
         for g in range(max(label)+1):
