@@ -92,6 +92,7 @@ bsky = True
 if len(chosen_targets) == 0:
     print('no new targets for color processing')
 else:
+
     for target in chosen_targets:
         # target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
         row1 = np.where(science['target_name'].values == target)[0][0]
