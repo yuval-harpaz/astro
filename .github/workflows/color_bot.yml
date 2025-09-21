@@ -9,6 +9,13 @@ jobs:
     environment: mastodon
     steps:
     - uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        fetch-depth: 0
+    - name: Configure git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:

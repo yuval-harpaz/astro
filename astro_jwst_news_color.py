@@ -92,7 +92,6 @@ bsky = True
 if len(chosen_targets) == 0:
     print('no new targets for color processing')
 else:
-
     for target in chosen_targets:
         # target = new_targets[np.where(t_obs_release == sec_latest)[0][0]]
         row1 = np.where(science['target_name'].values == target)[0][0]
@@ -224,6 +223,10 @@ else:
                         new_row[-1] = url
                 df.loc[len(df)] = new_row
                 df.to_csv('docs/bot_color_posts.csv', index=False)
+                os.system('git add docs/bot_color_posts.csv')
+                os.system('git commit -m "added to color posts on the fly"')
+                os.system('git pull --rebase') 
+                os.system('git push')
         print('done auto color processing for '+target)
     # imgrs = resize_with_padding(img)
     # plt.imsave('tmprs.jpg', imgrs, cmap='gray')
