@@ -85,10 +85,12 @@ def list_ngc():
                     else:
                         break
             m = ongc.get(tt.replace('-', '').replace('MESSIER', 'M'))
-            if num1 > 0:
+            if m is None and num1 > 0:
                 m = ongc.get(ttm[:num1+1])
-            if m is None:
+            if m is None and num0 == 1:
                 raise Exception('unable to find which ngc is: '+tt)
+            if m is None:
+                ngc.append(-999)  # Mark as skip target
             else:
                 ngc.append(int(m.name[3:]))
         elif tt[:2] == 'IC':
@@ -141,6 +143,8 @@ def list_ngc():
     ##
     row = []
     for ii, tt in enumerate(target):
+        if ngc[ii] == -999:  # Skip targets that couldn't be found
+            continue
         idx = np.where(target_name == tt)[0]
         df1 = table[idx].to_pandas()
         df1 = df1.sort_values('t_min', ignore_index=True)
