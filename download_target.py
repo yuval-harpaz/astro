@@ -11,7 +11,10 @@ import sys
 # from glob import glob
 # from astro_ngc_align import add_crval_to_logs
 
-def download_target_by_name(target):
+def download_target_by_name(target, method=None):
+    if method is None:
+        method = 'astropy'
+    
 
     args = {'obs_collection': "JWST",
             'calib_level': 3,
@@ -64,11 +67,19 @@ def download_target_by_name(target):
         destination_folder = drive+'data/' + target
     else:
         destination_folder = 'data/' + target
-    download_fits_files(files, destination_folder=destination_folder, wget=False)
+    download_fits_files(files, destination_folder=destination_folder, method=method)
 
 
 if __name__ == '__main__':
-    download_target_by_name(sys.argv[1])
+    if len(sys.argv) < 2:
+        search = input("Enter target name to download: ")
+    else:
+        search = sys.argv[1]
+        if len(sys.argv) > 2:
+            method = sys.argv[2]
+        else:
+            method = 'wget'
+    download_target_by_name(search, method=method)
 
 ##
 

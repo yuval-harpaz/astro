@@ -376,7 +376,9 @@ def download_fits(object_name, extension='_i2d.fits', mrp=True, include='', ptyp
     return manifest
 
 
-def download_fits_files(file_names, destination_folder='', overwrite=False, wget=True):
+def download_fits_files(file_names, destination_folder='', overwrite=False, method='chunk'):
+    if method is None:
+        method='astropy'
     if type(file_names) == str:
         file_names = [file_names]
     if len(destination_folder) > 0 and destination_folder[-1] not in '\/':
@@ -390,11 +392,11 @@ def download_fits_files(file_names, destination_folder='', overwrite=False, wget
         fn = fn.split('/')[-1]
         dfn = destination_folder+fn
         if not os.path.isfile(dfn) or overwrite or os.path.getsize(dfn) == 0:
-            if wget:
+            if method == 'wget':
                 a = os.system(f'wget -O {dfn} {mast_url}{fn} {no_print}')
                 if a == 0:
                     success += 1
-            else:
+            elif method == 'astropy':
                 try:
                     with fits.open(mast_url+fn, use_fsspec=True) as hdul:
                         hdr0 = hdul[0]
@@ -410,6 +412,51 @@ def download_fits_files(file_names, destination_folder='', overwrite=False, wget
                     success += 1
                 except Exception as error:
                     print(error)
+            elif method == 'chunk':
+                try:
+                    # Download to temporary file first to avoid loading large HDU into RAM
+                    import requests
+                    
+                    # Stream download to temporary file
+                    temp_file = dfn + '.tmp'
+                    response = requests.get(mast_url+fn, stream=True)
+                    response.raise_for_status()
+                    
+                    with open(temp_file, 'wb') as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            f.write(chunk)
+                    
+                    # Now open from disk and extract what we need
+                    with fits.open(temp_file, memmap=True) as hdul:
+                        hdr0 = hdul[0]
+                        hdr = hdul[1].header
+                        img = hdul[1].data
+                        
+                        # Write directly to output file
+                        hdulist = fits.HDUList()
+                        hdu = fits.ImageHDU()
+                        hdu.data = img.copy()
+                        hdu.header = hdr.copy()
+                        hdulist.append(hdr0.copy())
+                        hdulist.append(hdu)
+                        hdulist.writeto(dfn, overwrite=True)
+                    
+                    # Clean up temporary file
+                    os.remove(temp_file)
+                    success += 1
+                except Exception as error:
+                    print(error)
+                    if os.path.exists(temp_file):
+                        os.remove(temp_file)
+            elif method == 'fitscopy':
+                raise Exception('fitscopy method downloads the whole file, use wget or astropy')
+                for item in range(2):
+                    suf = ['_header','_data'][item]
+                    url = mast_url+fn+'['+str(item)+']'
+                    filepath = dfn.replace('fits', suf+'.fits')
+                    a = os.system(f'fitscopy {url} {filepath}')
+                if a == 0:
+                    success += 1
     print(f'Downloaded {success} files to {destination_folder}')
 
 
@@ -1725,7 +1772,7 @@ def log1(arr):
     return arr
 
 drive = '/media/innereye/KINGSTON/JWST/'
-def download_by_log(log_csv, tgt=None, overwrite=False, wget=False, path2data=None):
+def download_by_log(log_csv, tgt=None, overwrite=False, method='chunk', path2data=None):
     if log_csv[0] != '/':
         log_csv = '/home/innereye/astro/logs/' + log_csv
     if path2data is None:
@@ -1742,7 +1789,7 @@ def download_by_log(log_csv, tgt=None, overwrite=False, wget=False, path2data=No
         chosen_df = pd.read_csv(log_csv)
         files = list(chosen_df['file'][chosen_df['chosen']])
         print(f'downloading {tgt} by log')
-        download_fits_files(files, destination_folder='data/' + tgt, overwrite=overwrite, wget=wget)
+        download_fits_files(files, destination_folder='data/' + tgt, overwrite=overwrite, method=method)
     else:
         print('where is the log file?')
 
@@ -2000,5 +2047,9 @@ def cluster_coordinates(coords, threshold=0.001):
     return labels
 
 if __name__ == '__main__':
-    auto_plot('SF_reg_1', exp='*clear*.fits', method='filt05', png='reproj227.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True, deband=False, deband_flip=None, pkl=True, reproject_to='f277w')
+    # auto_plot('SF_reg_1', exp='*clear*.fits', method='filt05', png='reproj227.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True, deband=False, deband_flip=None, pkl=True, reproject_to='f277w')
+    # fitscopy https://mast.stsci.edu/portal/Download/file/JWST/product/jw06751-o002_t002_miri_f2100w_i2d.fits[1] data.fits
+    file = 'jw06751-o002_t002_miri_f2100w_i2d.fits'
+    destination = '/home/innereye/astro/data/'
+    download_fits_files([file], destination_folder=destination, overwrite=True, method='chunk')
 
