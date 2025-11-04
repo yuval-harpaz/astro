@@ -157,7 +157,7 @@ if __name__ == '__main__':
                             files = list(table['obs_id'])
                             files = [x + '_i2d.fits' for x in files]
                             print(f'[{row}] downloading {tgt} by query')
-                            download_fits_files(files, destination_folder='data/' + tgt, wget=False)
+                            download_fits_files(files, destination_folder='data/' + tgt, method='chunk')
                             chosen_df = choose_fits(files, folder='data/' + tgt)
                             if all(chosen_df['chosen']):
                                 filtnum = filt_num(chosen_df['file'].values)

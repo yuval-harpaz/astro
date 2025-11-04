@@ -54,7 +54,7 @@ if os.path.isdir(drive):
     destination_folder = drive+'data/' + tgt
 else:
     destination_folder = 'data/' + tgt
-download_fits_files(files, destination_folder=destination_folder, wget=False)  # wget downloads much larger files with noise estimates etc.
+download_fits_files(files, destination_folder=destination_folder, method='chunk')  # wget downloads much larger files with noise estimates etc.
 
 
 

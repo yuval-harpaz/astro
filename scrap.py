@@ -1,7 +1,6 @@
 from astro_utils import *
 
-os.chdir('/media/innereye/KINGSTON/JWST/data/NAME-GAL-CENTER')
-df = annotate_simbad('NAME-GAL-CENTER_NIRCam.jpg', 'jw04515-o101_t001_nircam_clear-f182m_i2d.fits', filter='NAME Galactic Circ')
-df.to_csv('ann.csv', index=False)
-
+os.chdir('/media/innereye/KINGSTON/JWST/data/NGC-2440')
+auto_plot('NGC-2440', method='rrgggbb', deband=True, fill=True, pkl=True, png='rgb4_db_log.jpg', func=log1)
+auto_plot('NGC-2440', method='filt05', deband=False, fill=False, pkl=True, png='filt4_db_log.jpg', func=log1)
 

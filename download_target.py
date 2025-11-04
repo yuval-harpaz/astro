@@ -78,7 +78,7 @@ if __name__ == '__main__':
         if len(sys.argv) > 2:
             method = sys.argv[2]
         else:
-            method = 'wget'
+            method = 'chunk'
     download_target_by_name(search, method=method)
 
 ##
