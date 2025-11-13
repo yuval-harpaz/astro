@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2025-11-13,2024-11-13 01:51:36.518,2024-11-13 09:13:11.030,0,ASPECS-C20,1500,mast:JWST/product/jw05279-o004_t007_miri_f1500w_i2d.jpg,5279,PAHSPECS: An Unbiased Study of PAHs at Cosmic Noon,233002004,not yet,Galaxy; Infrared galaxies; Starburst galaxies
 2025-11-13,2024-11-12 12:48:00.052,2024-11-12 20:09:10.628,0,ASPECS-6,1500,mast:JWST/product/jw05279-o001_t003_miri_f1500w_i2d.jpg,5279,PAHSPECS: An Unbiased Study of PAHs at Cosmic Noon,233001793,not yet,Galaxy; Infrared galaxies; Starburst galaxies
 2025-11-12,2025-05-12 11:42:05.467,2025-05-12 12:43:06.678,0,SNIa2,150 200 277 444,mast:JWST/product/jw05324-o018_t014_nircam_clear-f150w_i2d.jpg,5324,"Do Pass z=2, Do Collect Type Ia Supernovae: Breaking Out of Redshift Jail with JWST",264933945,not yet,Star; Supernovae; Type Ia supernovae
 2025-11-10,2024-11-10 03:15:58.962,2024-11-10 04:53:09.170,0,CETUS-DSPH, 90 115 150 277 356 444,mast:JWST/product/jw04783-o007_t007_nircam_clear-f090w_i2d.jpg,4783,Anchoring the JWST population II distance ladder to Gaia,232957653,not yet,Galaxy; Dwarf galaxies
