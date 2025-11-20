@@ -93,6 +93,7 @@ def reply_to_post(post, text=None, link=None):
 ##
 if __name__ == '__main__':
     df = pd.read_csv('ngc.csv', sep=',')
+
     # drive = '/media/innereye/KINGSTON/JWST/'
     ##
     if os.path.isdir('/home/innereye'):
@@ -291,8 +292,17 @@ if __name__ == '__main__':
                 print(error)
                 break
         add_crval_to_logs(path2astro=path2astro, drive=drive)
-
-
+    remote = pd.read_csv('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/ngc.csv', sep=',')
+    # fill posted values in remote
+    for rr in range(len(remote)):
+        row = np.where(df['obsid'] == remote['obsid'][rr])[0]
+        if len(row) > 0:
+            if len(row) > 1:
+                print(f"warning: multiple rows for {remote['obsid'][rr]}")
+            row = row[0]
+            if str(remote['posted'][rr]) != str(df['posted'][row]) and 'http' in str(df['posted'][row]):
+                remote.at[rr, 'posted'] = df['posted'][row]
+    remote.to_csv(path2astro+'/ngc.csv', index=False)
 # print('trying sending to oshi')
 # err = os.system(f"curl -T {pic} https://oshi.ec > tmp.txt")
 # if err:
