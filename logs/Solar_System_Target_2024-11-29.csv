@@ -1,8 +1,8 @@
-file,width,height,offset,chosen
-jw09219-o001_t001_nircam_f150w2-f164n_i2d.fits,1114.0,1189.0,34.5603287,True
-jw09219-o001_t001_nircam_clear-f187n_i2d.fits,565.0,603.0,34.5603287,True
-jw09219-o001_t001_nircam_clear-f212n_i2d.fits,1161.0,1239.0,34.5603287,True
-jw09219-o001_t001_nircam_clear-f335m_i2d.fits,2436.0,2595.0,34.5603287,True
-jw09219-o001_t001_nircam_clear-f430m_i2d.fits,2485.0,2647.0,34.5603287,True
-jw09219-o001_t001_nircam_f405n-f444w_i2d.fits,2428.0,2587.0,34.5603287,True
-jw09219-o001_t001_nircam_f444w-f470n_i2d.fits,2446.0,2605.0,34.5603287,True
+"file","width","height","offset","chosen","CRVAL1","CRVAL2","CRVAL1fix","CRVAL2fix"
+"jw09219-o001_t001_nircam_f150w2-f164n_i2d.fits",1114,1189,34.5603287,"True",344.702949783988,-8.73343446146741,,
+"jw09219-o001_t001_nircam_clear-f187n_i2d.fits",565,603,34.5603287,"False",,,,
+"jw09219-o001_t001_nircam_clear-f212n_i2d.fits",1161,1239,34.5603287,"True",,,344.702955,-8.73343
+"jw09219-o001_t001_nircam_clear-f335m_i2d.fits",2436,2595,34.5603287,"False",,,,
+"jw09219-o001_t001_nircam_clear-f430m_i2d.fits",2485,2647,34.5603287,"True",,,344.7029,-8.73318
+"jw09219-o001_t001_nircam_f405n-f444w_i2d.fits",2428,2587,34.5603287,"True",,,344.70287,-8.7332
+"jw09219-o001_t001_nircam_f444w-f470n_i2d.fits",2446,2605,34.5603287,"True",,,344.70285,-8.7332
