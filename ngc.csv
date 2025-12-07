@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2025-12-06,2024-11-29 14:26:54.846,2024-12-06 03:24:33.426,0,Solar_System_Target,164 187 212 335 430 444 470,mast:JWST/product/jw09219-o001_t001_nircam_f150w2-f164n_i2d.jpg,9219,NIRCam Observations of a Solar System Object,233288143,not yet,Solar System; Planet
 2025-12-05,2024-12-02 14:15:52.883,2024-12-02 15:05:59.234,0,J0923+0247,150 200 277 444,mast:JWST/product/jw03954-o025_t008_nircam_clear-f150w_i2d.jpg,3954,Luminous and dark matter in massive galaxies at z=4-5,233336002,not yet,Galaxy; High-redshift galaxies
 2025-12-04,2024-12-04 00:45:05.053,2024-12-04 01:26:14.726,0,COOLJ0542-2125,115 150 444,mast:JWST/product/jw06675-o003_t004_nircam_clear-f115w_i2d.jpg,6675,Time delay cosmography with strong cluster lenses.,233335499,not yet,Galaxy; Quasars
 2025-12-02,2024-12-02 01:49:05.715,2024-12-02 02:14:08.888,0,ANDROMEDA-XIV,150 277,mast:JWST/product/jw04514-o002_t002_nircam_clear-f150w_i2d.jpg,4514,Dynamics of the Andromeda Galaxy Satellite System,233289727,not yet,Galaxy; Dwarf galaxies; Dwarf spheroidal galaxies
