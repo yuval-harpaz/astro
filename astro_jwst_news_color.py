@@ -4,6 +4,7 @@ See here: https://bsky.app/profile/astrobotjwst.bsky.social
 @Author: Yuval Harpaz
 '''
 # requires pandas as well, no need to import
+import time
 import astropy
 import matplotlib.pyplot as plt
 from astroquery.mast import Observations
@@ -32,8 +33,21 @@ args = {'obs_collection': "JWST",
         'dataproduct_type': "image"}
 
 # search images by observation date and by release date
-table_release = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
-table_min = Observations.query_criteria(t_min=[start_time, end_time], **args)
+#try 5 times
+for attempt in range(5):
+    try:
+        table_release = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
+        break
+    except Exception as e:
+        print(f"Attempt {attempt+1} failed: {e}")
+        time.sleep(1)
+for attempt in range(5):
+    try:
+        table_min = Observations.query_criteria(t_min=[start_time, end_time], **args)
+        break
+    except Exception as e:
+        print(f"Attempt {attempt+1} failed: {e}")
+        time.sleep(1)
 table = table_min.to_pandas().merge(table_release.to_pandas(), how='outer')
 # Rewrite the web page if there's any data from the last 14 days. Set titles to show description when
 # hover over images
