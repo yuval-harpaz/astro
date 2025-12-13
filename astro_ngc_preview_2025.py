@@ -1,4 +1,5 @@
 import os
+from time import time
 from astro_utils import *
 from astropy.time import Time
 from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
@@ -147,7 +148,14 @@ if __name__ == '__main__':
                                 'dataRights': 'public',
                                 'intentType': 'science',
                                 'dataproduct_type': "image"}
-                        table = Observations.query_criteria(**args)
+                        # try five times, wait 1 sec in between
+                        for attempt in range(5):
+                            try:
+                                table = Observations.query_criteria(**args)
+                                break
+                            except Exception as e:
+                                print(f"Attempt {attempt+1} failed: {e}")
+                                time.sleep(1)
                         isnotnirspec = np.array(['NIRSPEC' not in x.upper() for x in table['instrument_name']])
                         isnotniriss = np.array(['NIRISS' not in x.upper() for x in table['instrument_name']])
                         table = table[isnotnirspec & isnotniriss]

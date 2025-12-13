@@ -784,6 +784,7 @@ def annotate_simbad(img_file, fits_file, crop=None, save=True, fontScale=0.65, f
     wcs = WCS(header)
     print('querying SIMBAD')
     my_simbad = Simbad()
+    my_simbad.TIMEOUT = 300  # seconds
     my_simbad.add_votable_fields('otype')
     result_table = my_simbad.query_region(
         SkyCoord(ra=header['CRVAL1'],
