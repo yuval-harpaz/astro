@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2025-12-14,2025-12-13 15:46:23.418,2025-12-14 02:18:03.282,0,C3D-19_CWEBTILE-1-10, 356 1000 2100,,5893,COSMOS-3D: A Legacy Spectroscopic/Imaging Survey of the Early Universe,368593391,not yet,Galaxy; Field galaxies
 2025-12-13,2025-12-13 01:02:31.847,2025-12-13 02:18:02.982,0,C3D_SN,150 200 277 356 444,mast:JWST/product/jw09372-o003_t001_nircam_clear-f150w_i2d.jpg,9372,"A Luminous, Red Transient at  z = 3: An Extreme Test Bed for Supernova Evolution",367884150,not yet,Star; Supernovae
 2025-12-12,2024-12-12 04:54:49.883,2024-12-12 05:24:10.821,0,SDSSJ1004+4112,115 150 444,mast:JWST/product/jw06675-o005_t006_nircam_clear-f115w_i2d.jpg,6675,Time delay cosmography with strong cluster lenses.,233551168,not yet,Galaxy; Quasars
 2025-12-10,2024-12-09 04:49:20.617,2024-12-09 05:50:07.136,0,J0036+0033, 770 1000 1130,mast:JWST/product/jw05554-o017_t007_miri_f770w_i2d.jpg,5554,Ionization and Obscuration in LyC Emitters: A MIR Look at Lyman Continuum Escape,233386231,not yet,Galaxy; Emission line galaxies; Starburst galaxies
