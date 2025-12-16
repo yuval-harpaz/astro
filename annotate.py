@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import matplotlib.pyplot as plt
 from astropy.io import fits
@@ -75,7 +76,7 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
         img[np.isnan(img)] = 0
         plt.imsave(img_file, img, origin='lower')
     
-    img = plt.imread(img_file)
+    img = plt.imread(img_file).copy()
     if img.shape[2] == 4:
         img = img[..., :3]
     
@@ -170,6 +171,9 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
         img = 255 * img
         img = img.astype('uint8')
     
+    # Make a writable copy of the image
+    img = np.array(img, copy=True)
+    
     # Annotate image
     for idx in range(len(result_table_inframe)):
         row = result_table_inframe.iloc[idx]
@@ -177,15 +181,46 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
         py = int(np.round(y2)) - int(np.round(row['pix_y']))
         
         if cross:
-            # Draw crosshair
-            crosshair_size = 20
-            color_bgr = row['color']
-            # Horizontal line
-            img = plt.plot([px - crosshair_size, px + crosshair_size], [py, py], 
-                          color=np.array(color_bgr)/255, linewidth=2)
-            # Vertical line  
-            img = plt.plot([px, px], [py - crosshair_size, py + crosshair_size],
-                          color=np.array(color_bgr)/255, linewidth=2)
+            # Draw crosshair directly in pixels - white color, 3 pixels wide, 20 pixels away from center
+            crosshair_length = 20  # Length of each arm from gap to end
+            if np.nanmax(img) <= 1:
+                color_rgb = np.array([1.0, 1.0, 1.0])  # White for float images
+            else:
+                color_rgb = np.array([255, 255, 255])  # White for uint8 images
+            thickness = 3  # 3 pixels wide
+            gap = 20  # 20 pixels away from center
+            
+            # Horizontal lines (left and right of center)
+            for t in range(-thickness//2, thickness//2 + 1):
+                y_line = py + t
+                if 0 <= y_line < img.shape[0]:
+                    # Left side - from (px - gap - crosshair_length) to (px - gap)
+                    x_start_left = max(0, px - gap - crosshair_length)
+                    x_end_left = max(0, px - gap)
+                    if x_end_left > x_start_left:
+                        img[y_line, x_start_left:x_end_left] = color_rgb
+                    
+                    # Right side - from (px + gap) to (px + gap + crosshair_length)
+                    x_start_right = min(img.shape[1], px + gap)
+                    x_end_right = min(img.shape[1], px + gap + crosshair_length)
+                    if x_end_right > x_start_right:
+                        img[y_line, x_start_right:x_end_right] = color_rgb
+            
+            # Vertical lines (top and bottom of center)
+            for t in range(-thickness//2, thickness//2 + 1):
+                x_line = px + t
+                if 0 <= x_line < img.shape[1]:
+                    # Bottom side - from (py - gap - crosshair_length) to (py - gap)
+                    y_start_bottom = max(0, py - gap - crosshair_length)
+                    y_end_bottom = max(0, py - gap)
+                    if y_end_bottom > y_start_bottom:
+                        img[y_start_bottom:y_end_bottom, x_line] = color_rgb
+                    
+                    # Top side - from (py + gap) to (py + gap + crosshair_length)
+                    y_start_top = min(img.shape[0], py + gap)
+                    y_end_top = min(img.shape[0], py + gap + crosshair_length)
+                    if y_end_top > y_start_top:
+                        img[y_start_top:y_end_top, x_line] = color_rgb
         else:
             # Draw text
             txt = row['MAIN_ID']
@@ -199,37 +234,20 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
                          row['color'], thickness, LINE_AA)
     
     # Save annotated image (always save by default)
-    output_file = img_file.replace('.png', '_ann.png')
-    if cross:
-        # If cross mode, need to save the figure
-        plt.figure(figsize=(img.shape[1]/100, img.shape[0]/100), dpi=100)
-        plt.imshow(img, origin='lower')
-        plt.axis('off')
-        
-        for idx in range(len(result_table_inframe)):
-            row = result_table_inframe.iloc[idx]
-            px = row['pix_x'] - x1
-            py = row['pix_y'] - y1
-            crosshair_size = 20
-            color_rgb = np.array(row['color'])/255
-            
-            # Horizontal line
-            plt.plot([px - crosshair_size, px + crosshair_size], [py, py], 
-                    color=color_rgb, linewidth=2)
-            # Vertical line  
-            plt.plot([px, px], [py - crosshair_size, py + crosshair_size],
-                    color=color_rgb, linewidth=2)
-        
-        plt.savefig(output_file, bbox_inches='tight', pad_inches=0)
-        plt.close()
-    else:
-        plt.imsave(output_file, img)
+    output_file = img_file[:img_file.index('.')] + '_ann.png'
+    plt.imsave(output_file, img)
     
     print(f"Saved annotated image to: {output_file}")
     
     # Save table to CSV (always save by default)
-    csv_file = img_file.replace('.png', '_objects.csv')
+    csv_file = img_file.replace('.png', '.csv')
     result_table_inframe.to_csv(csv_file, index=False)
     print(f"Saved object table to: {csv_file}")
     
     return result_table_inframe
+
+
+if __name__ == "__main__":
+    os.chdir('/media/innereye/KINGSTON/JWST/data/SN-2003GD')
+    annotate('filt05.jpg', 'jw06049-o001_t001_miri_f560w_i2d.fits', filter='SN 2003', cross=True)
+

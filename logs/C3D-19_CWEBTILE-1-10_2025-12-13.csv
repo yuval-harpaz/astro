@@ -1,0 +1,6 @@
+file,width,height,offset,chosen
+jw05893-o019_t019_nircam_clear-f115w_i2d.fits,14585.0,16589.0,613.4550336,True
+jw05893-o019_t019_nircam_clear-f200w_i2d.fits,14236.0,16947.0,167.2892862,True
+jw05893-o019_t019_nircam_clear-f356w_i2d.fits,7153.0,8155.0,177.353306,True
+jw05893-o019_t019_miri_f1000w_i2d.fits,6762.0,4505.0,625.4461723,True
+jw05893-o019_t019_miri_f2100w_i2d.fits,6728.0,4601.0,177.353306,True
