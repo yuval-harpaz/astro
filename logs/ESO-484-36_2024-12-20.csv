@@ -1,0 +1,7 @@
+file,width,height,offset,chosen
+jw05637-o003_t001_miri_f770w-sub256_i2d.fits,406.0,397.0,3.9967538,True
+jw05637-o003_t001_miri_f1130w-sub256_i2d.fits,406.0,397.0,3.9967538,True
+jw05637-o003_t001_miri_f2100w-sub256_i2d.fits,406.0,397.0,3.9967538,True
+jw05637-o001_t001_miri_f770w_i2d.fits,1177.0,1160.0,3.9967537,False
+jw05637-o001_t001_miri_f1130w_i2d.fits,1177.0,1160.0,3.9967537,False
+jw05637-o001_t001_miri_f2100w_i2d.fits,1177.0,1160.0,3.9967537,False

@@ -1,0 +1,5 @@
+file,width,height,offset,chosen
+jw06480-o016_t016_nircam_clear-f070w_i2d.fits,10082.0,4577.0,91.3420426,True
+jw06480-o016_t016_nircam_clear-f115w_i2d.fits,10082.0,4577.0,97.8202528,True
+jw06480-o016_t016_nircam_clear-f200w_i2d.fits,10645.0,4461.0,97.8202528,True
+jw06480-o016_t016_nircam_clear-f444w_i2d.fits,5246.0,2146.0,91.3420426,True

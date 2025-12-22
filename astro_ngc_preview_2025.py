@@ -14,6 +14,7 @@ blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
 blim = 250  # should be 300 limit but failed once
 masto, loc = connect_bot()
 deband = True
+
 highlight_url = 'https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html'
 def post_image(message, image_path, alt=None, mastodon=True, bluesky=True):
     """Post an image with a message to Mastodon and/or Bluesky.
@@ -116,6 +117,8 @@ if __name__ == '__main__':
         print(f"last NGC already posted ({df['target_name'][last_post_row]})")
     else:
         for row in range(last_post_row):
+            if 'skip' in df['posted'][row]:
+                continue
             pkl = False
             tgt = df['target_name'][row]
             try:
@@ -224,7 +227,7 @@ if __name__ == '__main__':
                                     make_image = False
                                     os.chdir(drive+'/data/'+tgt)
                             if make_image:
-                                auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=output_jpg, pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1}, deband=True)
+                                auto_plot(tgt, exp=list(files[mn[:, 0] == 1]), png=output_jpg, pkl=pkl, method='filt05', fill=True, adj_args={'factor':1}, deband=True)
                             else:
                                 os.chdir(drive+'/data/'+tgt)
                             plotted.append(output_jpg)
@@ -238,7 +241,7 @@ if __name__ == '__main__':
                                     make_image = False
                                     os.chdir(drive+'/data/'+tgt)
                             if make_image:
-                                img = auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=output_jpg, pkl=pkl, method='rrgggbb', fill=True, adj_args={'factor':1}, deband=deband)
+                                img = auto_plot(tgt, exp=list(files[mn[:, 1] == 1]), png=output_jpg, pkl=pkl, method='filt05', fill=True, adj_args={'factor':1}, deband=deband)
                                 img = grey_zeros(img, replace=np.max)
                                 plt.imsave(output_jpg, img, origin='lower')
                             plotted.append(output_jpg)
