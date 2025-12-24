@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2025-12-24,2025-12-24 07:55:09.983,2025-12-24 08:16:37.649,0,LRN2025abao,1800 2100 2550,,12487,CEE it happen: Common-Envelope Evolution in action with early JWST observations of a stellar merger in M31,368834948,not yet,Star; Novae
 2025-12-17,2025-12-02 19:33:27.687,2025-12-16 11:40:21.652,0,C3D-20_CWEBTILE-1-14,115 200 356,mast:JWST/product/jw05893-o020_t020_nircam_clear-f115w_i2d.jpg,5893,COSMOS-3D: A Legacy Spectroscopic/Imaging Survey of the Early Universe,368595162,not yet,Galaxy; Field galaxies
 2025-12-21,2025-12-21 09:36:57.384,2025-12-21 12:02:22.365,0,C3D-19_CWEBTILE-1-10, 115  200 1000 2100,,5893,COSMOS-3D: A Legacy Spectroscopic/Imaging Survey of the Early Universe,368832629,skip,Galaxy; Field galaxies
 2025-12-15,2025-12-13 15:46:41.201,2025-12-14 02:18:03.282,0,C3D-19_CWEBTILE-1-10,115 200 356,mast:JWST/product/jw05893-o019_t019_nircam_clear-f115w_i2d.jpg,5893,COSMOS-3D: A Legacy Spectroscopic/Imaging Survey of the Early Universe,368593864,skip,Galaxy; Field galaxies
