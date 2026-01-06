@@ -6,10 +6,12 @@ from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
 from glob import glob
 from astro_ngc_align import add_crval_to_logs
 from atproto import Client as Blient
-from atproto import client_utils, models
+from atproto import client_utils, models, Request
 from mastodon_bot import connect_bot
+from httpx import Timeout
 
-blient = Blient()
+bequest = Request(timeout=Timeout(timeout=10.0))
+blient = Blient(request=bequest)
 blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
 blim = 250  # should be 300 limit but failed once
 masto, loc = connect_bot()
