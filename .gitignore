@@ -9,3 +9,6 @@ tmp*
 *.fits
 .*
 *~
+bsky-poster
+bsky_post.html
+bsky-web-poster/
