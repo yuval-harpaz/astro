@@ -925,7 +925,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     core: bool
         True to try focus on the core of the galaxy, in order to stretch the colors differently.
     adj_args: dict
-        arguments to pass to level_adjust
+        arguments to pass to level_adjust. adj_args={'lims': [0.03, 0.98], 'factor': 2}. factor = None means normalize only.
     opvar: str
         what variable to return. 'rgb' or 'layers'
     deband: bool | int | list | ndarray
@@ -1772,6 +1772,10 @@ def log1(arr):
     arr = np.log10(arr)
     return arr
 
+def asinh(arr):
+    arr = np.arcsinh(arr)
+    return arr
+
 drive = '/media/innereye/KINGSTON/JWST/'
 def download_by_log(log_csv, tgt=None, overwrite=False, method='chunk', path2data=None):
     if log_csv[0] != '/':
@@ -2049,8 +2053,7 @@ def cluster_coordinates(coords, threshold=0.001):
 
 if __name__ == '__main__':
     # auto_plot('SF_reg_1', exp='*clear*.fits', method='filt05', png='reproj227.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True, deband=False, deband_flip=None, pkl=True, reproject_to='f277w')
-    # fitscopy https://mast.stsci.edu/portal/Download/file/JWST/product/jw06751-o002_t002_miri_f2100w_i2d.fits[1] data.fits
-    file = 'jw06751-o002_t002_miri_f2100w_i2d.fits'
-    destination = '/home/innereye/astro/data/'
-    download_fits_files([file], destination_folder=destination, overwrite=True, method='chunk')
+    auto_plot('SN2023dbc', exp='*o039*.fits', method='filt05', png='testNone.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True)
+    
+
 

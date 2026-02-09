@@ -1,0 +1,9 @@
+"file","chosen","CRVAL1","CRVAL2","CRVAL1fix","CRVAL2fix"
+"jw06379-o001_t001_nircam_clear-f150w2_i2d.fits","False",,,50.553662,18.260986
+"jw06379-o001_t001_nircam_clear-f322w2_i2d.fits","True",,,50.546123,18.24976
+"jw06379-o002_t001_nircam_clear-f070w_i2d.fits","True","50.5536470633347","18.260982090914645",,
+"jw06379-o002_t001_nircam_clear-f115w_i2d.fits","True",,,50.553645,18.26098
+"jw06379-o002_t001_nircam_clear-f150w_i2d.fits","True",,,50.55365,18.260985
+"jw06379-o002_t001_nircam_clear-f277w_i2d.fits","True",50.5461146941924,18.249770064335,,
+"jw06379-o002_t001_nircam_clear-f356w_i2d.fits","True",,,50.546115,18.249767
+"jw06379-o002_t001_nircam_clear-f444w_i2d.fits","True",,,50.54611,18.249767

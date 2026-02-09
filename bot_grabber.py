@@ -60,8 +60,9 @@ def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, i
         lims: list
             lower and upper lim for normalization. if >= one, quantiles are assumed. otherwise these are the
             actual values between which the image is normalized.
-        factor: int
+        factor: int | None
             you can play with it but I would leave it alone. you can try factor=1 to avoid power, sometimes nice.
+            if None, no power law is applied, normalize between lims.
         ignore0: bool
             ignore zeros (or values below lower limit) when using image_histogram_equalization
 
@@ -92,9 +93,12 @@ def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, i
         no_outliers = np.minimum(no_outliers, maxval)
         rescaled_no_outliers = (no_outliers - minval) / (maxval - minval)
         rescaled = rescaled_no_outliers
-    img_eqd = image_histogram_equalization(rescaled_no_outliers, ignore0=ignore0)
-    img_eqd = (pow(img_eqd, factor) + pow(img_eqd, factor*2) + pow(img_eqd, factor*4)) / 3.0
-    adjusted = expand_highs((img_eqd + to1(rescaled)) * 0.5)
+    if factor is None:
+        adjusted = rescaled
+    else:
+        img_eqd = image_histogram_equalization(rescaled_no_outliers, ignore0=ignore0)
+        img_eqd = (pow(img_eqd, factor) + pow(img_eqd, factor*2) + pow(img_eqd, factor*4)) / 3.0
+        adjusted = expand_highs((img_eqd + to1(rescaled)) * 0.5)
     if mask is not None:
         adjusted[mask] = np.nan
     return np.clip(adjusted * nonzeros, 0.0, 1.0)
