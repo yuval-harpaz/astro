@@ -945,7 +945,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     # TODO: clean small holes fast without conv, remove red background
     for search in ['./',
                    '../',
-                   '/media/innereye/KINGSTON/JWST/data/',
+                   drive+'data/',
                    '/home/innereye/astro/data/',
                    '/home/innereye/JWST/']:
         if os.path.isdir(search+folder):
@@ -1775,8 +1775,11 @@ def log1(arr):
 def asinh(arr):
     arr = np.arcsinh(arr)
     return arr
+if os.path.exists('/media/innereye/'):
+    drive = '/media/innereye/KINGSTON/JWST/'
+else:
+    drive = '/media/yuval/KINGSTON/JWST/'
 
-drive = '/media/innereye/KINGSTON/JWST/'
 def download_by_log(log_csv, tgt=None, overwrite=False, method='chunk', path2data=None):
     if log_csv[0] != '/':
         log_csv = '/home/innereye/astro/logs/' + log_csv
@@ -2053,7 +2056,7 @@ def cluster_coordinates(coords, threshold=0.001):
 
 if __name__ == '__main__':
     # auto_plot('SF_reg_1', exp='*clear*.fits', method='filt05', png='reproj227.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True, deband=False, deband_flip=None, pkl=True, reproject_to='f277w')
-    auto_plot('SN2023dbc', exp='*o039*.fits', method='filt05', png='testNone.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True)
+    auto_plot('A2744', exp='*.fits', method='filt05', png='test.jpg', crop=False, func=None, adj_args={'factor':2}, fill=True)
     
 
 
