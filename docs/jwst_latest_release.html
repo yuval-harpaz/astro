@@ -1,132 +1,298 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Latest Telescope Images</title>
   <link rel="stylesheet" href="styles2025.css">
   <style>
-  </style>
-</head>
-<link rel="icon" type="image/x-icon" href="https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/camelfav.ico">
-<body>
-  <h1>Latest JWST Image Releases (Past 7 Days)</h1>
- <div class="container"><div class="social-links"><h2>By Yuval Harpaz
-    <a href="https://nerdculture.de/@yuvharpaz"><img src="mastodona.png" alt="nerdculture.de/@yuvharpaz" /></a>
-    <a href="https://bsky.app/profile/yuvharpaz.bsky.social"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/600px-Bluesky_Logo.svg.png" alt="yuvharpaz.bsky.social" /></a>
-    <a href="https://github.com/yuval-harpaz/astro/blob/main/README.md"><img src="github-mark.png" alt="github.com/yuval-harpaz" /></a>
-    <a href="https://github.com/yuval-harpaz/astro/blob/main/docs/latest.csv" target="_blank"> <img src="csv1.png" alt="csv logo"/></a>
-    Bots: mastodon<a href="https://botsin.space/@astrobot_jwst"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>
-    bluesky<a href="https://bsky.app/profile/astrobotjwst.bsky.social"><img src="camelfav.ico" alt="botsin.space/@astrobot_jwst" /></a>    </h2>
-</div>
-Preview images and image information are from <a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" style="color:#66fcf1;"> STScI | MAST</a>. Credit
- also to NASA, ESA and CSA (<a href="https://webbtelescope.org/copyright" target="_blank" style="color:#66fcf1;">ref</a>).
-  <div id="image-container">Loading...</div>
-
-  <script>
-    async function loadCSV(url) {
-      const response = await fetch(url);
-      const text = await response.text();
-      return parseCSV(text);
+    #controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+      background: rgba(31, 40, 51, 0.8);
+      padding: 15px;
+      border-radius: 8px;
     }
 
-function parseCSV(csv) {
-    const lines = csv.trim().split('\n');
-    const headers = lines[0].split(',').map(h => h.trim());
+    #controls input {
+      background: #0b0c10;
+      border: 1px solid #45a29e;
+      color: white;
+      padding: 8px;
+      border-radius: 4px;
+      width: 250px;
+      min-width: 150px;
+    }
 
-    return lines.slice(1).map(line => {
-        const values = [];
-        let current = '';
-        let inQuotes = false;
+    #controls button {
+      background: #66fcf1;
+      color: #0b0c10;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
 
-        for (let i = 0; i < line.length; i++) {
+    #controls button:hover {
+      background: #45a29e;
+    }
+
+    #nav-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    #current-range {
+      margin-left: auto;
+      font-style: italic;
+      color: #66fcf1;
+    }
+  </style>
+</head>
+<link rel="icon" type="image/x-icon"
+  href="https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/camelfav.ico">
+
+<body>
+  <h1 id="main-title">Latest JWST Image Releases</h1>
+
+  <div id="controls">
+    <div id="nav-controls">
+      <button id="prev-btn">Prev 7 Days</button>
+      <button id="next-btn">Next 7 Days</button>
+    </div>
+    <input type="text" id="search-input" placeholder="Search target or title...">
+    <button id="search-btn">Search</button>
+    <span id="current-range"></span>
+  </div>
+  <div class="container">
+    <div class="social-links">
+      <h2>By Yuval Harpaz
+        <a href="https://nerdculture.de/@yuvharpaz"><img src="mastodona.png" alt="nerdculture.de/@yuvharpaz" /></a>
+        <a href="https://bsky.app/profile/yuvharpaz.bsky.social"><img
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/600px-Bluesky_Logo.svg.png"
+            alt="yuvharpaz.bsky.social" /></a>
+        <a href="https://github.com/yuval-harpaz/astro/blob/main/README.md"><img src="github-mark.png"
+            alt="github.com/yuval-harpaz" /></a>
+        <a href="https://github.com/yuval-harpaz/astro/blob/main/docs/latest.csv" target="_blank"> <img src="csv1.png"
+            alt="csv logo" /></a>
+        Bots: mastodon<a href="https://botsin.space/@astrobot_jwst"><img src="camelfav.ico"
+            alt="botsin.space/@astrobot_jwst" /></a>
+        bluesky<a href="https://bsky.app/profile/astrobotjwst.bsky.social"><img src="camelfav.ico"
+            alt="botsin.space/@astrobot_jwst" /></a>
+      </h2>
+    </div>
+    Preview images and image information are from <a
+      href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" style="color:#66fcf1;"> STScI
+      | MAST</a>. Credit
+    also to NASA, ESA and CSA (<a href="https://webbtelescope.org/copyright" target="_blank"
+      style="color:#66fcf1;">ref</a>).
+    <div id="earliest-release-info" style="font-size: 0.8em; color: #45a29e; margin-top: 10px;"></div>
+    <div id="image-container">Loading...</div>
+
+    <script>
+      let allData = [];
+      let currentEndDate = new Date();
+      let isSearchMode = false;
+      let searchQuery = "";
+
+      async function loadCSV(url) {
+        const response = await fetch(url);
+        const text = await response.text();
+        return parseCSV(text);
+      }
+
+      function parseCSV(csv) {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+
+        return lines.slice(1).map(line => {
+          const values = [];
+          let current = '';
+          let inQuotes = false;
+
+          for (let i = 0; i < line.length; i++) {
             const char = line[i];
             if (char === '"' && line[i + 1] === '"') {
-                current += '"'; // escaped quote
-                i++;
+              current += '"'; // escaped quote
+              i++;
             } else if (char === '"') {
-                inQuotes = !inQuotes;
+              inQuotes = !inQuotes;
             } else if (char === ',' && !inQuotes) {
-                values.push(current);
-                current = '';
+              values.push(current);
+              current = '';
             } else {
-                current += char;
+              current += char;
             }
-        }
-        values.push(current); // last value
+          }
+          values.push(current); // last value
 
-        const obj = {};
-        headers.forEach((header, i) => {
+          const obj = {};
+          headers.forEach((header, i) => {
             let value = values[i]?.trim() || '';
 
-            // Special case: convert mast: to full URL in jpegURL
-            if (header === 'jpegURL' && value.startsWith('mast:')) {
-                value = value.replace(
-                    'mast:',
-                    'https://mast.stsci.edu/portal/Download/file/'
-                );
+            // Special case: convert mast: to full URL in jpegURL and dataURL
+            if ((header === 'jpegURL' || header === 'dataURL') && value.startsWith('mast:')) {
+              value = value.replace(
+                'mast:',
+                'https://mast.stsci.edu/portal/Download/file/'
+              );
             }
 
             obj[header] = value;
+          });
+
+          return obj;
         });
-
-        return obj;
-    });
-}
-
-    function displayImages(data) {
-      const container = document.getElementById('image-container');
-      container.innerHTML = ''; // Clear previous content
-
-      const now = new Date();
-      const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-      const recent = data.filter(item => {
-        const date = new Date(item.t_obs_release);
-        return date.getTime() > oneWeekAgo.getTime();
-      });
-
-      if (recent.length === 0) {
-        container.innerHTML = '<p>No recent images.</p>';
-        return;
       }
 
-      recent.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release));
+      function updateView() {
+        const container = document.getElementById('image-container');
+        const title = document.getElementById('main-title');
+        const rangeSpan = document.getElementById('current-range');
 
-      recent.forEach(item => {
-        const card = document.createElement('div');
-        const fitsUrl = item.jpegURL ? item.jpegURL.replace(/\.\w+$/, '.fits') : '#';
-        const filterMatch = item.jpegURL ? item.jpegURL.match(/[-_]f(.*?)_i2d/) : null;
-        const filter = filterMatch ? filterMatch[1] : 'unknown filter';
-        // console.log(item.jpegURL)
-        const releaseDate = new Date(item.t_obs_release);
-        const utcDateOnly = releaseDate.toISOString().split('T')[0];
-        const obsDate = new Date(item.t_max);
-        const utcMax = obsDate.toISOString().split('T')[0];
-        const instrument = item.instrument_name.replace("/IMAGE","")
-        const title = item.obs_title
-        const fits = fitsUrl.split('/')[8]
-        card.className = 'image-card';
-        card.innerHTML = `
+        container.innerHTML = '';
+
+        let filteredData = [];
+        if (isSearchMode) {
+          const normalize = (str) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          const query = searchQuery.toLowerCase();
+          const normalizedQuery = normalize(searchQuery);
+
+          filteredData = allData.filter(item => {
+            const targetName = (item.target_name || "").toLowerCase();
+            const obsTitle = (item.obs_title || "").toLowerCase();
+            const jpegURL = (item.jpegURL || "").toLowerCase();
+            const dataURL = (item.dataURL || "").toLowerCase();
+
+            return targetName.includes(query) ||
+              normalize(targetName).includes(normalizedQuery) ||
+              obsTitle.includes(query) ||
+              jpegURL.includes(query) ||
+              dataURL.includes(query);
+          });
+          title.innerText = `Search Results: "${searchQuery}"`;
+          rangeSpan.innerText = `${filteredData.length} matches found`;
+        } else {
+          const startDate = new Date(currentEndDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+          filteredData = allData.filter(item => {
+            const date = new Date(item.t_obs_release);
+            return date.getTime() > startDate.getTime() && date.getTime() <= currentEndDate.getTime();
+          });
+
+          const endStr = currentEndDate.toISOString().split('T')[0];
+          const startStr = startDate.toISOString().split('T')[0];
+
+          const now = new Date();
+          const isLatest = (now.getTime() - currentEndDate.getTime() < 3600000); // within 1 hour
+
+          if (isLatest) {
+            title.innerText = "Latest JWST Image Releases (Past 7 Days)";
+          } else {
+            title.innerText = `JWST Releases: ${startStr} to ${endStr}`;
+          }
+
+          rangeSpan.innerText = "";
+          document.getElementById('next-btn').disabled = isLatest;
+        }
+
+        if (filteredData.length === 0) {
+          container.innerHTML = '<p>No images found for this criteria.</p>';
+          return;
+        }
+
+        filteredData.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release));
+
+        filteredData.forEach(item => {
+          const card = document.createElement('div');
+          const fitsUrl = item.jpegURL ? item.jpegURL.replace(/\.\w+$/, '.fits') : '#';
+          const filterMatch = item.jpegURL ? item.jpegURL.match(/[-_]f(.*?)_i2d/) : null;
+          const filter = filterMatch ? filterMatch[1] : 'unknown filter';
+          const releaseDate = new Date(item.t_obs_release);
+          const utcDateOnly = releaseDate.toISOString().split('T')[0];
+          const obsDate = new Date(item.t_max);
+          const utcMax = obsDate.toISOString().split('T')[0];
+          const instrument = item.instrument_name.replace("/IMAGE", "")
+          const titleText = item.obs_title
+          const fits = fitsUrl.split('/')[8] || 'File';
+
+          card.className = 'image-card';
+          card.innerHTML = `
           <img src="${item.jpegURL || ''}" alt="${item.target_name || ''}" title="${fits}">
           <div class="image-info">
               <h2>${item.target_name}</h2>
               <p>Instrument: ${instrument}. Filter: f${filter}.</p>
-              <Proposal ID: PI: ${item.proposal_id}, PI: ${item.proposal_pi}.</p>
+              <p>Proposal ID: ${item.proposal_id}, PI: ${item.proposal_pi}.</p>
               <p>Observed: ${utcMax}. Released: ${utcDateOnly}</p>
-              <p>Title: ${title}
+              <p>Title: ${titleText}</p>
               <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a></p>
-              
           </div>
         `;
-        container.appendChild(card);
-      });
-    }
+          container.appendChild(card);
+        });
+      }
 
-    // Load your CSV (replace with your raw GitHub URL if needed)
-    loadCSV('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/latest.csv').then(displayImages).catch(err => {
-      document.getElementById('image-container').innerHTML = '<p>Error loading data.</p>';
-      console.error(err);
-    });
-  </script>
+      // Event Listeners
+      document.getElementById('search-btn').onclick = () => {
+        searchQuery = document.getElementById('search-input').value.trim();
+        if (searchQuery) {
+          isSearchMode = true;
+          updateView();
+        }
+      };
+
+      document.getElementById('search-input').onkeypress = (e) => {
+        if (e.key === 'Enter') document.getElementById('search-btn').click();
+      };
+
+      document.getElementById('prev-btn').onclick = () => {
+        if (isSearchMode) {
+          isSearchMode = false;
+          currentEndDate = new Date(); // Reset to latest
+        } else {
+          currentEndDate = new Date(currentEndDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        }
+        updateView();
+      };
+
+      document.getElementById('next-btn').onclick = () => {
+        if (isSearchMode) {
+          isSearchMode = false;
+          currentEndDate = new Date(); // Reset to latest
+        } else {
+          const nextDate = new Date(currentEndDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const now = new Date();
+          currentEndDate = nextDate > now ? now : nextDate;
+        }
+        updateView();
+      };
+
+      // Initial Load
+      loadCSV('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/latest.csv')
+        .then(data => {
+          allData = data;
+
+          // Calculate earliest release date
+          if (allData.length > 0) {
+            const releaseDates = allData.map(item => new Date(item.t_obs_release)).filter(d => !isNaN(d));
+            if (releaseDates.length > 0) {
+              const earliest = new Date(Math.min(...releaseDates));
+              const earliestStr = earliest.toISOString().split('T')[0];
+              document.getElementById('earliest-release-info').innerText = `Dataset starts from first release on: ${earliestStr}`;
+            }
+          }
+
+          updateView();
+        })
+        .catch(err => {
+          document.getElementById('image-container').innerHTML = '<p>Error loading data.</p>';
+          console.error(err);
+        });
+    </script>
 </body>
+
 </html>
