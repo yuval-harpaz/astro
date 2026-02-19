@@ -272,9 +272,19 @@
       };
 
       // Initial Load
-      loadCSV('https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/latest.csv')
-        .then(data => {
-          allData = data;
+      const baseRemoteUrl = 'https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/';
+      Promise.all([
+        loadCSV(baseRemoteUrl + 'latest.csv'),
+        loadCSV(baseRemoteUrl + 'older.csv').catch(err => {
+          console.warn("Could not load older.csv, proceeding with latest only.", err);
+          return []; // Fallback if older doesn't exist yet or fails
+        })
+      ])
+        .then(([latestData, olderData]) => {
+          allData = [...latestData, ...olderData];
+
+          // Ensure chronological ordering (newest first)
+          allData.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release));
 
           // Calculate earliest release date
           if (allData.length > 0) {
@@ -282,7 +292,7 @@
             if (releaseDates.length > 0) {
               const earliest = new Date(Math.min(...releaseDates));
               const earliestStr = earliest.toISOString().split('T')[0];
-              document.getElementById('earliest-release-info').innerText = `Dataset starts from first release on: ${earliestStr}`;
+              document.getElementById('earliest-release-info').innerText = `Dataset spans from ${earliestStr} to today. Total records: ${allData.length}`;
             }
           }
 
