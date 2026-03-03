@@ -58,6 +58,7 @@ table = table.sort_values('t_obs_release', ascending=False, ignore_index=True)
 calibration = np.asarray((table['obs_title'].str.contains("alibration")) | (table['intentType'] != 'science'))
 cred = credits()
 science = table[~calibration]
+science = science[~science['instrument_name'].str.contains("NIRSPEC")]
 science = science.reset_index(drop=True)
 for col in ['t_obs_release', 't_max']:
     for row in range(len(science)):
