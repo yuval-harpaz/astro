@@ -119,18 +119,21 @@ if not os.path.exists('data/tmp'):
     os.makedirs('data/tmp')
 
 df = pd.read_csv('docs/bot_color_posts.csv')
+# ignore posts from more than 7 days
+df_recent = df[pd.to_datetime(df['release']) > (pd.Timestamp.now() - pd.Timedelta(days=7))]
+
 min_filt = np.zeros(len(new_targets))
 max_filt = np.zeros(len(new_targets))
 already = np.zeros(len(new_targets), bool)
 for itarget in range(len(new_targets)):
     cand = new_targets[itarget]
-    icand = np.where(df['target_name'].values == cand)[0]
+    icand = np.where(df_recent['target_name'].values == cand)[0]
     if len(icand) > 0:  #compare filters of the current target to last occurance of same target
         icand = icand[-1]
         target_rows = np.where(science['target_name'].values == cand)[0]
         obs_filt = filt_num(science['dataURL'].values[target_rows])
-        if min(obs_filt) >= filt_num([df['blue'].values[icand]])[0] and \
-           max(obs_filt) <= filt_num([df['red'].values[icand]])[0]:
+        if min(obs_filt) >= filt_num([df_recent['blue'].values[icand]])[0] and \
+           max(obs_filt) <= filt_num([df_recent['red'].values[icand]])[0]:
             already[itarget] = True
 
 # prev_target = df['target_name'].values[-1]
