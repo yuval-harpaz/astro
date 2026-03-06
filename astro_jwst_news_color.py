@@ -12,6 +12,7 @@ import numpy as np
 from mastodon_bot import connect_bot
 from skimage.transform import resize
 import os
+import sys
 from astro_list_ngc import social, credits
 from atproto import Client as Blient
 from atproto import client_utils
@@ -25,30 +26,44 @@ n = 7
 print(f'reading {n} days')
 end_time = astropy.time.Time.now().mjd
 start_time = end_time - n
+
+target_arg = sys.argv[1] if len(sys.argv) > 1 else None
+
 ## Query MAST database for level 3 JWST images
 args = {'obs_collection': "JWST",
         'calib_level': 3,
         'dataRights': 'public',
         # 'intentType': 'science',
         'dataproduct_type': "image"}
+if target_arg:
+    args['target_name'] = target_arg
 
 # search images by observation date and by release date
 #try 5 times
-for attempt in range(5):
-    try:
-        table_release = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
-        break
-    except Exception as e:
-        print(f"Attempt {attempt+1} failed: {e}")
-        time.sleep(1)
-for attempt in range(5):
-    try:
-        table_min = Observations.query_criteria(t_min=[start_time, end_time], **args)
-        break
-    except Exception as e:
-        print(f"Attempt {attempt+1} failed: {e}")
-        time.sleep(1)
-table = table_min.to_pandas().merge(table_release.to_pandas(), how='outer')
+if not target_arg:
+    for attempt in range(5):
+        try:
+            table_release = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
+            break
+        except Exception as e:
+            print(f"Attempt {attempt+1} failed: {e}")
+            time.sleep(1)
+    for attempt in range(5):
+        try:
+            table_min = Observations.query_criteria(t_min=[start_time, end_time], **args)
+            break
+        except Exception as e:
+            print(f"Attempt {attempt+1} failed: {e}")
+            time.sleep(1)
+    table = table_min.to_pandas().merge(table_release.to_pandas(), how='outer')
+else:
+    for attempt in range(5):
+        try:
+            table = Observations.query_criteria(**args).to_pandas()
+            break
+        except Exception as e:
+            print(f"Attempt {attempt+1} failed: {e}")
+            time.sleep(1)
 # Rewrite the web page if there's any data from the last 14 days. Set titles to show description when
 # hover over images
 if len(table) == 0:
@@ -63,6 +78,32 @@ science = science.reset_index(drop=True)
 for col in ['t_obs_release', 't_max']:
     for row in range(len(science)):
         science.at[row, col] = astropy.time.Time(science[col][row], format='mjd').utc.iso
+
+if target_arg:
+    from easygui import buttonbox, choicebox
+    t_obs_release_all = np.array([t[:10] for t in science['t_obs_release'].values])
+    times, n_times = np.unique(t_obs_release_all, return_counts=True)
+    if len(times) == 0:
+        raise Exception('no images for '+target_arg)
+    if len(times) == 1:
+        download = buttonbox(
+            "Only one t_obs_release, "+times[0]+". Process?",
+            title="Astro",
+            choices=["y", "n"],
+            default_choice="y"
+        )
+        if str(download) == 'y':
+            tgt_date = times[0]
+        else:
+            print('n chosen, abort')
+            sys.exit()
+    else:
+        text = "Selected one t_obs_release"
+        title = "astro"
+        tgt_date = choicebox(text, title, sorted(times))
+        if not tgt_date:
+            sys.exit()
+    science = science[t_obs_release_all == tgt_date].reset_index(drop=True)
 
 new_targets, n_targets = np.unique(science['target_name'], return_counts=True)
 t_obs_release = []
@@ -100,6 +141,16 @@ for itarget in range(len(new_targets)):
 # not_latest = np.array(t_obs_release < max(t_obs_release))
 # include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
 include = ~already & (n_targets > 2) & (n_targets < 15)
+
+if target_arg:
+    # If target is already posted, ask whether to bypass
+    for i in range(len(new_targets)):
+        if already[i] and new_targets[i] == target_arg:
+            bypass = input(f"Target {target_arg} already posted. Bypass? (y/n): ")
+            if bypass.lower() == 'y':
+                already[i] = False
+    include = ~already
+
 chosen_targets = new_targets[include]
 # sec_latest = max(t_obs_release[include])
 deband = False
