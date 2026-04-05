@@ -94,7 +94,7 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
     result_table = result_table.to_pandas()
     
     if filter:
-        result_table = result_table[result_table['MAIN_ID'].str.contains(filter)]
+        result_table = result_table[result_table['main_id'].str.contains(filter)]
         result_table.reset_index(drop=True, inplace=True)
     
     print(f'got {len(result_table)} results, converting to pixels')
@@ -104,21 +104,47 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
     # Set colors based on object type
     color = (100, 255, 255)
     result_table['color'] = [color] * len(result_table)
-    result_table['OTYPE'] = result_table['OTYPE'].str.replace('Star', '*')
-    icat = np.where(result_table['OTYPE'].str.contains('\*'))[0]
+    result_table['otype'] = result_table['otype'].str.replace('Star', '*')
+    icat = np.where(result_table['otype'].str.contains('\*'))[0]
     for iicat in icat:
         result_table.at[iicat, 'color'] = (255, 255, 255)
-    icat = np.where(result_table['OTYPE'].str.contains('ebula'))[0]
+    icat = np.where(result_table['otype'].str.contains('ebula'))[0]
     for iicat in icat:
         result_table.at[iicat, 'color'] = (255, 100, 100)
     
     # Convert coordinates to pixels
+    # SIMBAD may return ra/dec as floats (degrees) or as sexagesimal strings.
+    # Build a helper that constructs a SkyCoord with appropriate units.
+    def _to_skycoord(ra_val, dec_val, frame='fk5'):
+        """Return an astropy SkyCoord from ra/dec values that may be
+        floats (degrees) or strings (sexagesimal)."""
+        # Try numeric (degrees)
+        try:
+            ra_f = float(ra_val)
+            dec_f = float(dec_val)
+        except Exception:
+            # Not pure numeric: treat as strings. Try to detect units.
+            ra_s = str(ra_val).strip()
+            dec_s = str(dec_val).strip()
+
+            # If strings explicitly contain h/m/s or d, let SkyCoord parse them.
+            if any(ch in ra_s for ch in 'hmsHMS') or any(ch in dec_s for ch in 'dD'):
+                return SkyCoord(ra=ra_s, dec=dec_s, frame=frame)
+
+            # Otherwise assume RA is in hourangle sexagesimal (e.g. '12 34 56' or '12:34:56')
+            # and DEC in degrees sexagesimal; provide units for parsing.
+            return SkyCoord(ra=ra_s, dec=dec_s, unit=(u.hourangle, u.deg), frame=frame)
+
+        # If we get here both are numeric -> assume degrees
+        return SkyCoord(ra=ra_f * u.deg, dec=dec_f * u.deg, frame=frame)
+
     pix = np.zeros((len(result_table), 2))
     for ii in range(len(result_table)):
-        ra = add_time(result_table['RA'][ii], 'h')
-        dec = add_time(result_table['DEC'][ii], 'd')
-        c = SkyCoord(ra=ra, dec=dec).to_pixel(wcs)
-        pix[ii, :] = [c[0], c[1]]
+        ra_val = result_table['ra'][ii]
+        dec_val = result_table['dec'][ii]
+        c = _to_skycoord(ra_val, dec_val, frame='fk5')
+        cpx = c.to_pixel(wcs)
+        pix[ii, :] = [cpx[0], cpx[1]]
     
     result_table['pix_x'] = pix[:, 0]
     result_table['pix_y'] = pix[:, 1]
@@ -153,7 +179,7 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
     if cross and len(result_table_inframe) > 1:
         print("\nMultiple objects found:")
         for idx, row in result_table_inframe.iterrows():
-            print(f"{idx}: {row['MAIN_ID']} ({row['OTYPE']})")
+            print(f"{idx}: {row['main_id']} ({row['otype']})")
         
         selected_indices = input("\nEnter indices to plot (comma-separated, or 'all'): ").strip()
         
@@ -223,7 +249,7 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
                         img[y_start_top:y_end_top, x_line] = color_rgb
         else:
             # Draw text
-            txt = row['MAIN_ID']
+            txt = row['main_id']
             midhight = int(np.floor(getTextSize(txt,
                                                 fontFace=FONT_HERSHEY_SIMPLEX,
                                                 fontScale=fontScale,
@@ -236,11 +262,11 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
     # Save annotated image (always save by default)
     output_file = img_file[:img_file.index('.')] + '_ann.png'
     plt.imsave(output_file, img)
-    
+
     print(f"Saved annotated image to: {output_file}")
-    
+
     # Save table to CSV (always save by default)
-    csv_file = img_file.replace('.png', '.csv')
+    csv_file = img_file[:img_file.index('.')] + '_ann.csv'
     result_table_inframe.to_csv(csv_file, index=False)
     print(f"Saved object table to: {csv_file}")
     
@@ -248,6 +274,7 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
 
 
 if __name__ == "__main__":
-    os.chdir('/media/innereye/KINGSTON/JWST/data/SN-2003GD')
-    annotate('filt05.jpg', 'jw06049-o001_t001_miri_f560w_i2d.fits', filter='SN 2003', cross=True)
+    os.chdir('/media/yuval/KINGSTON/JWST/data/LRN_AT2018hso')
+    annotate('filt1.jpg', 'jw07040-o010_t010_miri_f560w_i2d.fits', cross=True, filter='AT')
+    # annotate('filt05.jpg', 'jw06049-o001_t001_miri_f560w_i2d.fits', filter='SN 2003', cross=True)
 

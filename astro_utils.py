@@ -513,7 +513,7 @@ def reproject(path, project_to=0, log=None):
         if ii == project_to:
             layers[:,:,ii] = hdu[1].data
         else:
-            reproj, _ = reproject_interp(hdu[1], hdu_temp[1].header)
+            reproj, _ = reproject_interp(hdu[1].copy(), hdu_temp[1].header)
             layers[:, :, ii] = reproj
     return layers
 
@@ -1130,7 +1130,7 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
                     dbargs['flip'] = deband_flip[ii]
                     hdu[1].data = deband_layer(hdu[1].data, **dbargs)
                     print(f'done deband {ii}')
-                img, _ = reproject_interp(hdu[1], hdr0)
+                img, _ = reproject_interp(hdu[1].copy(), hdr0, hdu_in=0)
                 if resize:
                     img = transform.resize(img, wh)
                 layers[:, :, ii] = img
