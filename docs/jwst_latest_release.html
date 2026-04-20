@@ -68,6 +68,23 @@
     <input type="text" id="search-input" placeholder="Search target or title...">
     <button id="search-btn">Search</button>
     <span id="current-range"></span>
+    <div id="donate-button-container">
+    <div id="donate-button"></div>
+    <script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>
+    <script>
+    PayPal.Donation.Button({
+    env:'production',
+    hosted_button_id:'X7NWK2SA9WZM2',
+    image: {
+    src:'https://www.paypalobjects.com/en_US/IL/i/btn/btn_donateCC_LG.gif',
+    alt:'Donate with PayPal button',
+    title:'PayPal - The safer, easier way to pay online!',
+    }
+    }).render('#donate-button');
+    </script>
+    </div>
+
+</a>
   </div>
   <div class="container">
     <div class="social-links">
