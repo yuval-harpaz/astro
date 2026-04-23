@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-04-23,2026-04-22 09:04:35.704,2026-04-22 12:38:47.137,0,SN2023dbc,1500 1800 2100 2550,mast:JWST/product/jw09264-o015_t001_miri_f1500w-brightsky_i2d.jpg,9264,Unraveling cosmic dust origins: JWST revelations from legacy observations of SN 2023dbc,389910935,not yet,Star; Supernovae
 2026-04-21,2025-04-21 05:52:22.303,2025-04-21 06:47:38.519,0,GC-MIRI, 560  770 1130,mast:JWST/product/jw01266-o009_t002_miri_f560w_i2d.jpg,1266,NIRSpec & MIRI Integral-Field Spectroscopy of the Galactic Center,262815781,not yet,Galaxy; Active galactic nuclei
 2026-04-20,2026-04-19 14:32:19.608,2026-04-19 17:15:24.526,0,SN2023ixf,1500 1800 2100 2550,mast:JWST/product/jw09262-o009_t001_miri_f1500w_i2d.jpg,9262,Building the Legacy of Supernova 2023ixf: How Does Molecule Formation Lead to Dust?,389892184,not yet,Star; Type II supernovae
 2026-04-19,2026-04-19 03:21:55.862,2026-04-19 04:55:43.773,0,J1148+2546, 770 1130 1800,,7041,The CLASSYIR Treasury: Unveiling the Cosmic Engines Powering Galaxies with JWST/MIRI,389891826,not yet,Galaxy; Emission line galaxies
