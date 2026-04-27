@@ -117,8 +117,8 @@ def list_ngc():
                     break
             if ii == len(nn)-1:
                 ii += 1
-            if nn == '4496A':
-                nn = '4496'
+            if len(nn) > 1 and nn[-1].isalpha() and nn[:-1].isnumeric():
+                nn = nn[:-1]
             ngc.append(int(nn[:ii]))
         elif (tt[:3] == 'ORI') | ('TRAPEZIUM' in tt.upper()):
             ngc.append(1976)
