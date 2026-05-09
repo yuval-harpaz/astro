@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-05-08,2025-05-08 13:22:02.574,2025-05-08 16:40:43.894,0,COSMOS_844,1000,mast:JWST/product/jw04761-o011_t007_miri_f1000w_i2d.jpg,4761,A Deep Look into PAHs: Resolved PAH and Fine-Structure Emission in z=1 Main-Sequence Galaxies,262998354,not yet,Galaxy; Disk galaxies
 2026-05-07,2025-05-07 01:10:42.023,2025-05-07 06:16:31.291,0,REBELS-25, 90 150 200 410,mast:JWST/product/jw06036-o001_t001_nircam_clear-f090w_i2d.jpg,6036,JWST+ALMA reveals the earliest-known thin disk galaxy,262965299,not yet,Galaxy; Disk galaxies; High-redshift galaxies; Ultraluminous infrared galaxies
 2026-05-07,2026-05-06 00:02:39.152,2026-05-06 02:28:46.952,0,ASASSN-25cd,770,,12493,"Through a Circumstellar Disk, Darkly, with JWST",390381313,not yet,Star; Circumstellar disks; K giants
 2026-05-06,2025-05-06 09:07:51.160,2025-05-06 12:10:54.970,0,AQUARIUS-DIRR, 90 115 150 277 356 444,mast:JWST/product/jw04783-o004_t004_nircam_clear-f090w_i2d.jpg,4783,Anchoring the JWST population II distance ladder to Gaia,262915746,not yet,Galaxy; Dwarf galaxies
