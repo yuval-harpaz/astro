@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-05-12,2026-05-11 21:40:45.600,2026-05-11 22:16:43.712,4374,NGC4374,277,,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,390970406,not yet,Galaxy; Elliptical galaxies
 2026-05-10,2025-05-10 10:43:38.787,2025-05-10 10:58:08.449,0,DRACO-F2,200 277,mast:JWST/product/jw04513-o002_t003_nircam_clear-f200w_i2d.jpg,4513,Internal Dynamics of Milky Way Dwarf Spheroidal Galaxies,263954199,not yet,Galaxy; Dwarf spheroidal galaxies
 2026-05-09,2026-05-09 07:05:23.458,2026-05-09 08:13:17.246,0,J1105+4444, 770 1130 1800,mast:JWST/product/jw07041-o067_t027_miri_f770w_i2d.jpg,7041,The CLASSYIR Treasury: Unveiling the Cosmic Engines Powering Galaxies with JWST/MIRI,390655602,not yet,Galaxy; Emission line galaxies
 2026-05-09,2025-05-08 19:27:24.388,2025-05-08 22:46:29.645,0,COSMOS_1346,1000,mast:JWST/product/jw04761-o015_t009_miri_f1000w_i2d.jpg,4761,A Deep Look into PAHs: Resolved PAH and Fine-Structure Emission in z=1 Main-Sequence Galaxies,262999388,not yet,Galaxy; Disk galaxies
