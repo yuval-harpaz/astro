@@ -36,28 +36,42 @@ def smooth_width(layer, win=101, prct=50, func=np.median, verbose=False):
 
 def deband_layer(layer, win=101, prct=10, func=np.median, flip=False, verbose=False):
     """
-    remove 1/f, banding noise. thin stripes.
-    func: percentile is safer than median, with nan* you don't lose the edges 
-          but it takes ages.
+    Remove 1/f banding noise (thin horizontal or vertical stripes) from a 2D image.
+
+    Algorithm: a row-wise low-pass (stripe estimate) is subtracted to yield a
+    high-pass residual; the low-pass is then smoothed column-wise to recover the
+    true large-scale background; finally clean = column-smoothed background + residual.
+    Negative values produced by the subtraction are clipped to zero.
 
     Parameters
     ----------
     layer : ndarray
-        2D image before reproject.
+        2D image to clean.
     win : int, optional
-        window length for computing noise. The default is 101.
+        Sliding-window length (in pixels) used by smooth_width to estimate the
+        stripe pattern. Larger values capture lower-frequency banding.
+        The default is 101.
     prct : int, optional
-        lower than 50 for precentile or nanpercentile func. The default is 10.
-    func : np function, optional
-        should be median, anamedian, percentile or nanpercentile. The default is np.median.
+        Percentile passed to func when func is np.percentile or np.nanpercentile.
+        Values below 50 suppress bright point sources from biasing the stripe
+        estimate. The default is 10.
+    func : callable, optional
+        Aggregation function used for smoothing. One of:
+        np.median, np.nanmedian, np.percentile, np.nanpercentile.
+        Percentile is safer than median near bright sources; nan variants
+        preserve edge pixels but are significantly slower.
+        The default is np.median.
     flip : bool, optional
-        use True for MIRI images. The default is False.
+        Transpose the image before processing and transpose back afterwards.
+        Use True for MIRI images where stripes run vertically instead of
+        horizontally. The default is False.
+    verbose : bool, optional
+        Print row-by-row progress during smoothing. The default is False.
 
     Returns
     -------
     clean : ndarray
-        data cleaned of stripes.
-
+        2D image with stripe noise removed (same shape as layer).
     """
     if flip:
         layer = layer.T

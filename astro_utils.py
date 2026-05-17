@@ -903,15 +903,18 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
     ----------
     folder: str
         All fits files in this directory and subdirectories will be combined, presuming they fit exp
-    exp: str | list
-        regexp expression to filter files by their name. by default, take all *_i2d.fits
-        if exp is a list, it takes it as path to specific fits files inside "folder"
+    exp: str | list | pd.DataFrame
+        glob expression to filter files by their name. by default, take all *_i2d.fits
+        if exp is a list, it takes it as path to specific fits files inside "folder".
+        if exp starts with 'log', reads a CSV log file from ~/astro/logs/ to pick files.
+        if exp is a DataFrame, reads 'file' column for paths and 'chosen' column to filter.
     method: str
         the method for combining many filters into 3 RGB layers
         'rrgggbb': try divide the filters to three equal size groups. The middle group might be bigger
         'mnn': red is averaged MIRI, NIRCam images are split between green and blue
         'mtn': red is MIRI, green is total light, blue is NirCam
         'filt': assign colors from jet colormap according to filter frequency.
+        'filt05': assign colors using assign_colors_by_filt (equal-weight colormap).
     pow: [float, float, float]
         A list of 3 numbers by which to rise power of the rgb image. Power is computed for rgb between 0 and 1, so
         using [0.5, 1,  1] will increase visibility of low light red pixels. [1,1,1] means no action.
@@ -920,23 +923,56 @@ def auto_plot(folder='ngc1672', exp='*_i2d.fits', method='rrgggbb', pow=[1, 1, 1
         str means True + pkl filename to read / save
     png: bool | str | None
         False - don't save png. True - save png according to folder name. str - specify png name to save.
+        None (default) - save as "{method}_fac{factor}.jpg"
     resize: bool
-        try resize to fit a 1920 by 1080 image. no cropping or aspect artio chabges. meant to reduce RAM and time.
-    core: bool
-        True to try focus on the core of the galaxy, in order to stretch the colors differently.
+        try resize to fit a 1920 by 1080 image. no cropping or aspect ratio changes. meant to reduce RAM and time.
+    reproject_to: int | str
+        index of the reference layer, or a filter name substring (e.g. 'f277w') used to identify the
+        reference file. All other layers are reprojected to match this one. Default 0.
+    plot: bool
+        display the resulting RGB image with matplotlib. Default False.
     adj_args: dict
         arguments to pass to level_adjust. adj_args={'lims': [0.03, 0.98], 'factor': 2}. factor = None means normalize only.
+    fill: bool
+        fill NaN / zero holes in each layer with hole_func_fill before reprojection. Default False.
+    fill_func: str
+        aggregation function passed to hole_func_fill when fill=True. Default 'max'.
+    smooth: bool
+        apply Gaussian spatial smoothing (sigma=2, radius=5) to each layer after level_adjust. Default False.
+    max_color: bool | int
+        aggregation used when combining multiple filters into one color channel.
+        False (default) = mean, True = max, -1 = min.
     opvar: str
-        what variable to return. 'rgb' or 'layers'
-    deband: bool | int | list | ndarray
-        remove banding noise 1/f. True or 1 for all layers, 2 or 'nircam' for nircam layers, False default. lots of time!
+        what variable to return. 'rgb' (default) or 'layers'.
+    core: bool
+        True to try focus on the core of the galaxy, in order to stretch the colors differently.
+    crop: bool | str
+        True - show the image and let the user click two corners to define a crop rectangle (interactive).
+        str - crop specification string in the form 'y1=<v>; y2=<v>; x1=<v>; x2=<v>' (also accepted by
+              crop_xy).  False / 0 (default) - no crop.
+    deband: bool | int | str | list | ndarray
+        remove banding noise 1/f. True or 1 for all layers, 2 or 'nircam' for nircam layers, False default.
+        50 uses nanmedian instead of percentile. 10 uses nanpercentile
     deband_flip: bool | None | list
         True is intended for removing vertical stripes from MIRI data. None assigns True for filenames containing miri.
     blc: bool | None
-        subtract non-zero minimum (baseline correction) and divide by maximum
+        subtract non-zero minimum (baseline correction) and divide by maximum.
+        Default True for method='filt', False otherwise.
     whiten: None | bool
         prevent blue hue, rise red to min([green, blue]). This is designed to make NIRCam more white than blue.
         by default whiten is True when at least one image is NIRCam
+    annotate: bool | float
+        annotate saved image with SIMBAD object labels using annotate_simbad. True uses default fontScale=0.6;
+        a float value sets the font scale explicitly. Only works when saving (png != False). Default False.
+    decimate: int | bool
+        subsample each FITS image by taking every Nth pixel along each axis before processing,
+        to reduce memory and computation time. False (default) means no subsampling.
+    func: callable | None
+        optional transform applied to each layer's data before level_adjust, e.g. np.sqrt. Default None.
+    bar: bool | int
+        add a column of small color-coded squares in the top-left corner to indicate the filter-to-color mapping.
+        True auto-sizes each square to ~20%/N of image height. An integer sets the square size in pixels.
+        Default False.
     Returns
     -------
     rgb: np.ndarray
