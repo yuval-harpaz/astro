@@ -12,9 +12,21 @@ from httpx import Timeout
 
 bequest = Request(timeout=Timeout(timeout=10.0))
 blient = Blient(request=bequest)
-blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
 blim = 250  # should be 300 limit but failed once
-masto, loc = connect_bot()
+masto = None
+loc = None
+_bsky_logged_in = False
+
+def _ensure_bsky_login():
+    global _bsky_logged_in
+    if not _bsky_logged_in:
+        blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
+        _bsky_logged_in = True
+
+def _ensure_masto_login():
+    global masto, loc
+    if masto is None:
+        masto, loc = connect_bot()
 deband = True
 
 highlight_url = 'https://yuval-harpaz.github.io/astro/jwst_highlights_gray.html'
@@ -32,6 +44,12 @@ def post_image(message, image_path, alt=None, mastodon=True, bluesky=True):
     # toot = f"\U0001F916 image processing for NASA / STScI #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
     # toot = toot + f"\nPI: {info['PI_NAME']}, program {info['PROGRAM']}. CRVAL: {np.round(hdr0['CRVAL1'], 6)}, {np.round(hdr0['CRVAL2'], 6)}"
     post = {}
+    if bluesky:
+        try:
+            _ensure_bsky_login()
+        except Exception as e:
+            print(f'failed bluesky login: {e}')
+            bluesky = False
     if bluesky:
         boot = client_utils.TextBuilder()
         txt = message
@@ -71,6 +89,7 @@ def post_image(message, image_path, alt=None, mastodon=True, bluesky=True):
             print(f'failed bluesky post for {image_path}')
     if mastodon:
         try:
+            _ensure_masto_login()
             metadata = masto.media_post(image_path, "image/jpeg")
             post['masto'] = masto.status_post(message, media_ids=metadata["id"])
             print('toot image')
@@ -81,6 +100,7 @@ def post_image(message, image_path, alt=None, mastodon=True, bluesky=True):
 
 def reply_to_post(post, text=None, link=None):
     """Reply with a link to a post with an image."""
+    _ensure_bsky_login()
     if text is None:
         text = '123 test'
     boot = client_utils.TextBuilder()
