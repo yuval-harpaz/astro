@@ -14,8 +14,7 @@ from skimage.transform import resize
 import os
 import sys
 from astro_list_ngc import social, credits
-from atproto import Client as Blient
-from atproto import client_utils
+
 # from astro_utils import resize_to_under_2mb, download_fits_files, filt_num
 from astro_utils import *
 import pandas as pd
@@ -247,15 +246,10 @@ else:
                         toot = f"\U0001F916 image processing for #JWST \U0001F52D data ({target}). RGB Filters: {filt_str}"
                         toot = toot + f"\nPI: {info['PI_NAME']}, program {info['PROGRAM']}. CRVAL: {np.round(hdr0['CRVAL1'], 6)}, {np.round(hdr0['CRVAL2'], 6)}"
                         toot = toot+'\nCredits: NASA, ESA, CSA, STScI.'
-                        blient = Blient()
-                        blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
-                        boot = client_utils.TextBuilder()
-                        blue = True
                         blim = 250  # should be 300 limit but failed once
                         txt = toot
                         if len(txt) > blim:
                             txt = txt[:blim]
-                        boot.text(txt)
                         masto, loc = connect_bot()
                     except:
                         print(f'failed preparing toot for {target}')
