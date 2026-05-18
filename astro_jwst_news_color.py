@@ -240,6 +240,7 @@ else:
                 if goon:
                     try:
                         layers[np.isnan(layers)] = 0
+                        layers = grey_zeros(layers, replace=np.max)
                         plt.imsave('data/tmp/tmprs.jpg', layers, origin='lower', pil_kwargs={'quality':95})
                         # new_targets = ', '.join(np.unique(new['target_name']))
                         filt_str = ', '.join(filt[irgb].astype(int).astype(str))
