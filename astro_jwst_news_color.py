@@ -180,6 +180,8 @@ else:
                 crval.append([np.nan, np.nan])
         label = cluster_coordinates(crval)
         groups = []
+        if len(label) == 0:
+            continue
         for g in range(max(label)+1):
             groups.append(files[label == g])
         # groups, _ = overlap(files)
