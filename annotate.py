@@ -92,7 +92,8 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
                  unit=(u.deg, u.deg), frame='fk5'),
         radius=0.1 * u.deg)
     result_table = result_table.to_pandas()
-    
+    result_table['otype'] = result_table['OTYPE']
+    result_table['main_id'] = result_table['MAIN_ID']
     if filter:
         result_table = result_table[result_table['main_id'].str.contains(filter)]
         result_table.reset_index(drop=True, inplace=True)
@@ -137,7 +138,8 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
 
         # If we get here both are numeric -> assume degrees
         return SkyCoord(ra=ra_f * u.deg, dec=dec_f * u.deg, frame=frame)
-
+    result_table['ra'] = result_table['RA']
+    result_table['dec'] = result_table['DEC']
     pix = np.zeros((len(result_table), 2))
     for ii in range(len(result_table)):
         ra_val = result_table['ra'][ii]
