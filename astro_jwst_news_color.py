@@ -25,7 +25,7 @@ n = 7
 print(f'reading {n} days')
 end_time = astropy.time.Time.now().mjd
 start_time = end_time - n
-
+min_filters = 2
 target_arg = sys.argv[1] if len(sys.argv) > 1 else None
 
 ## Query MAST database for level 3 JWST images
@@ -142,7 +142,7 @@ for itarget in range(len(new_targets)):
 # not_prev = new_targets != prev_target
 # not_latest = np.array(t_obs_release < max(t_obs_release))
 # include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
-include = ~already & (n_targets > 2) & (n_targets < 15)
+include = ~already & (n_targets > min_filters) & (n_targets < 15)
 
 if target_arg:
     # If target is already posted, ask whether to bypass
