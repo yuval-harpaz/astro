@@ -1,5 +1,6 @@
 name: color bot 
 on:
+    workflow_dispatch:
     schedule:
     - cron: '30 * * * *'
 permissions: write-all
