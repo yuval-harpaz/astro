@@ -206,7 +206,7 @@ else:
                     for jj, ii in enumerate(irgb):
                         fn = group_files[ii]
                         # download_fits_files([fn], 'data/tmp')
-                        if ii == 0:
+                        if jj == 0:
                             # hdu0 = fits.open('data/tmp/' + fn)
                             with fits.open(mast_url+fn, use_fsspec=True) as hdul:
                                 hdr0 = hdul[1].header
@@ -243,7 +243,8 @@ else:
                     goon = True
                 except:
                     print(f'failed download or process color images for {target}')
-                new_row = [target, max_t_release, group_files[irgb[0]], group_files[irgb[1]], group_files[irgb[2]], 'failed']
+                green_file = None if len(group_files) == 2 else group_files[irgb[1]]
+                new_row = [target, max_t_release, group_files[irgb[0]], green_file, group_files[irgb[2]], 'failed']
                 if goon:
                     try:
                         layers[np.isnan(layers)] = 0
