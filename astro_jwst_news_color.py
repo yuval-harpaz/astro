@@ -142,7 +142,7 @@ for itarget in range(len(new_targets)):
 # not_prev = new_targets != prev_target
 # not_latest = np.array(t_obs_release < max(t_obs_release))
 # include = not_latest & (n_targets > 2) & (n_targets < 15) & not_prev
-include = ~already & (n_targets > min_filters) & (n_targets < 15)
+include = ~already & (n_targets >= min_filters) & (n_targets < 15)
 
 if target_arg:
     # If target is already posted, ask whether to bypass
@@ -185,7 +185,7 @@ else:
         for g in range(max(label)+1):
             groups.append(files[label == g])
         # groups, _ = overlap(files)
-        groups = [g for g in groups if len(g) > 2]
+        groups = [g for g in groups if len(g) >= 2]
         for group_files in groups:
             filt = filt_num(group_files)
             order = np.argsort(-filt)
@@ -193,7 +193,10 @@ else:
             filt = filt[order]
             # group_files = files[group]
             # download red first
-            igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
+            if len(group_files) == 2:
+                igreen = 0  # duplicate red channel as green for 2-filter composite
+            else:
+                igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
             irgb = [0, igreen, len(group_files)-1]
             if group_files[irgb[2]] in df['blue'].values and group_files[irgb[0]] in df['red'].values:
                 print(f"{target} file already used as blue:  {group_files[irgb[2]]} (also red was used)")  # sometimes already fails to detect extra MIRI with no overlap
@@ -235,6 +238,8 @@ else:
                         # os.remove('data/tmp/' + fn)
                         img = level_adjust(img, factor=2)
                         layers[:, :, jj] = img
+                    if len(group_files) == 2:
+                        layers[:, :, 1] = (layers[:, :, 0] + layers[:, :, 2]) / 2
                     goon = True
                 except:
                     print(f'failed download or process color images for {target}')
