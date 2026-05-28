@@ -198,7 +198,7 @@ else:
             else:
                 igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
                 irgb = [0, igreen, len(group_files)-1]
-            if group_files[irgb[2]] in df['blue'].values and group_files[irgb[0]] in df['red'].values:
+            if len(irgb) > 2 and group_files[irgb[2]] in df['blue'].values and group_files[irgb[0]] in df['red'].values:
                 print(f"{target} file already used as blue:  {group_files[irgb[2]]} (also red was used)")  # sometimes already fails to detect extra MIRI with no overlap
             else:
                 goon = False
