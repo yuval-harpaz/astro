@@ -194,10 +194,10 @@ else:
             # group_files = files[group]
             # download red first
             if len(group_files) == 2:
-                igreen = 0  # duplicate red channel as green for 2-filter composite
+                irgb = [0, 1]  # only 2 files; green will be averaged after loading
             else:
                 igreen = np.argmin(np.abs(filt - (filt[0] + filt[-1])/2))
-            irgb = [0, igreen, len(group_files)-1]
+                irgb = [0, igreen, len(group_files)-1]
             if group_files[irgb[2]] in df['blue'].values and group_files[irgb[0]] in df['red'].values:
                 print(f"{target} file already used as blue:  {group_files[irgb[2]]} (also red was used)")  # sometimes already fails to detect extra MIRI with no overlap
             else:
@@ -239,12 +239,13 @@ else:
                         img = level_adjust(img, factor=2)
                         layers[:, :, jj] = img
                     if len(group_files) == 2:
-                        layers[:, :, 1] = (layers[:, :, 0] + layers[:, :, 2]) / 2
+                        layers[:, :, 2] = layers[:, :, 1]  # move blue to channel 2
+                        layers[:, :, 1] = (layers[:, :, 0] + layers[:, :, 2]) / 2  # green = avg
                     goon = True
                 except:
                     print(f'failed download or process color images for {target}')
                 green_file = None if len(group_files) == 2 else group_files[irgb[1]]
-                new_row = [target, max_t_release, group_files[irgb[0]], green_file, group_files[irgb[2]], 'failed']
+                new_row = [target, max_t_release, group_files[irgb[0]], green_file, group_files[irgb[-1]], 'failed']
                 if goon:
                     try:
                         layers[np.isnan(layers)] = 0
