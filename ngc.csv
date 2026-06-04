@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-06-03,2025-12-13 14:00:56.184,2025-12-13 14:54:27.002,0,LHA-120-N-133,560,mast:JWST/product/jw09505-o001_t001_miri_f560w_i2d.jpg,9505,Science Validation for MIRI WFSS,406055049,not yet,Calibration; Line spread function; Planetary nebulae
 2026-06-02,2025-06-02 05:43:41.893,2025-06-02 06:01:14.162,4927,NGC-4927,150 356,mast:JWST/product/jw05989-o029_t029_nircam_clear-f150w_i2d.jpg,5989,The JWST SBF Coma Cluster Survey: Building an Alternative Precision Distance Ladder for Cosmology,268581896,not yet,Galaxy; Elliptical galaxies
 2026-06-02,2026-06-02 02:21:04.195,2026-06-02 03:31:34.562,4452,NGC4452,115 150 277,mast:JWST/product/jw07763-o033_t033_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,404231132,not yet,
 2026-06-02,2026-06-02 00:49:29.481,2026-06-02 02:00:21.287,4313,NGC4313,115 150 277,mast:JWST/product/jw07763-o019_t019_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,404109688,not yet,
