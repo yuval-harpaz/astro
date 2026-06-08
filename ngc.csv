@@ -1,4 +1,6 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-06-08,2026-06-07 16:15:04.949,2026-06-07 17:25:46.067,0,IC3381,115 150 277,mast:JWST/product/jw07763-o043_t043_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,408572528,not yet,
+2026-06-08,2026-06-07 14:34:43.579,2026-06-07 15:45:03.129,4351,NGC4351,115 150 277,mast:JWST/product/jw07763-o039_t039_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,408531200,not yet,Galaxy; Spiral galaxies
 2026-06-07,2026-06-07 13:00:19.392,2026-06-07 14:11:00.446,4306,NGC4306,115 150 277,mast:JWST/product/jw07763-o038_t038_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,408422370,not yet,
 2026-06-07,2026-06-07 11:23:53.222,2026-06-07 12:34:12.836,4299,NGC4299,115 150 277,mast:JWST/product/jw07763-o032_t032_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,408356861,not yet,
 2026-06-07,2026-06-07 06:23:32.653,2026-06-07 07:57:17.812,0,J1200+1343, 770 1130 1800,mast:JWST/product/jw07041-o041_t047_miri_f770w_i2d.jpg,7041,The CLASSYIR Treasury: Unveiling the Cosmic Engines Powering Galaxies with JWST/MIRI,408246553,not yet,Galaxy; Emission line galaxies
