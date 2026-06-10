@@ -1,5 +1,6 @@
 name: auto update 2025 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 */2 * * *'
 permissions: write-all
