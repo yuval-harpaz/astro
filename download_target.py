@@ -1,21 +1,18 @@
 import os
 from astro_utils import *
+# pyrefly: ignore [missing-import]
 import astropy
 from easygui import *
 from astroquery.mast import Observations
 import numpy as np
-import astropy
 import sys
 # from astropy.time import Time
 # from astro_list_ngc import choose_fits, make_thumb, ngc_html_thumb
 # from glob import glob
 # from astro_ngc_align import add_crval_to_logs
 
-def download_target_by_name(target, method=None):
-    if method is None:
-        method = 'astropy'
+def download_target_by_name(target, filter=None):
     
-
     args = {'obs_collection': "JWST",
             'calib_level': 3,
             'dataRights': 'public',
@@ -63,11 +60,13 @@ def download_target_by_name(target, method=None):
     rows = np.where(t_obs_release == tgt)[0]
     files = science['dataURL'].values[rows]
     files = [f.split('/')[-1] for f in files]
+    if filter:
+        files = [f for f in files if filter in f]
     if os.path.isdir(drive):
         destination_folder = drive+'data/' + target
     else:
         destination_folder = 'data/' + target
-    download_fits_files(files, destination_folder=destination_folder, method=method)
+    download_fits_files(files, destination_folder=destination_folder, method='chunk')
 
 
 if __name__ == '__main__':
@@ -76,10 +75,10 @@ if __name__ == '__main__':
     else:
         search = sys.argv[1]
         if len(sys.argv) > 2:
-            method = sys.argv[2]
+            filter = sys.argv[2]
         else:
-            method = 'chunk'
-    download_target_by_name(search, method=method)
+            filter = None
+    download_target_by_name(search, filter=filter)
 
 ##
 

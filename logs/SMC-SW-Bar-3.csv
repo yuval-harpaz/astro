@@ -1,0 +1,15 @@
+file,width,height,offset,chosen,CRVAL1,CRVAL2,CRVAL1fix,CRVAL2fix
+jw05952-o002_t002_nircam_clear-f150w_i2d.fits,,,,True,,,,
+jw05952-o002_t002_nircam_clear-f187n_i2d.fits,,,,True,,,,
+jw05952-o002_t002_nircam_clear-f200w_i2d.fits,,,,True,,,,
+jw05952-o002_t002_nircam_clear-f212n_i2d.fits,,,,True,,,,
+jw05952-o002_t002_nircam_clear-f300m_i2d.fits,,,,True,,,,
+jw05952-o002_t002_nircam_clear-f335m_i2d.fits,,,,True,,,,
+jw05952-o002_t002_nircam_clear-f360m_i2d.fits,,,,True,,,,
+jw05952-o002_t002_nircam_clear-f444w_i2d.fits,,,,True,,,,
+jw05952-o003_t002_miri_f1000w_i2d.fits,,,,True,,,-73.37886,11.33585
+jw05952-o003_t002_miri_f1130w_i2d.fits,,,,True,,,-73.378865,11.33587
+jw05952-o003_t002_miri_f1500w_i2d.fits,,,,True,,,-73.37884,11.3359
+jw05952-o003_t002_miri_f2100w_i2d.fits,,,,True,,,-73.37884,11.33585
+jw05952-o003_t002_miri_f560w_i2d.fits,,,,True,,,-73.37886,11.3358
+jw05952-o003_t002_miri_f770w_i2d.fits,,,,True,,,-73.37886,11.3358
