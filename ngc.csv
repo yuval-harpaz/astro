@@ -1,4 +1,7 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-06-24,2026-06-24 12:49:01.946,2026-06-24 13:59:53.753,0,IC3443,115 150 277,mast:JWST/product/jw07763-o076_t076_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,417194485,not yet,
+2026-06-24,2026-06-24 14:28:16.437,2026-06-24 15:04:14.485,4486,NGC4486,115 277,mast:JWST/product/jw07763-o077_t077_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,417181870,not yet,
+2026-06-24,2026-06-24 11:02:03.153,2026-06-24 12:12:33.439,0,IC3437,115 150 277,mast:JWST/product/jw07763-o075_t075_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,417097386,not yet,
 2026-06-24,2026-06-24 07:43:00.252,2026-06-24 08:53:41.307,0,PGC041782,277,mast:JWST/product/jw07763-o073_t073_nircam_clear-f277w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,417073190,not yet,Galaxy; Elliptical galaxies
 2026-06-24,2026-06-24 09:22:05.847,2026-06-24 10:32:36.149,0,PGC040723,277,mast:JWST/product/jw07763-o074_t074_nircam_clear-f277w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,417084650,not yet,Galaxy; Elliptical galaxies
 2026-06-24,2026-06-24 06:01:55.810,2026-06-24 07:12:26.113,0,IC3383,115 150 277,mast:JWST/product/jw07763-o072_t072_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,416877889,not yet,Galaxy; Lenticular galaxies
