@@ -1,0 +1,14 @@
+file,width,height,offset,chosen,CRVAL1,CRVAL2,CRVAL1fix,CRVAL2fix
+jw03707-o083_t038_miri_f2100w_i2d.fits,,,,False,,,189.23118,14.21314
+jw03707-o083_t038_miri_f770w_i2d.fits,,,,True,,,189.23121,14.21316
+jw03707-o084_t038_miri_f2100w_i2d.fits,,,,False,,,,
+jw03707-o084_t038_miri_f770w_i2d.fits,,,,False,,,,
+jw03707-o084_t038_nircam_clear-f150w_i2d.fits,,,,True,,,,
+jw03707-o084_t038_nircam_clear-f187n_i2d.fits,,,,False,,,,
+jw03707-o084_t038_nircam_clear-f300m_i2d.fits,,,,False,,,,
+jw03707-o084_t038_nircam_clear-f335m_i2d.fits,,,,True,,,,
+jw07763-o010_t010_nircam_clear-f115w_i2d.fits,,,,False,,,,
+jw07763-o010_t010_nircam_clear-f150w_i2d.fits,,,,False,,,,
+jw07763-o010_t010_nircam_clear-f277w_i2d.fits,,,,False,,,,
+jw07763-o010_t010_niriss_clear-f115w_i2d.fits,,,,False,,,,
+jw07763-o010_t010_niriss_clearp-f277w_i2d.fits,,,,False,,,,

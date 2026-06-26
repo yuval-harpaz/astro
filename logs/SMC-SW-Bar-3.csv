@@ -7,9 +7,9 @@ jw05952-o002_t002_nircam_clear-f300m_i2d.fits,,,,True,,,,
 jw05952-o002_t002_nircam_clear-f335m_i2d.fits,,,,True,,,,
 jw05952-o002_t002_nircam_clear-f360m_i2d.fits,,,,True,,,,
 jw05952-o002_t002_nircam_clear-f444w_i2d.fits,,,,True,,,,
-jw05952-o003_t002_miri_f1000w_i2d.fits,,,,True,,,-73.37886,11.33585
-jw05952-o003_t002_miri_f1130w_i2d.fits,,,,True,,,-73.378865,11.33587
-jw05952-o003_t002_miri_f1500w_i2d.fits,,,,True,,,-73.37884,11.3359
-jw05952-o003_t002_miri_f2100w_i2d.fits,,,,True,,,-73.37884,11.33585
-jw05952-o003_t002_miri_f560w_i2d.fits,,,,True,,,-73.37886,11.3358
-jw05952-o003_t002_miri_f770w_i2d.fits,,,,True,,,-73.37886,11.3358
+jw05952-o003_t002_miri_f1000w_i2d.fits,,,,True,,,11.33585,-73.37886
+jw05952-o003_t002_miri_f1130w_i2d.fits,,,,True,,,11.33587,-73.378865
+jw05952-o003_t002_miri_f1500w_i2d.fits,,,,True,,,11.3359,-73.37884
+jw05952-o003_t002_miri_f2100w_i2d.fits,,,,True,,,11.33585,-73.37884
+jw05952-o003_t002_miri_f560w_i2d.fits,,,,True,,,11.3358,-73.37886
+jw05952-o003_t002_miri_f770w_i2d.fits,,,,True,,,11.3358,-73.37886

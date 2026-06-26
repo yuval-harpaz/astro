@@ -1,4 +1,5 @@
-from annotate import annotate
-import os
-os.chdir('/media/yuval/KINGSTON/JWST/data/NGC3521')
-annotate(img_file=None, fits_file='jw09258-o013_t003_miri_f770w_i2d.fits', cross=True)
+from astro_utils import *
+
+
+auto_plot('SMC-SW-Bar-3', exp='log', method='filt05', png='filt2all.jpg', crop=False, func=log1,
+          adj_args={'factor':2}, fill=True, pkl=True, deband=False)
