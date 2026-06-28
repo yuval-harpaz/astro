@@ -1,4 +1,6 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-06-27,2026-06-27 11:51:30.361,2026-06-27 13:01:49.911,0,IC3475,115 150 277,mast:JWST/product/jw07763-o047_t047_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,419106809,not yet,Gala
+2026-06-27,2026-06-27 10:51:14.300,2026-06-27 11:27:12.413,4552,NGC4552,115 277,mast:JWST/product/jw07763-o080_t080_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,419089302,not yet,
 2026-06-27,2026-06-27 07:29:55.741,2026-06-27 09:03:43.653,0,J1545+0858, 770 1130 1800,mast:JWST/product/jw07041-o029_t031_miri_f770w_i2d.jpg,7041,The CLASSYIR Treasury: Unveiling the Cosmic Engines Powering Galaxies with JWST/MIRI,419039476,not yet,Galaxy; Emission line galaxies
 2026-06-26,2025-06-25 19:28:21.121,2025-06-25 19:43:01.553,0,3C273, 70 444,mast:JWST/product/jw09226-o013_t011_nircam_clear-f070w_i2d.jpg,9226,A legacy epoch for Hubbles optical jets: a reference for the future,284978779,not yet,Galaxy; Active galactic nuclei; Galaxy jets
 2026-06-24,2026-06-24 12:49:01.946,2026-06-24 13:59:53.753,0,IC3443,115 150 277,mast:JWST/product/jw07763-o076_t076_nircam_clear-f115w_i2d.jpg,7763,J-Virgo: A JWST Treasury Survey of the Virgo Cluster,417194485,not yet,
