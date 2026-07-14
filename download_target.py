@@ -66,7 +66,7 @@ def download_target_by_name(target, filter=None):
         destination_folder = drive+'data/' + target
     else:
         destination_folder = 'data/' + target
-    download_fits_files(files, destination_folder=destination_folder, method='chunk')
+    download_fits_files(files, destination_folder=destination_folder, method='astropy')
 
 
 if __name__ == '__main__':
