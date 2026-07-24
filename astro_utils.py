@@ -1812,9 +1812,9 @@ def asinh(arr):
     arr = np.arcsinh(arr)
     return arr
 if os.path.exists('/media/innereye/'):
-    drive = '/media/innereye/KINGSTON/JWST/'
+    drive = '/media/innereye/PNY/JWST/'
 else:
-    drive = '/media/yuval/KINGSTON/JWST/'
+    drive = '/media/yuval/PNY/JWST/'
 
 def download_by_log(log_csv, tgt=None, overwrite=False, method='chunk', path2data=None):
     if log_csv[0] != '/':
