@@ -28,7 +28,14 @@ args = {'obs_collection': "JWST",
 # search images by observation date and by release date
 table_release = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
 table_min = Observations.query_criteria(t_min=[start_time, end_time], **args)
-table = table_min.to_pandas().merge(table_release.to_pandas(), how='outer')
+df_min = table_min.to_pandas()
+df_release = table_release.to_pandas()
+if len(df_min) == 0:
+    table = df_release
+elif len(df_release) == 0:
+    table = df_min
+else:
+    table = df_min.merge(df_release, how='outer')
 # Rewrite the web page if there's any data from the last 14 days. Set titles to show description when
 # hover over images
 if len(table) == 0:

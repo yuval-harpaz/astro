@@ -54,7 +54,14 @@ if not target_arg:
         except Exception as e:
             print(f"Attempt {attempt+1} failed: {e}")
             time.sleep(1)
-    table = table_min.to_pandas().merge(table_release.to_pandas(), how='outer')
+    df_min = table_min.to_pandas()
+    df_release = table_release.to_pandas()
+    if len(df_min) == 0:
+        table = df_release
+    elif len(df_release) == 0:
+        table = df_min
+    else:
+        table = df_min.merge(df_release, how='outer')
 else:
     for attempt in range(5):
         try:
