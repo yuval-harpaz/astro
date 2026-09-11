@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-09-11,2025-08-16 04:00:58.803,2025-09-10 12:13:09.395,0,KEPLER-SNR, 70 162 356 444,mast:JWST/product/jw07075-o003_t001_nircam_clear-f070w_i2d.jpg,7075,Keplers Supernova Remnant: New fundamental Insights into Type Ia Supernova Explosions,306668887,not yet,
 2026-09-10,2025-09-09 23:53:09.755,2025-09-10 01:23:12.889,1194,NGC-1194, 560  770 1500,mast:JWST/product/jw07140-o048_t012_miri_f560w_i2d.jpg,7140,A JWST Survey of Compton Thick AGN,344389889,not yet,Galaxy; Active galaxies
 2026-09-10,2025-09-10 01:39:20.572,2025-09-10 01:58:51.831,1194,NGC-1194-image, 560  770 1500,mast:JWST/product/jw07140-o051_t076_miri_f560w-sub128_i2d.jpg,7140,A JWST Survey of Compton Thick AGN,344389092,not yet,Galaxy; Active galaxies
 2026-09-10,2026-09-10 02:08:11.421,2026-09-10 02:58:47.386,0,SN2026OBC,1130 1280 1500 1800,mast:JWST/product/jw12786-o004_t001_miri_f1130w_i2d.jpg,12786,"JWST Observations of Dust, Molecular Gas, Extended CSM, and the Innermost Ejecta in and around a Nearby Type Icn Supernova",453641467,not yet,Star; Supernovae
