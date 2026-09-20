@@ -29,23 +29,15 @@ from reproject import reproject_interp
 from skimage import transform
 from astro_utils import *
 
-OUT_DIR = '/media/yuval/PNY/JWST/images'
+DRIVE_DIR = '/media/yuval/PNY/JWST/images'
+# on github there is no drive, data is not pushed (see .gitignore) so images stay there
+OUT_DIR = DRIVE_DIR if os.path.isdir(os.path.dirname(DRIVE_DIR)) else 'data/tmp'
 SETS_CSV = 'docs/gc_miri_nircam.csv'
 MAST_URL = 'https://mast.stsci.edu/portal/Download/file/JWST/product/'
 # the color image is saved with no more pixels than this
 MAX_PIX = 4000000
 # stretch, as in astro_jwst_news_color.py
 FACTOR = 2
-
-args = sys.argv[1:]
-over = 'over' in [a.lower() for a in args]
-limit = 0
-target_arg = None
-for a in args:
-    if a.isdigit():
-        limit = int(a)
-    elif a.upper().startswith('GC_'):
-        target_arg = a.upper()
 
 
 def query_sets():
@@ -139,38 +131,60 @@ def color_set(files):
     return grey_zeros(np.nan_to_num(layers)), info
 
 
-sets = pd.read_csv(SETS_CSV)
-sets = sets[sets['miri_obs_date'].notna() & sets['nircam_obs_date'].notna()]
-if target_arg:
-    sets = sets[sets['miri_target'] == target_arg]
-    if not len(sets):
-        raise Exception(f'{target_arg} is not a complete set in {SETS_CSV}')
-print(f'{len(sets)} complete sets in {SETS_CSV}')
-os.makedirs(OUT_DIR, exist_ok=True)
-table = query_sets()
-done = 0
-for _, row in sets.iterrows():
-    name = f"{row['miri_target']}_{row['nircam_target']}_{row['set_release'][:10]}.jpg"
-    jpg = f'{OUT_DIR}/{name}'
+def save_set_image(row, table=None, out_dir=OUT_DIR, over=False):
+    '''Color image of one set, a row of docs/gc_miri_nircam.csv. Returns the jpg path'''
+    if table is None:
+        table = query_sets()
+    name = f"{row['miri_target']}_{row['nircam_target']}_{str(row['set_release'])[:10]}.jpg"
+    jpg = f'{out_dir}/{name}'
     if os.path.isfile(jpg) and not over:
         print(f'{name} already exists')
-        continue
+        return jpg
     files = set_files(table, row['miri_target'], row['nircam_target'])
     if len(files) < 2:
-        print(f"{row['miri_target']}: only {len(files)} files, skipped")
-        continue
+        raise Exception(f'only {len(files)} files for the set')
     print(f"{row['miri_target']} + {row['nircam_target']}: "
           f"{', '.join(np.array(filt_num(files)).astype(int).astype(str))}")
-    try:
-        layers, info = color_set(files)
-    except Exception as e:
-        print(f"failed color image for {row['miri_target']}: {e}")
-        continue
+    layers, info = color_set(files)
+    os.makedirs(out_dir, exist_ok=True)
     plt.imsave(jpg, layers, origin='lower', pil_kwargs={'quality': 95})
     print(f'saved {jpg} {layers.shape[1]}x{layers.shape[0]}, '
           f"PI: {info['PI_NAME']}, program {info['PROGRAM']}")
-    done += 1
-    if limit and done >= limit:
-        print(f'stopping after {limit} images')
-        break
-print(f'{done} new color images in {OUT_DIR}')
+    return jpg
+
+
+if __name__ == '__main__':
+    args = sys.argv[1:]
+    over = 'over' in [a.lower() for a in args]
+    limit = 0
+    target_arg = None
+    for a in args:
+        if a.isdigit():
+            limit = int(a)
+        elif a.upper().startswith('GC_'):
+            target_arg = a.upper()
+    sets = pd.read_csv(SETS_CSV)
+    sets = sets[sets['miri_obs_date'].notna() & sets['nircam_obs_date'].notna()]
+    if target_arg:
+        sets = sets[sets['miri_target'] == target_arg]
+        if not len(sets):
+            raise Exception(f'{target_arg} is not a complete set in {SETS_CSV}')
+    print(f'{len(sets)} complete sets in {SETS_CSV}')
+    table = query_sets()
+    done = 0
+    for _, set_row in sets.iterrows():
+        jpg = f"{OUT_DIR}/{set_row['miri_target']}_{set_row['nircam_target']}_" \
+              f"{str(set_row['set_release'])[:10]}.jpg"
+        if os.path.isfile(jpg) and not over:
+            print(f'{jpg.split("/")[-1]} already exists')
+            continue
+        try:
+            save_set_image(set_row, table=table, over=over)
+        except Exception as e:
+            print(f"failed color image for {set_row['miri_target']}: {e}")
+            continue
+        done += 1
+        if limit and done >= limit:
+            print(f'stopping after {limit} images')
+            break
+    print(f'{done} new color images in {OUT_DIR}')

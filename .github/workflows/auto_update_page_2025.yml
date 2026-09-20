@@ -81,7 +81,7 @@ jobs:
           Blueword: ${{ secrets.BWORD }}
           Bluehandle: ${{ secrets.BNDL }}
       run: |
-        python gc_miri_nircam_match.py all post
+        python gc_miri_nircam_match.py all post image
     - name: check news gc sets
       run: |
         git config --global user.name "actions"

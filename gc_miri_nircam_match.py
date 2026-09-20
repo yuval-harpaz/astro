@@ -9,13 +9,15 @@ NIRCam target whose footprint contains most of those points wins.
 
 Sets where both instruments already have data are listed first, latest release on top.
 When a set is completed by new data (both instruments have dates now, but did not in the
-previous docs/gc_miri_nircam.csv) the bot announces it on Bluesky.
+previous docs/gc_miri_nircam.csv) the bot announces it on Bluesky, and with "image" it also
+makes a color image of it (gc_color_sets.py), which is neither posted nor pushed.
 
 Usage:
     python gc_miri_nircam_match.py            # stop after 5 sets, preview csv
     python gc_miri_nircam_match.py 20         # first 20 sets
     python gc_miri_nircam_match.py all        # full match, writes docs/gc_miri_nircam.csv
     python gc_miri_nircam_match.py all post   # full match and announce new sets on Bluesky
+    python gc_miri_nircam_match.py all image  # also make a color image of each new set
     python gc_miri_nircam_match.py all fresh  # ignore the cached MAST query
 @Author: Yuval Harpaz
 '''
@@ -43,12 +45,15 @@ MIN_OVERLAP = 0.3
 N_GRID = 80
 # pairs to name in one Bluesky post
 MAX_ANNOUNCE = 6
+# color images to make in one run, each takes about a minute
+MAX_IMAGES = 3
 # bluesky limit is 300 including the link text, the repo plays safe with 250
 blim = 250
 
 args = [a.lower() for a in sys.argv[1:]]
 fresh = 'fresh' in args
 post = 'post' in args
+image = 'image' in args
 limit = None
 for a in args:
     if a.isdigit():
@@ -304,6 +309,18 @@ if len(no_match):
 
 if len(new_rows):
     print(f'new complete sets: {", ".join(new_rows["miri_target"])}')
+    if image and limit == 0:
+        # the images are not posted and not pushed, OUT_DIR is the drive or gitignored data/tmp
+        from gc_color_sets import OUT_DIR, query_sets, save_set_image
+        table3 = query_sets()
+        for _, set_row in new_rows.head(MAX_IMAGES).iterrows():
+            try:
+                save_set_image(set_row, table=table3)
+            except Exception as e:
+                print(f"failed color image for {set_row['miri_target']}: {e}")
+        if len(new_rows) > MAX_IMAGES:
+            print(f'{len(new_rows) - MAX_IMAGES} more sets have no image, '
+                  f'run gc_color_sets.py for them')
     if post and limit == 0:
         try:
             announce(new_rows)
