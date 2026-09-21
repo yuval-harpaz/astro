@@ -8,16 +8,17 @@ The match is geometric: the MIRI footprint (s_region) is sampled on a grid and t
 NIRCam target whose footprint contains most of those points wins.
 
 Sets where both instruments already have data are listed first, latest release on top.
-When a set is completed by new data (both instruments have dates now, but did not in the
-previous docs/gc_miri_nircam.csv) the bot announces it on Bluesky, and with "image" it also
-makes a color image of it (gc_color_sets.py), which is neither posted nor pushed.
+A set is ready when both instruments have level 3 mosaics, not only level 2 exposures. Then
+the bot announces it on Bluesky with a color image made by gc_color_sets.py. The images are
+not pushed, they are saved to the drive or to the gitignored data/tmp. What was posted is
+kept in the announced and image_post columns of docs/gc_miri_nircam.csv.
 
 Usage:
     python gc_miri_nircam_match.py            # stop after 5 sets, preview csv
     python gc_miri_nircam_match.py 20         # first 20 sets
     python gc_miri_nircam_match.py all        # full match, writes docs/gc_miri_nircam.csv
-    python gc_miri_nircam_match.py all post   # full match and announce new sets on Bluesky
-    python gc_miri_nircam_match.py all image  # also make a color image of each new set
+    python gc_miri_nircam_match.py all image  # make color images of ready sets, no posting
+    python gc_miri_nircam_match.py all post image  # post ready sets with their images
     python gc_miri_nircam_match.py all fresh  # ignore the cached MAST query
 @Author: Yuval Harpaz
 '''
@@ -25,10 +26,13 @@ import os
 import re
 import sys
 import astropy
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from matplotlib.path import Path
 from astroquery.mast import Observations
+from astro_utils import resize_to_under_2mb
+from gc_color_sets import NotReady, filt_str, query_sets, save_set_image
 
 OUT_CSV = 'docs/gc_miri_nircam.csv'
 PREVIEW_CSV = 'data/gc_miri_nircam_preview.csv'
@@ -47,6 +51,11 @@ N_GRID = 80
 MAX_ANNOUNCE = 6
 # color images to make in one run, each takes about a minute
 MAX_IMAGES = 3
+# keep trying to make an image this long after the latest release of a set
+IMAGE_DAYS = 3
+# sets released before this were announced by hand and get no image post, the ones after
+# (GC_60, GC_61) were announced by the bot before their level 3 mosaics existed
+FIRST_BOT_SET = '2026-09-19'
 # bluesky limit is 300 including the link text, the repo plays safe with 250
 blim = 250
 
@@ -121,11 +130,15 @@ def footprints(table):
         # "use the latest if there are a few"
         obs = use['t_min'].dropna()
         rel = use['t_obs_release'].dropna()
+        # level 2 exposures come first, a set is ready when every filter has a level 3 mosaic
+        observed = set(rows['filters'][rows['calib_level'] >= 2])
+        mosaics = set(rows['filters'][rows['calib_level'] == 3])
         out[target] = {'polys': polys,
                        'ra': ra.mean(),
                        'dec': dec.mean(),
                        'n_images': int(len(use)),
                        'planned': bool(use['planned'].all()),
+                       'level3': bool(mosaics) and observed <= mosaics,
                        'mjd': float(obs.max()) if len(obs) else np.nan,
                        'release_mjd': float(rel.max()) if len(rel) else np.nan}
     return out
@@ -184,13 +197,25 @@ def sex(ra, dec):
     return c.to_string('hmsdms', sep=':', precision=1)
 
 
-def complete_sets(csv):
-    '''MIRI target names that already had data from both instruments in a previous run'''
+def previous_state(csv):
+    '''(MIRI target, NIRCam target) -> (announced, image_post) as left by the previous run
+
+    announced is the url of the post that announced the set, "manual" for the sets announced
+    by hand before the bot did, "bot" for those the bot announced before urls were kept.
+    image_post is the url of the post with the color image of the set.
+    '''
     if not os.path.isfile(csv):
-        return set()
-    prev = pd.read_csv(csv)
-    both = prev['miri_obs_date'].notna() & prev['nircam_obs_date'].notna()
-    return set(prev['miri_target'][both])
+        return {}
+    prev = pd.read_csv(csv, dtype=str).fillna('')
+    if 'announced' not in prev.columns:
+        # first run that keeps the state. Sets were announced when both dates showed up
+        complete = (prev['miri_obs_date'] != '') & (prev['nircam_obs_date'] != '')
+        prev['announced'] = ''
+        prev.loc[complete, 'announced'] = np.where(prev['set_release'][complete] < FIRST_BOT_SET,
+                                                   'manual', 'bot')
+        prev['image_post'] = ''
+    pairs = zip(prev['miri_target'], prev['nircam_target'])
+    return dict(zip(pairs, zip(prev['announced'], prev['image_post'])))
 
 
 def wrap_pairs(shown):
@@ -224,16 +249,42 @@ def announce_text(new_rows):
     return txt
 
 
-def announce(new_rows):
-    '''Tell Bluesky that new data completed one or more MIRI / NIRCam sets'''
+def set_text(row, files, follow_up=False):
+    '''Bluesky text for one set with its color image'''
+    first = ('#JWST \U0001F52D Galactic Center set in color' if follow_up
+             else 'New #JWST \U0001F52D Galactic Center set')
+    return (f"\U0001F916 {first},\nMIRI {row['miri_target']} + NIRCam {row['nircam_target']}.\n"
+            f'RGB filters: {filt_str(files)}\nCredit: NASA, ESA, CSA, STScI.\nsee ')
+
+
+def set_alt(row, files):
+    return (f"Automatic color preview of JWST images near the Galactic Center. MIRI "
+            f"{row['miri_target']} is red, NIRCam {row['nircam_target']} is green and blue. "
+            f'Filters, red to blue: {filt_str(files)}')
+
+
+blient = None
+
+
+def send(txt, jpg=None, alt=None):
+    '''Post the text and the link to the csv on Bluesky, with an image if given. Returns
+    the post url'''
+    global blient
     from atproto import Client as Blient, client_utils
-    txt = announce_text(new_rows)
-    blient = Blient()
-    blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
+    if blient is None:
+        blient = Blient()
+        blient.login(os.environ['Bluehandle'], os.environ['Blueword'])
     boot = client_utils.TextBuilder()
     boot.text(txt)
     boot.link(LINK_TEXT, CSV_URL)
-    return blient.send_post(text=boot)
+    if jpg is None:
+        post = blient.send_post(text=boot)
+    else:
+        # bluesky takes images up to 1MB, this writes tmprs.jpg, which is gitignored
+        resize_to_under_2mb(plt.imread(jpg), max_size_mb=0.9)
+        with open('tmprs.jpg', 'rb') as f:
+            post = blient.send_image(text=boot, image=f.read(), image_alt=alt)
+    return 'https://bsky.app/profile/astrobotjwst.bsky.social/post/' + post.uri.split('/')[-1]
 
 
 table = query_gc()
@@ -242,7 +293,7 @@ nircam = footprints(table[table['instrument'] == 'NIRCAM'])
 print(f'{len(miri)} MIRI targets, {len(nircam)} NIRCam targets, proposals '
       f'{sorted(set(table["proposal_id"].astype(str)))}')
 
-was_complete = complete_sets(OUT_CSV)
+state = previous_state(OUT_CSV)
 order = sorted(miri, key=lambda t: int(t.split('_')[1]))
 rows = []
 for target in order:
@@ -280,6 +331,7 @@ for target in order:
                  'nircam_status': 'planned' if nc.get('planned', True) else 'observed',
                  'n_miri_images': fp['n_images'],
                  'n_nircam_images': nc.get('n_images', 0),
+                 'ready': fp['level3'] and nc.get('level3', False),
                  'set_release_mjd': np.nanmax([fp['release_mjd'], nc.get('release_mjd', np.nan)])
                  if np.isfinite(fp['release_mjd']) or np.isfinite(nc.get('release_mjd', np.nan)) else np.nan})
     print(f"{target:>7} {rows[-1]['miri_obs_date'] or '(planned)':<19} -> "
@@ -298,34 +350,65 @@ result['number'] = [int(t.split('_')[1]) for t in result['miri_target']]
 top = result[result['complete']].sort_values('set_release_mjd', ascending=False)
 rest = result[~result['complete']].sort_values('number')
 result = pd.concat([top, rest]).reset_index(drop=True)
-new_rows = result[result['complete'] & ~result['miri_target'].isin(was_complete)]
-result = result.drop(columns=['set_release_mjd', 'complete', 'number'])
-os.makedirs(os.path.dirname(out_csv), exist_ok=True)
-result.to_csv(out_csv, index=False)
-print(f'\nwrote {len(result)} rows to {out_csv}, {len(top)} complete sets')
-no_match = result[result['nircam_target'] == '']
-if len(no_match):
-    print(f'{len(no_match)} MIRI targets with no NIRCam coverage: {", ".join(no_match["miri_target"])}')
-
-if len(new_rows):
-    print(f'new complete sets: {", ".join(new_rows["miri_target"])}')
-    if image and limit == 0:
-        # the images are not posted and not pushed, OUT_DIR is the drive or gitignored data/tmp
-        from gc_color_sets import OUT_DIR, query_sets, save_set_image
-        table3 = query_sets()
-        for _, set_row in new_rows.head(MAX_IMAGES).iterrows():
+# what was posted about each set is kept from run to run
+pairs = list(zip(result['miri_target'], result['nircam_target']))
+result['announced'] = [state.get(pair, ('', ''))[0] for pair in pairs]
+result['image_post'] = [state.get(pair, ('', ''))[1] for pair in pairs]
+# a set is announced once both instruments have level 3 mosaics, with its color image
+due = result['ready'] & (result['announced'] != 'manual')
+to_announce = result[due & (result['announced'] == '')]
+# sets announced before their mosaics existed get their image in a second post
+recent = pd.to_datetime(result['set_release'], errors='coerce') > \
+    pd.Timestamp.now(tz='UTC').tz_localize(None) - pd.Timedelta(days=IMAGE_DAYS)
+to_image = result[due & (result['announced'] != '') & (result['image_post'] == '') & recent]
+if len(to_announce):
+    print(f'new sets with level 3 data: {", ".join(to_announce["miri_target"])}')
+if len(to_image):
+    print(f'announced sets waiting for their image: {", ".join(to_image["miri_target"])}')
+if limit == 0 and (image or post) and len(to_announce) + len(to_image):
+    table3 = query_sets() if image else None
+    n_images = 0
+    text_only = []
+    for irow, set_row in pd.concat([to_announce, to_image]).iterrows():
+        follow_up = result.at[irow, 'announced'] != ''
+        jpg = None
+        if image and n_images < MAX_IMAGES:
             try:
-                save_set_image(set_row, table=table3)
+                jpg, files = save_set_image(set_row, table=table3)
+                n_images += 1
+            except NotReady as e:
+                print(f"{set_row['miri_target']} + {set_row['nircam_target']}: {e}, will retry")
             except Exception as e:
                 print(f"failed color image for {set_row['miri_target']}: {e}")
-        if len(new_rows) > MAX_IMAGES:
-            print(f'{len(new_rows) - MAX_IMAGES} more sets have no image, '
-                  f'run gc_color_sets.py for them')
-    if post and limit == 0:
+        if not post:
+            continue
+        if jpg is None:
+            # announce without the image, it will come in a second post
+            if not follow_up:
+                text_only.append(irow)
+            continue
         try:
-            announce(new_rows)
-            print('announced on Bluesky')
+            url = send(set_text(set_row, files, follow_up), jpg, set_alt(set_row, files))
+            result.at[irow, 'image_post'] = url
+            if not follow_up:
+                result.at[irow, 'announced'] = url
+            print(f'posted {url}')
+        except Exception as e:
+            print(f"failed bluesky post for {set_row['miri_target']}: {e}")
+    if text_only:
+        try:
+            url = send(announce_text(result.loc[text_only]))
+            result.loc[text_only, 'announced'] = url
+            print(f'announced without images {url}')
         except Exception as e:
             print(f'failed bluesky post: {e}')
 elif post:
-    print('no new complete set to announce')
+    print('nothing new to post')
+result = result.drop(columns=['set_release_mjd', 'complete', 'number'])
+os.makedirs(os.path.dirname(out_csv), exist_ok=True)
+result.to_csv(out_csv, index=False)
+print(f'\nwrote {len(result)} rows to {out_csv}, {len(top)} complete sets, '
+      f'{int(result["ready"].sum())} with level 3 data')
+no_match = result[result['nircam_target'] == '']
+if len(no_match):
+    print(f'{len(no_match)} MIRI targets with no NIRCam coverage: {", ".join(no_match["miri_target"])}')

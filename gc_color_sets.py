@@ -40,6 +40,10 @@ MAX_PIX = 4000000
 FACTOR = 2
 
 
+class NotReady(Exception):
+    '''One of the instruments has no level 3 image in MAST yet, only level 2 exposures'''
+
+
 def query_sets():
     '''Level 3 GC_<number> images, the ones a color image can be made of'''
     table = Observations.query_criteria(obs_collection='JWST', dataproduct_type='image',
@@ -131,26 +135,34 @@ def color_set(files):
     return grey_zeros(np.nan_to_num(layers)), info
 
 
+def filt_str(files):
+    '''e.g. "770, 480, 212" for the RGB files'''
+    return ', '.join(np.array(filt_num(files)).astype(int).astype(str))
+
+
 def save_set_image(row, table=None, out_dir=OUT_DIR, over=False):
-    '''Color image of one set, a row of docs/gc_miri_nircam.csv. Returns the jpg path'''
+    '''Color image of one set, a row of docs/gc_miri_nircam.csv. Returns the jpg path and
+    the files it was made of, reddest first'''
     if table is None:
         table = query_sets()
+    files = set_files(table, row['miri_target'], row['nircam_target'])
+    # the set may be complete by level 2 exposures, the mosaics come hours or days later
+    missing = [f'{inst.upper()} {row[inst + "_target"]}' for inst in ['miri', 'nircam']
+               if not any(f'_{inst}_' in f for f in files)]
+    if missing:
+        raise NotReady(f'no level 3 image yet for {" and ".join(missing)}')
     name = f"{row['miri_target']}_{row['nircam_target']}_{str(row['set_release'])[:10]}.jpg"
     jpg = f'{out_dir}/{name}'
     if os.path.isfile(jpg) and not over:
         print(f'{name} already exists')
-        return jpg
-    files = set_files(table, row['miri_target'], row['nircam_target'])
-    if len(files) < 2:
-        raise Exception(f'only {len(files)} files for the set')
-    print(f"{row['miri_target']} + {row['nircam_target']}: "
-          f"{', '.join(np.array(filt_num(files)).astype(int).astype(str))}")
+        return jpg, files
+    print(f"{row['miri_target']} + {row['nircam_target']}: {filt_str(files)}")
     layers, info = color_set(files)
     os.makedirs(out_dir, exist_ok=True)
     plt.imsave(jpg, layers, origin='lower', pil_kwargs={'quality': 95})
     print(f'saved {jpg} {layers.shape[1]}x{layers.shape[0]}, '
           f"PI: {info['PI_NAME']}, program {info['PROGRAM']}")
-    return jpg
+    return jpg, files
 
 
 if __name__ == '__main__':
