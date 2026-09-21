@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-09-21,2025-09-19 19:09:47.545,2025-09-19 19:51:41.756,0,G14.33-0.64, 560  770 1000,mast:JWST/product/jw08887-o015_t015_miri_f560w_i2d.jpg,8887,Bridge the gas and ice of complex organic molecules in high-mass protostars,349841339,not yet,Star; Protostars
 2026-09-17,2025-09-16 04:52:26.121,2025-09-16 06:15:38.765,6553,NGC-6553,115 200 277 444,mast:JWST/product/jw08960-o014_t006_nircam_clear-f115w_i2d.jpg,8960,A survey of low mass stars in globular clusters: Probing the Origin of Multiple Stellar Populations with JWST,349794987,not yet,
 2026-09-16,2025-09-14 02:42:34.617,2025-09-14 03:22:40.584,0,G19.01-0.03, 560  770 1000,mast:JWST/product/jw08887-o002_t002_miri_f560w_i2d.jpg,8887,Bridge the gas and ice of complex organic molecules in high-mass protostars,349794622,not yet,Star; Protostars
 2026-09-16,2025-09-14 05:15:31.397,2025-09-14 05:45:46.048,0,NAME-GAL-CENTER,182 444,mast:JWST/product/jw04515-o002_t001_nircam_clear-f182m_i2d.jpg,4515,Galactic Center Astrometry,349794726,not yet,
