@@ -16,6 +16,9 @@ Steps:
               'full' on each visit's own grid, and 'aligned' after reprojection + registration to the
               reference visit, cropped to the reference view. aligned layers are cached as FITS for later steps.
     echo:     F444W visits colored by time lag as auto_plot 'filt' does by wavelength, red (first) to blue (last).
+    volume:   3D dust volume (NIfTI, voxels in mpc). each visit is a slice at its light echo depth, computed from
+              the echo paraboloid around Cas A, interpolated along the line of sight. repeated targets.
+    view:     rotate the volume with pyvista (the MNE 3D backend). not in the default steps.
 Existing images are skipped, use --overwrite to regenerate them.
 """
 import sys
@@ -25,14 +28,14 @@ import argparse
 from astro_utils import *
 from bot_grabber import to1, expand_highs
 from download_target import download_target_by_name
-from scipy.ndimage import gaussian_filter, shift as nd_shift
+from scipy.ndimage import gaussian_filter, binary_dilation, shift as nd_shift
 from skimage.registration import phase_cross_correlation
 import warnings
 from astropy.wcs import FITSFixedWarning
 warnings.simplefilter('ignore', FITSFixedWarning)
 
 PROGRAM = '8527'
-STEPS = ['download', 'images', 'echo']
+STEPS = ['download', 'images', 'echo', 'volume', 'view']
 out_root = drive + 'light_echo/'
 data_root = drive + 'data/'
 
@@ -478,6 +481,248 @@ def echo(base, ref_obs=None, mode='sum', do_register=True, overwrite=False, fill
     save_jpg(name + '_changes.jpg', draw_legend(time_composite(stack - static, colors, mode), colors, labels))
 
 
+## volume: light echoes as slices of the dust cloud
+
+PC_PER_LY = 0.306601
+CAS_A = SkyCoord('23h23m24s', '+58d48m54s')  # SIMBAD, J2000
+
+
+def echo_depth(rho, age_yr):
+    """
+    light echo paraboloid, Cas A at the focus: z = rho^2 / (2ct) - ct / 2 (pc), z toward the observer.
+    rho: distance from Cas A on the sky plane (pc). age_yr: time since the explosion light reached Earth.
+    """
+    ct = age_yr * PC_PER_LY
+    return rho ** 2 / (2 * ct) - ct / 2
+
+
+def pixel_noise(img):
+    """ robust per-pixel noise from differences of neighbouring pixels """
+    d = np.diff(img, axis=1)
+    d = d[np.isfinite(d)]
+    return 1.4826 * np.median(np.abs(d - np.median(d))) / np.sqrt(2)
+
+
+def block_mean(img, b):
+    """ bin by b x b with nanmean, trimming edges """
+    ny, nx = (img.shape[0] // b) * b, (img.shape[1] // b) * b
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', RuntimeWarning)  # all-NaN blocks
+        return np.nanmean(img[:ny, :nx].reshape(ny // b, b, nx // b, b), axis=(1, 3))
+
+
+def star_mask(blue, bvalid, red, rvalid, star_k=10, dust_k=5, star_dilate=2, star_max=60):
+    """
+    stars are found in the blue filter, where dust is faint, as point sources: above a smoothed version by star_k
+    noise levels, so extended dust (visible in F200W) is not masked. each source is grown to cover its F444W halo,
+    by star_dilate * (peak / threshold) ** (1 / 3) pixels up to star_max, where peak is the source's compact F444W
+    brightness and threshold is dust_k F444W noise levels (PSF wings fall as r^-3). sizing by F444W, not blue,
+    keeps faint red stars that are deep in F200W from getting large masks
+    """
+    from scipy.ndimage import distance_transform_edt, maximum as label_max
+
+    def compact(img, valid):
+        filled = np.where(valid, img, np.median(img[valid]))
+        return filled - gaussian_filter(filled, 8)
+
+    cores = bvalid & (compact(blue, bvalid) > star_k * pixel_noise(np.where(bvalid, blue, np.nan)))
+    labels, n = label(cores)
+    if n == 0:
+        return cores
+    thr = dust_k * pixel_noise(np.where(rvalid, red, np.nan))
+    peaks = np.asarray(label_max(compact(red, rvalid), labels, index=np.arange(1, n + 1)))
+    radii = np.minimum(star_dilate * np.maximum(peaks / thr, 1) ** (1 / 3), star_max)
+    radius_img = np.zeros(blue.shape)
+    radius_img[cores] = radii[labels[cores] - 1]
+    mask = np.zeros(blue.shape, bool)
+    edges = [0, 4, 8, 16, 32, 64, np.inf]
+    for lo, hi in zip(edges[:-1], edges[1:]):  # radius classes, one distance transform each
+        seed = cores & (radius_img > lo) & (radius_img <= hi)
+        if seed.any():
+            mask |= distance_transform_edt(~seed) <= min(hi, radius_img[seed].max())
+    return mask
+
+
+def right_region(red):
+    """ region [y1, y2, x1, x2] (crop coordinates) right of the gap between the two NIRCam modules """
+    cov = np.mean(np.isfinite(red) & (red != 0), axis=0)
+    nx = len(cov)
+    gap = int(0.3 * nx) + int(np.argmin(cov[int(0.3 * nx):int(0.7 * nx)]))
+    return [0, red.shape[0], gap, nx]
+
+
+def volume(base, ref_obs=None, region=None, binning=2, dust_k=5, star_k=10, star_dilate=2, sky_prc=10,
+           distance_pc=3400, sn_year=1681.0, interp='linear', do_register=True, fill=True, overwrite=False):
+    """
+    dust density proxy on a voxel grid. x, y: sky pixels (binned), depth: behind the first visit's echo surface.
+    per visit: stars masked with the blue filter, sky (percentile sky_prc) subtracted, f444w binned, values below
+    dust_k noise levels set to 0. each visit is placed at its echo depth, computed per pixel from the echo
+    paraboloid, and the line of sight is interpolated between visits. voxels are isotropic, in mpc.
+    saves NIfTI (+ json) and a projections png to out/volume/.
+    """
+    import nibabel as nib
+    epochs, out, params, ref = setup(base, ref_obs)
+    if len(epochs) < 2:
+        raise SystemExit(f'volume needs repeated visits, {base} has {len(epochs)}')
+    if 'crop' not in params:
+        raise SystemExit('run the images step first')
+    os.makedirs(out + 'volume', exist_ok=True)
+    name = f"{out}volume/{base}_dust_bin{binning}_to{epochs['date'].iloc[-1]}"
+    if not overwrite and os.path.isfile(name + '.nii.gz'):
+        print(f'{name}.nii.gz exists, skipping')
+        return name
+    cy1, cy2, cx1, cx2 = params['crop']
+    lay = aligned_layers(ref, ref, out, do_register=do_register, fill=fill)
+    if region is None:
+        region = right_region(lay['red'][cy1:cy2, cx1:cx2])
+    ry1, ry2, rx1, rx2 = region
+    print(f'region (crop coordinates) y {ry1}:{ry2}, x {rx1}:{rx2}')
+    ref_hdr = fits.getheader(out + f"aligned/{ref['obs']}_{ref['red_filt']}.fits", 1)
+    wcs = WCS(ref_hdr)
+    pix_arcsec = np.sqrt(abs(np.linalg.det(wcs.pixel_scale_matrix))) * 3600
+    vox_mpc = pix_arcsec / 206265 * distance_pc * 1000 * binning
+    # binned pixel centers in full reference grid coordinates -> distance from Cas A on the sky (pc)
+    ny, nx = (ry2 - ry1) // binning, (rx2 - rx1) // binning
+    yy, xx = np.mgrid[0:ny, 0:nx]
+    xs = cx1 + rx1 + (xx + 0.5) * binning - 0.5
+    ys = cy1 + ry1 + (yy + 0.5) * binning - 0.5
+    rho = wcs.pixel_to_world(xs, ys).separation(CAS_A).rad * distance_pc
+    stack = np.zeros((len(epochs), ny, nx), 'float32')
+    depth = np.zeros((len(epochs), ny, nx))  # mpc behind the first visit's surface
+    info = []
+    age0 = Time(epochs['mjd'].iloc[0], format='mjd').decimalyear - sn_year
+    z0 = echo_depth(rho, age0)
+    for iep, ep in epochs.iterrows():
+        lay = aligned_layers(ep, ref, out, do_register=do_register, fill=fill)
+        red = lay['red'][cy1:cy2, cx1:cx2][ry1:ry2, rx1:rx2].astype(float)
+        blue = lay['blue'][cy1:cy2, cx1:cx2][ry1:ry2, rx1:rx2].astype(float)
+        valid = np.isfinite(red) & (red != 0)
+        sky = np.percentile(red[valid], sky_prc)
+        noise = pixel_noise(np.where(valid, red, np.nan))
+        bvalid = np.isfinite(blue) & (blue != 0)
+        stars = star_mask(blue, bvalid, red, valid, star_k, dust_k, star_dilate)
+        dust = np.where(valid & ~stars, red - sky, np.nan)
+        dust = block_mean(dust, binning)[:ny, :nx]
+        thr = dust_k * noise / binning
+        dust[dust < thr] = 0
+        stack[iep] = dust
+        age = Time(ep['mjd'], format='mjd').decimalyear - sn_year
+        depth[iep] = (z0 - echo_depth(rho, age)) * 1000
+        info.append({'obs': ep['obs'], 'date': ep['date'], 'age_yr': age, 'sky': sky, 'noise': noise,
+                     'threshold_binned': thr, 'star_fraction': float(stars[valid].mean()),
+                     'depth_mpc_mean': float(np.mean(depth[iep]))})
+        print(f"{ep['obs']} {ep['date']} depth {np.mean(depth[iep]):6.2f} mpc, sky {sky:.3f}, noise {noise:.4f}, "
+              f"stars {100 * stars[valid].mean():.1f}%, dust voxels {100 * np.mean(dust > 0):.1f}%")
+    # line of sight interpolation between visits, on an isotropic depth grid
+    nz = int(np.ceil(np.max(depth) / vox_mpc)) + 1
+    vol = np.zeros((nz, ny, nx), 'float32')
+    for k in range(nz):
+        dk = k * vox_mpc
+        for i in range(len(epochs) - 1):
+            inside = (depth[i] <= dk) & (dk <= depth[i + 1])
+            if not inside.any():
+                continue
+            w = np.clip((dk - depth[i]) / (depth[i + 1] - depth[i]), 0, 1)
+            if interp == 'nearest':
+                w = np.round(w)
+            val = (1 - w) * stack[i] + w * stack[i + 1]
+            vol[k][inside] = np.nan_to_num(val[inside])
+    # world coordinates (mpc): x, y on the sky plane, z toward the observer. the first surface is tilted,
+    # approximated by a plane z0 = a x + b y + c, which enters the affine as a shear
+    zmpc = (z0 - z0.mean()) * 1000
+    A = np.c_[xx.ravel() * vox_mpc, yy.ravel() * vox_mpc, np.ones(xx.size)]
+    a, b, c = np.linalg.lstsq(A, zmpc.ravel(), rcond=None)[0]
+    affine = np.array([[vox_mpc, 0, 0, 0], [0, vox_mpc, 0, 0], [a * vox_mpc, b * vox_mpc, -vox_mpc, c], [0, 0, 0, 1]])
+    img = nib.Nifti1Image(np.transpose(vol, (2, 1, 0)), affine)  # (x, y, depth)
+    img.header.set_xyzt_units('mm')  # 1 unit = 1 mpc
+    nib.save(img, name + '.nii.gz')
+    meta = {'units': 'mpc (NIfTI says mm)', 'voxel_mpc': vox_mpc, 'shape_xyz': [nx, ny, nz], 'region_crop': region,
+            'binning': binning, 'distance_pc': distance_pc, 'sn_year': sn_year, 'cas_a': CAS_A.to_string('hmsdms'),
+            'rho_pc': [float(rho.min()), float(rho.max())], 'surface_slope': [float(a), float(b)],
+            'tilt_deg': float(np.degrees(np.arctan(np.hypot(a, b)))), 'dust_k': dust_k, 'star_k': star_k,
+            'star_dilate': star_dilate, 'sky_percentile': sky_prc, 'interp': interp, 'visits': info}
+    with open(name + '.json', 'w') as f:
+        json.dump(meta, f, indent=1)
+    print(f'saved {name}.nii.gz, {nx} x {ny} x {nz} voxels of {vox_mpc:.2f} mpc')
+    volume_projections(vol, vox_mpc, epochs, info, name + '_projections.png')
+    return name
+
+
+def volume_projections(vol, vox_mpc, epochs, info, fn, exaggerate=10, slab=25):
+    """
+    maximum intensity projections: sky view, and two side views through slab voxels at the center (dashed lines),
+    depth stretched by exaggerate
+    """
+    from matplotlib.gridspec import GridSpec
+    top = np.max(vol, axis=0)
+    # side views: max over a thin slab through the center, a max over the whole width always saturates
+    nz, ny, nx = vol.shape
+    band = slab // 2
+    side_x = np.max(vol[:, ny // 2 - band:ny // 2 + band + 1, :], axis=1)  # depth x x
+    side_y = np.max(vol[:, :, nx // 2 - band:nx // 2 + band + 1], axis=2)  # depth x y
+    clim = np.percentile(top[top > 0], 99.5) if np.any(top > 0) else 1
+    fig = plt.figure(figsize=(12, 9))
+    gs = GridSpec(2, 2, width_ratios=[nx, nz * exaggerate], height_ratios=[ny, nz * exaggerate], figure=fig)
+    ink = '#333333'
+    ax = fig.add_subplot(gs[0, 0])
+    ax.imshow(top, origin='lower', cmap='magma', vmin=0, vmax=clim,
+              extent=[0, nx * vox_mpc, 0, ny * vox_mpc])
+    ax.set_title('sky view (max over depth)', fontsize=9, color=ink, loc='left')
+    for pos, horizontal in [(ny // 2, True), (nx // 2, False)]:
+        line = ax.axhline if horizontal else ax.axvline
+        line(pos * vox_mpc, color='#aaaaaa', lw=0.6, ls='--')
+    ax.set_ylabel('y (mpc)', fontsize=8, color=ink)
+    ax = fig.add_subplot(gs[0, 1])
+    ax.imshow(side_y.T, origin='lower', cmap='magma', vmin=0, vmax=clim, aspect=1 / exaggerate,
+              extent=[0, nz * vox_mpc, 0, ny * vox_mpc])
+    ax.set_title(f'side, vertical line (depth x{exaggerate})', fontsize=9, color=ink, loc='left')
+    ax.set_xlabel('depth (mpc)', fontsize=8, color=ink)
+    ax = fig.add_subplot(gs[1, 0])
+    ax.imshow(side_x, origin='lower', cmap='magma', vmin=0, vmax=clim, aspect=exaggerate,
+              extent=[0, nx * vox_mpc, 0, nz * vox_mpc])
+    ax.set_title(f'side, horizontal line (depth x{exaggerate})', fontsize=9, color=ink, loc='left')
+    ax.set_xlabel('x (mpc)', fontsize=8, color=ink)
+    ax.set_ylabel('depth (mpc)', fontsize=8, color=ink)
+    for d in [i['depth_mpc_mean'] for i in info]:
+        ax.axhline(d, color='#aaaaaa', lw=0.5, ls=':')
+    ax = fig.add_subplot(gs[1, 1])
+    ax.axis('off')
+    ax.text(0, 1, '\n'.join(f"{i['date']}  {i['depth_mpc_mean']:5.1f} mpc" for i in info), fontsize=8, color=ink,
+            va='top', family='monospace')
+    for a in fig.axes:
+        a.tick_params(labelsize=7, colors=ink)
+    fig.tight_layout()
+    fig.savefig(fn, dpi=150)
+    plt.close(fig)
+    print(f'saved {fn}')
+
+
+def view(name, z_scale=10, clim_prc=99.5, screenshot=None):
+    """ rotate the dust volume in 3D with pyvista (the MNE 3D backend). depth stretched by z_scale """
+    import nibabel as nib
+    import pyvista as pv
+    data = np.asarray(nib.load(name + '.nii.gz').dataobj, dtype='float32')  # (x, y, depth)
+    with open(name + '.json') as f:
+        vox = json.load(f)['voxel_mpc']  # the affine zooms include the shear
+    grid = pv.ImageData(dimensions=data.shape, spacing=(vox, vox, vox * z_scale))
+    grid.point_data['dust'] = data.ravel(order='F')
+    pos = data[data > 0]
+    clim = [0, float(np.percentile(pos, clim_prc))] if len(pos) else [0, 1]
+    plotter = pv.Plotter(off_screen=screenshot is not None)
+    plotter.set_background('black')
+    plotter.add_volume(grid, scalars='dust', cmap='magma', clim=clim, opacity='sigmoid_6',
+                       scalar_bar_args={'title': 'MJy/sr above sky', 'color': 'white'})
+    plotter.add_text(f'{os.path.basename(name)}\ndepth x{z_scale}, voxel {vox:.2f} mpc', font_size=9, color='white')
+    plotter.show_axes()
+    if screenshot:
+        plotter.camera.azimuth = 30
+        plotter.camera.elevation = 25
+        plotter.screenshot(screenshot)
+        print(f'saved {screenshot}')
+    else:
+        plotter.show()
+
+
 def usage(parser):
     parser.print_help()
     print()
@@ -492,7 +737,7 @@ def main(argv=None):
         prog='light_echo.py', description=f'Light echo pipeline for JWST program {PROGRAM}.',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('target', nargs='?', help='target name, e.g. Greebo (includes Greebo-Repeated)')
-    parser.add_argument('--steps', default=','.join(STEPS), help=f'comma separated steps out of {",".join(STEPS)}')
+    parser.add_argument('--steps', default='download,images,echo', help=f'comma separated steps out of {",".join(STEPS)}')
     parser.add_argument('--ref', default=None,
                         help='reference visit (obs id, e.g. o017) for alignment and stretch. default: earliest '
                              'visit, or the one stored in params.json')
@@ -513,6 +758,17 @@ def main(argv=None):
     parser.add_argument('--redo', action='store_true', help='recompute cached aligned layers, implies --overwrite')
     parser.add_argument('--echo-mode', default='sum', choices=['sum', 'mean', 'max'],
                         help='how to combine f444w visits in the echo step')
+    parser.add_argument('--region', nargs=4, type=int, default=None, metavar=('Y1', 'Y2', 'X1', 'X2'),
+                        help='volume region in crop pixels. default: right of the gap between the NIRCam modules')
+    parser.add_argument('--bin', type=int, default=2, help='volume voxel size in pixels (1 pixel ~ 1 mpc)')
+    parser.add_argument('--dust-k', type=float, default=5, help='volume: dust threshold in noise levels')
+    parser.add_argument('--star-k', type=float, default=10, help='volume: star mask threshold in blue noise levels')
+    parser.add_argument('--distance', type=float, default=3400, help='distance to Cas A, pc (Reed et al. 1995)')
+    parser.add_argument('--sn-year', type=float, default=1681.0,
+                        help='year the Cas A explosion light reached Earth (1681 +- 19, Rest et al. 2008)')
+    parser.add_argument('--interp', default='linear', choices=['linear', 'nearest'],
+                        help='volume: line of sight interpolation between visits')
+    parser.add_argument('--z-scale', type=float, default=10, help='view: depth exaggeration')
     parser.add_argument('--changes', action='store_true',
                         help='echo step also saves _changes.jpg, the per-pixel minimum over visits subtracted')
     args = parser.parse_args(argv)
@@ -531,6 +787,14 @@ def main(argv=None):
         images(base, ref_obs=args.ref, lims=tuple(args.lims), stretch=args.stretch, asinh_k=args.asinh_k,
                factor=args.factor, blue_sky=args.blue_sky, reset_params=args.reset_params,
                do_register=not args.no_register, redo=args.redo, overwrite=args.overwrite, fill=not args.no_fill)
+    name = None
+    if 'volume' in steps or 'view' in steps:
+        name = volume(base, ref_obs=args.ref, region=args.region, binning=args.bin, dust_k=args.dust_k,
+                      star_k=args.star_k, distance_pc=args.distance, sn_year=args.sn_year, interp=args.interp,
+                      do_register=not args.no_register, fill=not args.no_fill,
+                      overwrite=args.overwrite and 'volume' in steps)
+    if 'view' in steps:
+        view(name, z_scale=args.z_scale)
     if 'echo' in steps:
         echo(base, ref_obs=args.ref, mode=args.echo_mode, do_register=not args.no_register,
              overwrite=args.overwrite or args.redo, fill=not args.no_fill, changes=args.changes)
