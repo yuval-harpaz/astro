@@ -305,7 +305,7 @@ else:
                 df.to_csv('docs/bot_color_posts.csv', index=False)
                 os.system('git add docs/bot_color_posts.csv')
                 os.system(f'git commit -m "added {target} to color posts on the fly"')
-                os.system('git pull --rebase') 
+                os.system('git pull --rebase --autostash')
                 os.system('git push')
         print('done auto color processing for '+target)
     # imgrs = resize_with_padding(img)
