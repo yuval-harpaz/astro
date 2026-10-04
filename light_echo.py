@@ -485,7 +485,7 @@ def echo(base, ref_obs=None, mode='sum', do_register=True, overwrite=False, fill
 
 def sources(base, ref_obs=None, region=None, k=5, smooth=8, min_area=4, min_visits=2, var_thr=0.175, lc_thr=0.1,
             blue_red_min=0.3, axis_max=2.0, bright_star=5.0, grow_k=2, grow_smooth=32, grow_max=40, do_register=True,
-            fill=True,
+            fill=True, starnet=False, starnet_star=0.5,
             star_k=10):
     """
     find compact sources in the sum of the visits and decide which are galaxies to remove.
@@ -495,15 +495,20 @@ def sources(base, ref_obs=None, region=None, k=5, smooth=8, min_area=4, min_visi
     3. per cluster: variability, the mean over its pixels of std / mean over the visits; light curve range,
        (max - min) / mean of the cluster's mean value per visit (noise and registration jitter average out);
        blue / red, small scale peak in the mean blue filter over that in F444W; axis ratio from second moments.
-    4. star: has a blue point source, blue / red >= blue_red_min and axis ratio <= axis_max, or a blue point
-       source and an F444W peak above bright_star MJy/sr whatever its shape and variability (frame edges, spikes).
+    4. star: has a blue point source, blue / red >= blue_red_min (stars are bright in blue, galaxies red), and
+       axis ratio <= axis_max or an F444W peak above bright_star MJy/sr (spikes make bright stars look elongated).
     5. galaxy: not a star, variability < var_thr and light curve range < lc_thr.
     6. removal mask: galaxies grown while the minimum over the visits covering a pixel, of each visit minus its
        gaussian smoothed version (sigma grow_smooth, so relative to the local dust), stays above grow_k single visit
        noise levels, i.e. until a pixel is low in any visit, at most grow_max pixels.
     saves to out/sources/: clusters image (png, interactive html), a histogram, a table, the sum with the removal
     mask set to black, and arrays for pixel_info.
+    starnet: for the StarNet2 route (files with _starnet). statistics stay on the original visits (StarNet2 removes
+    galaxies partly and differently per visit, which would make them look variable), but a star is a cluster whose
+    light StarNet2 removed mostly (> starnet_star of it, mean over pixels and visits), replacing the blue tests that
+    fail in F200W where galaxies are bright. galaxies: not stars and static, as above.
     """
+    tag = '_starnet' if starnet else ''
     from scipy.ndimage import mean as label_mean, maximum as label_max, find_objects, maximum_position
     epochs, out, params, ref = setup(base, ref_obs)
     os.makedirs(out + 'sources', exist_ok=True)
@@ -511,12 +516,15 @@ def sources(base, ref_obs=None, region=None, k=5, smooth=8, min_area=4, min_visi
     if region is None:
         region = right_region(aligned_layers(ref, ref, out, do_register=do_register, fill=fill)['red'][cy1:cy2, cx1:cx2])
     ry1, ry2, rx1, rx2 = region
-    dust, blues, cores, noises = [], [], [], []
+    dust, blues, cores, noises, removed = [], [], [], [], []
     for _, ep in epochs.iterrows():
         lay = aligned_layers(ep, ref, out, do_register=do_register, fill=fill)
         red = lay['red'][cy1:cy2, cx1:cx2][ry1:ry2, rx1:rx2].astype('float32')
         blue = lay['blue'][cy1:cy2, cx1:cx2][ry1:ry2, rx1:rx2].astype('float32')
         valid = np.isfinite(red) & (red != 0)
+        if starnet:  # fraction of each pixel's light removed by StarNet2
+            removed.append(np.where(valid, (red - starnet_starless(out, ep['obs'], red, valid)) /
+                                    np.maximum(red - np.percentile(red[valid], 10), 1e-6), np.nan))
         dust.append(np.where(valid, red - np.percentile(red[valid], 10), np.nan))
         noises.append(pixel_noise(np.where(valid, red, np.nan)))
         bvalid = np.isfinite(blue) & (blue != 0)
@@ -571,8 +579,14 @@ def sources(base, ref_obs=None, region=None, k=5, smooth=8, min_area=4, min_visi
     table = pd.DataFrame({'id': ids, 'area_px': area[ids], 'y': cy, 'x': cx, 'mean_sum': label_mean(filled, labels, ids),
                           'peak': filled[cy, cx], 'variability': cvar, 'lc_range': lcr, 'blue_red': blue_red,
                           'axis_ratio': axr, 'blue_core': has_core})
-    table['star'] = table['blue_core'] & (((table['blue_red'] >= blue_red_min) & (table['axis_ratio'] <= axis_max)) |
-                                          (table['peak'] > bright_star))
+    table['star'] = (table['blue_core'] & (table['blue_red'] >= blue_red_min) &
+                     ((table['axis_ratio'] <= axis_max) | (table['peak'] > bright_star)))
+    if starnet:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            frac = np.clip(np.nanmean(removed, axis=0), 0, 1)
+        table['starnet_removed'] = np.array(label_mean(np.nan_to_num(frac), labels, ids))
+        table['star'] = table['starnet_removed'] > starnet_star
     table['galaxy'] = ~table['star'] & (table['variability'] < var_thr) & (table['lc_range'] < lc_thr)
     # each visit's value at the cluster center (brightest pixel)
     for iv, (obs, date) in enumerate(zip(epochs['obs'], epochs['date'])):
@@ -587,22 +601,22 @@ def sources(base, ref_obs=None, region=None, k=5, smooth=8, min_area=4, min_visi
     fill_m, void_m = split_fill_void(remove, total, variab, low_raw, noise)
     print(f'removal: {100 * fill_m[covered].mean():.2f}% filled (surrounded by dust), '
           f'{100 * void_m[covered].mean():.2f}% void (empty space, grown further)')
-    table.to_csv(out + f'sources/{base}_sources.csv', index=False)
+    table.to_csv(out + f'sources/{base}_sources{tag}.csv', index=False)
     print(f'{n} clusters above {k} noise levels, {len(ids)} with >= {min_area} px: {table["star"].sum()} stars, '
           f'{table["galaxy"].sum()} galaxies (variability < {var_thr}, light curve range < {lc_thr}), '
           f'{(~table["star"] & ~table["galaxy"]).sum()} other. removal mask {100 * remove[covered].mean():.2f}% '
           f'of the region (clusters alone {100 * seeds[covered].mean():.2f}%)')
     # arrays for looking up pixels later (region coordinates: x = column, y = row, origin at the bottom left)
-    np.save(out + f'sources/{base}_layers.npy', dust.astype('float32'))  # (visit, y, x), sky subtracted F444W
-    np.savez(out + f'sources/{base}_maps.npz', total=total.astype('float32'), variability=variab.astype('float32'),
+    np.save(out + f'sources/{base}_layers{tag}.npy', dust.astype('float32'))  # (visit, y, x), sky subtracted F444W
+    np.savez(out + f'sources/{base}_maps{tag}.npz', total=total.astype('float32'), variability=variab.astype('float32'),
              labels=labels.astype('int32'), stars=star_any, remove=remove, remove_fill=fill_m, remove_void=void_m)
-    with open(out + f'sources/{base}_coords.json', 'w') as f:
+    with open(out + f'sources/{base}_coords{tag}.json', 'w') as f:
         json.dump({'region_crop': [int(r) for r in region], 'crop': params['crop'],
                    'note': 'x, y are region pixels; reference grid pixel = crop start + region start + x (or y)',
                    'visits': list(epochs['obs']), 'dates': list(epochs['date']), 'var_thr': var_thr,
                    'lc_thr': lc_thr}, f, indent=1)
-    sources_figures(base, out, total, labels, table, var_thr, fill_m, void_m)
-    sources_html(base, out, total, labels, table, var_thr, fill_m, void_m)
+    sources_figures(base + tag, out, total, labels, table, var_thr, fill_m, void_m)
+    sources_html(base + tag, out, total, labels, table, var_thr, fill_m, void_m)
     return table
 
 
@@ -646,14 +660,15 @@ def split_fill_void(remove, total, variab, low, noise, dust_k=5, dust_var=0.2, r
     return fill & ~void, void
 
 
-def pixel_info(base, x, y):
+def pixel_info(base, x, y, starnet=False):
     """ what the sources step saw at region pixel x, y: the sky subtracted F444W of each visit, variability, cluster """
     out = out_root + base + '/sources/'
-    layers = np.load(out + f'{base}_layers.npy', mmap_mode='r')
-    maps = np.load(out + f'{base}_maps.npz')
-    with open(out + f'{base}_coords.json') as f:
+    tag = '_starnet' if starnet else ''
+    layers = np.load(out + f'{base}_layers{tag}.npy', mmap_mode='r')
+    maps = np.load(out + f'{base}_maps{tag}.npz')
+    with open(out + f'{base}_coords{tag}.json') as f:
         coords = json.load(f)
-    table = pd.read_csv(out + f'{base}_sources.csv')
+    table = pd.read_csv(out + f'{base}_sources{tag}.csv')
     lab = int(maps['labels'][y, x])
     print(f'{base} x {x}, y {y} (reference grid x {coords["crop"][2] + coords["region_crop"][2] + x}, '
           f'y {coords["crop"][0] + coords["region_crop"][0] + y})')
@@ -900,27 +915,50 @@ def flow_interp(prev, cur, w, flow):
     return np.where(ca | cb, blend, 0)
 
 
-def sources_masks(base, ref_obs, region, do_register=True, fill=True):
+def sources_masks(base, ref_obs, region, do_register=True, fill=True, starnet=False):
     """ fill and void masks from the sources step, for the region; runs sources if missing or for another region """
     out = out_root + base + '/sources/'
+    tag = '_starnet' if starnet else ''
     try:
-        with open(out + f'{base}_coords.json') as f:
+        with open(out + f'{base}_coords{tag}.json') as f:
             same = json.load(f)['region_crop'] == [int(r) for r in region]
-        maps = np.load(out + f'{base}_maps.npz')
+        maps = np.load(out + f'{base}_maps{tag}.npz')
         if not same or 'remove_void' not in maps:
             raise FileNotFoundError
     except (FileNotFoundError, KeyError):
-        sources(base, ref_obs=ref_obs, region=region, do_register=do_register, fill=fill)
-        maps = np.load(out + f'{base}_maps.npz')
+        sources(base, ref_obs=ref_obs, region=region, do_register=do_register, fill=fill, starnet=starnet)
+        maps = np.load(out + f'{base}_maps{tag}.npz')
     return maps['remove_fill'], maps['remove_void']
+
+
+def starnet_starless(out, obs, red, valid, scale=20.0):
+    """
+    StarNet2 (CLI, installed separately) starless version of a visit's F444W, in the same units. cached in
+    out/starnet/. the input is scaled by 1 / scale (StarNet clips float FITS above 1; only star cores exceed 20
+    MJy/sr), uncovered pixels set to the median (StarNet rejects NaN), run with --linear (it stretches for the
+    network and reverses the stretch). returns NaN outside valid.
+    """
+    import subprocess
+    os.makedirs(out + 'starnet', exist_ok=True)
+    fin, fout = out + f'starnet/{obs}_in.fits', out + f'starnet/{obs}_starless.fits'
+    img = (np.where(valid, red, np.median(red[valid])) / scale).astype('float32')
+    cached = os.path.isfile(fout) and os.path.isfile(fin) and fits.getdata(fin).shape == img.shape and \
+        np.allclose(fits.getdata(fin), img)
+    if not cached:
+        fits.PrimaryHDU(img).writeto(fin, overwrite=True)
+        print(f'StarNet2 on {obs} ...')
+        subprocess.run(['starnet2', '--input', fin, '--output', fout, '--linear', '--quiet'], check=True,
+                       stderr=subprocess.DEVNULL)
+    return np.where(valid, fits.getdata(fout).astype('float32') * scale, np.nan)
 
 
 def volume(base, ref_obs=None, region=None, binning=2, dust_k=5, star_k=10, star_dilate=1.5, star_max=25, sky_prc=10,
            distance_pc=3400, sn_year=1681.0, interp='flow', do_register=True, fill=True, overwrite=False,
-           static=True):
+           static=True, stars='mask'):
     """
     dust density proxy on a voxel grid. x, y: sky pixels (binned), depth: behind the first visit's echo surface.
-    per visit: stars found in the blue filter are filled from their surroundings; static: background galaxies from
+    per visit: stars='mask': stars found in the blue filter are filled from their surroundings; stars='starnet':
+    StarNet2's starless image is used instead (saved with _starnet). static: background galaxies from
     the sources step are filled when surrounded by dust and set to sky in empty space; sky (percentile sky_prc)
     subtracted, f444w binned. without static the volume is saved with _raw. each visit is placed at its echo depth,
     computed per pixel from the echo paraboloid,
@@ -937,7 +975,8 @@ def volume(base, ref_obs=None, region=None, binning=2, dust_k=5, star_k=10, star
     if 'crop' not in params:
         raise SystemExit('run the images step first')
     os.makedirs(out + 'volume', exist_ok=True)
-    name = f"{out}volume/{base}_dust_bin{binning}_to{epochs['date'].iloc[-1]}" + ('' if static else '_raw')
+    name = (f"{out}volume/{base}_dust_bin{binning}_to{epochs['date'].iloc[-1]}" +
+            ('_starnet' if stars == 'starnet' else '') + ('' if static else '_raw'))
     if not overwrite and os.path.isfile(name + '.nii.gz'):
         print(f'{name}.nii.gz exists, skipping')
         return name
@@ -976,16 +1015,20 @@ def volume(base, ref_obs=None, region=None, binning=2, dust_k=5, star_k=10, star
         reds.append(red)
         valids.append(valid)
         noises.append(pixel_noise(np.where(valid, red, np.nan)))
-        starss.append(star_mask(blue, bvalid, red, valid, star_k, dust_k, star_dilate, star_max))
+        if stars == 'starnet':
+            reds[-1] = starnet_starless(out, ep['obs'], red, valid)
+            starss.append(np.zeros(red.shape, bool))
+        else:
+            starss.append(star_mask(blue, bvalid, red, valid, star_k, dust_k, star_dilate, star_max))
     if static:
-        fixed, void = sources_masks(base, ref_obs, region, do_register, fill)
+        fixed, void = sources_masks(base, ref_obs, region, do_register, fill, starnet=stars == 'starnet')
     else:
         fixed = void = np.zeros(reds[0].shape, bool)
     info = []
     for iep, ep in epochs.iterrows():
-        red, valid, stars, noise = reds[iep], valids[iep], starss[iep], noises[iep]
+        red, valid, star_m, noise = reds[iep], valids[iep], starss[iep], noises[iep]
         sky = np.percentile(red[valid], sky_prc)
-        cleaned = fill_stars(red, valid, stars | fixed)
+        cleaned = fill_stars(red, valid, star_m | fixed) if (star_m | fixed).any() else red.copy()
         cleaned[void & valid] = sky  # galaxies in empty space: sky
         dust = block_mean(cleaned - sky, binning)[:ny, :nx]
         stack[iep] = dust
@@ -993,11 +1036,11 @@ def volume(base, ref_obs=None, region=None, binning=2, dust_k=5, star_k=10, star
         depth[iep] = (z0 - echo_depth(rho, age)) * 1000
         thr = dust_k * noise / binning
         info.append({'obs': ep['obs'], 'date': ep['date'], 'age_yr': age, 'sky': float(sky), 'noise': noise,
-                     'threshold_binned': thr, 'star_fraction': float(stars[valid].mean()),
+                     'threshold_binned': thr, 'star_fraction': float(star_m[valid].mean()),
                      'galaxy_fill_fraction': float(fixed[valid].mean()),
                      'galaxy_void_fraction': float(void[valid].mean()), 'depth_mpc_mean': float(np.mean(depth[iep]))})
         print(f"{ep['obs']} {ep['date']} depth {np.mean(depth[iep]):6.2f} mpc, sky {sky:.3f}, noise {noise:.4f}, "
-              f"stars filled {100 * stars[valid].mean():.1f}%, above threshold {100 * np.nanmean(dust > thr):.1f}%")
+              f"stars filled {100 * star_m[valid].mean():.1f}%, above threshold {100 * np.nanmean(dust > thr):.1f}%")
     del reds, starss
     stack = np.where(np.isfinite(stack), np.maximum(stack, 0), np.nan)
     flows = []
@@ -1039,7 +1082,7 @@ def volume(base, ref_obs=None, region=None, binning=2, dust_k=5, star_k=10, star
             'surface_slope': [float(a), float(b)], 'tilt_deg': float(np.degrees(np.arctan(np.hypot(a, b)))),
             'dust_k': dust_k, 'threshold_default': float(np.median([i['threshold_binned'] for i in info])),
             'star_k': star_k, 'star_dilate': star_dilate, 'star_max': star_max, 'sky_percentile': sky_prc,
-            'galaxies_removed': static,
+            'galaxies_removed': static, 'stars': stars,
             'interp': interp, 'visits': info}
     with open(name + '.json', 'w') as f:
         json.dump(meta, f, indent=1)
@@ -1444,6 +1487,8 @@ def main(argv=None):
     parser.add_argument('--distance', type=float, default=3400, help='distance to Cas A, pc (Reed et al. 1995)')
     parser.add_argument('--sn-year', type=float, default=1681.0,
                         help='year the Cas A explosion light reached Earth (1681 +- 19, Rest et al. 2008)')
+    parser.add_argument('--stars', default='mask', choices=['mask', 'starnet'],
+                        help='volume / view: star removal, our mask and fill, or StarNet2 (saved with _starnet)')
     parser.add_argument('--no-static', action='store_true',
                         help='volume / view: keep background galaxies (raw), saved as a separate _raw volume')
     parser.add_argument('--interp', default='flow', choices=['flow', 'linear', 'nearest'],
@@ -1469,13 +1514,14 @@ def main(argv=None):
                factor=args.factor, blue_sky=args.blue_sky, reset_params=args.reset_params,
                do_register=not args.no_register, redo=args.redo, overwrite=args.overwrite, fill=not args.no_fill)
     if 'sources' in steps:
-        sources(base, ref_obs=args.ref, region=args.region, do_register=not args.no_register, fill=not args.no_fill)
+        sources(base, ref_obs=args.ref, region=args.region, do_register=not args.no_register, fill=not args.no_fill,
+                starnet=args.stars == 'starnet')
     name = None
     if 'volume' in steps or 'view' in steps:
         name = volume(base, ref_obs=args.ref, region=args.region, binning=args.bin, dust_k=args.dust_k,
                       star_k=args.star_k, distance_pc=args.distance, sn_year=args.sn_year, interp=args.interp,
                       do_register=not args.no_register, fill=not args.no_fill,
-                      overwrite=args.overwrite and 'volume' in steps, static=not args.no_static)
+                      overwrite=args.overwrite and 'volume' in steps, static=not args.no_static, stars=args.stars)
     if 'view' in steps:
         view(name, z_scale=args.z_scale, cmap=args.cmap)
     if 'echo' in steps:
