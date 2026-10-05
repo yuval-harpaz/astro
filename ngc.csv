@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-09-29,2026-09-28 17:07:23.194,2026-09-28 23:25:51.776,0,SN_Eos_Image_101.1,770,mast:JWST/product/jw12299-o003_t001_miri_f770w_i2d.jpg,12299,Catching Eos by the Tail,453913416,not yet,Star; Supernovae
 2026-10-04,2025-10-02 09:58:07.359,2025-10-04 08:01:01.356,602,NGC-602,140 162 182 277 360 444,mast:JWST/product/jw07035-o006_t001_nircam_clear-f140m_i2d.jpg,7035,Brown Dwarfs in NGC 602 in the SMC - An opportunity to characterize a substellar IMF at low metallicity,354351626,not yet,
 2026-10-03,2025-10-02 23:51:51.709,2025-10-03 00:55:44.746,0,J2205-3727,356,mast:JWST/product/jw07184-o008_t008_nircam_clear-f356w_i2d.jpg,7184,Measuring H0 with Deep NIRcam imaging of the next generation of time-delay lenses,353926462,not yet,Galaxy; Einstein rings; Elliptical galaxies; Quasars
 2026-10-01,2025-10-01 14:35:14.083,2025-10-01 15:59:29.142,0,SN-1987A,"  90  115  140  150  200  277  335  356  444  560  770 1000 1280 1800
