@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cas A light echo volumes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #ddd; font-family: sans-serif; font-size: 14px; }
+  #bar { position: absolute; top: 0; left: 0; right: 0; padding: 8px; background: rgba(0, 0, 0, 0.6);
+         display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; z-index: 1; }
+  button { background: #222; color: #ddd; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  button.on { background: #b85c16; color: #000; border-color: #e8a050; }
+  input[type=range] { width: 140px; vertical-align: middle; }
+  #gl { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #status { color: #e8a050; }
+  a { color: #e8a050; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <span id="targets"></span>
+  <span>
+    <button data-view="render">3D</button>
+    <button data-view="multiplanar">slices</button>
+  </span>
+  <label>threshold <input id="thr" type="range" min="0" max="1000"></label>
+  <label>max <input id="max" type="range" min="0" max="1000"></label>
+  <span id="status"></span>
+  <span style="margin-left:auto">JWST program 8527, <a href="https://huggingface.co/datasets/yuvharpaz/light-echo">data</a></span>
+</div>
+<canvas id="gl"></canvas>
+<script type="module">
+import { Niivue } from 'https://unpkg.com/@niivue/niivue@0.69.0/dist/index.js'
+
+const url = 'https://huggingface.co/datasets/yuvharpaz/light-echo/resolve/main/'
+// hard-coded from the volume json files (light_echo.py --steps volume --stars starnet).
+// thr: dust threshold (5 noise levels), max: 99.5th percentile of the dust
+const targets = {
+  Greebo: { date: '2025-10-07', visits: 7, thr: 0.0087, max: 0.286 },
+  Luna:   { date: '2025-10-07', visits: 7, thr: 0.0088, max: 0.270 },
+  Maki:   { date: '2025-10-07', visits: 7, thr: 0.0114, max: 0.429 },
+}
+const top = 1.0  // slider range, in volume units
+
+// 'brown' like the 2D images and the pyvista viewer: black - brown - orange - cream
+const stops = ['#000000', '#2e1404', '#6e300a', '#b85c16', '#e8a050', '#ffe2b8']
+const hex = (h, i) => parseInt(h.slice(1 + 2 * i, 3 + 2 * i), 16)
+const brown = {
+  R: stops.map(h => hex(h, 0)), G: stops.map(h => hex(h, 1)), B: stops.map(h => hex(h, 2)),
+  A: stops.map((h, i) => i === 0 ? 0 : 255),  // below threshold is transparent in 3D
+  I: stops.map((h, i) => Math.round(255 * i / (stops.length - 1))),
+}
+
+const nv = new Niivue({ backColor: [0, 0, 0, 1], show3Dcrosshair: false, isColorbar: false })
+await nv.attachTo('gl')
+nv.addColormap('brown', brown)
+
+const status = document.getElementById('status')
+const thr = document.getElementById('thr')
+const max = document.getElementById('max')
+const toSlider = v => Math.round(1000 * Math.sqrt(v / top))  // sqrt: finer steps at the low end
+const fromSlider = s => top * (s / 1000) ** 2
+
+function setView(view) {
+  nv.setSliceType(view === 'render' ? nv.sliceTypeRender : nv.sliceTypeMultiplanar)
+  document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === view))
+}
+document.querySelectorAll('[data-view]').forEach(b => b.onclick = () => setView(b.dataset.view))
+
+function setLevels() {
+  if (!nv.volumes.length) return
+  const lo = fromSlider(+thr.value), hi = Math.max(fromSlider(+max.value), lo * 1.01)
+  nv.volumes[0].cal_min = lo
+  nv.volumes[0].cal_max = hi
+  nv.updateGLVolume()
+  status.textContent = `threshold ${lo.toFixed(4)}, max ${hi.toFixed(3)}`
+}
+thr.oninput = setLevels
+max.oninput = setLevels
+
+async function load(name) {
+  const t = targets[name]
+  document.querySelectorAll('[data-target]').forEach(b => b.classList.toggle('on', b.dataset.target === name))
+  history.replaceState(null, '', `?t=${name}`)
+  status.textContent = `loading ${name} (~${name === 'Greebo' ? 90 : 170} MB) ...`
+  while (nv.volumes.length) nv.removeVolume(nv.volumes[0])
+  await nv.loadVolumes([{ url: `${url}${name}.nii.gz`, colormap: 'brown', cal_min: t.thr, cal_max: t.max }])
+  thr.value = toSlider(t.thr)
+  max.value = toSlider(t.max)
+  setLevels()
+}
+
+const bar = document.getElementById('targets')
+for (const [name, t] of Object.entries(targets)) {
+  const b = document.createElement('button')
+  b.dataset.target = name
+  b.textContent = name
+  b.title = `${t.visits} visits, to ${t.date}`
+  b.onclick = () => load(name)
+  bar.append(b)
+}
+const note = document.createElement('span')
+note.textContent = ` ${Object.values(targets)[0].visits} visits, to ${Object.values(targets)[0].date}`
+bar.append(note)
+
+setView('render')
+const first = new URLSearchParams(location.search).get('t')
+await load(first in targets ? first : 'Luna')
+</script>
+</body>
+</html>
