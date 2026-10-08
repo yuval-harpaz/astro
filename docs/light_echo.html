@@ -4,31 +4,49 @@
 <meta charset="utf-8">
 <title>Cas A light echo volumes</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/x-icon" href="camelfav.ico">
 <style>
   html, body { margin: 0; height: 100%; background: #000; color: #ddd; font-family: sans-serif; font-size: 14px; }
   #bar { position: absolute; top: 0; left: 0; right: 0; padding: 8px; background: rgba(0, 0, 0, 0.6);
          display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; z-index: 1; }
-  button { background: #222; color: #ddd; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
+  button, select { background: #222; color: #ddd; border: 1px solid #555; border-radius: 4px; padding: 4px 10px; cursor: pointer; }
   button.on { background: #b85c16; color: #000; border-color: #e8a050; }
+  button:disabled { opacity: 0.4; cursor: default; }
   input[type=range] { width: 140px; vertical-align: middle; }
   #gl { position: absolute; inset: 0; width: 100%; height: 100%; }
   #status { color: #e8a050; }
   a { color: #e8a050; }
+  #home { font-size: 20px; text-decoration: none; }
+  #credits { position: absolute; bottom: 0; right: 0; padding: 6px 8px; background: rgba(0, 0, 0, 0.6); z-index: 1;
+             display: flex; gap: 8px; align-items: center; font-size: 12px; color: #aaa; }
+  #credits img { height: 24px; }
 </style>
 </head>
 <body>
 <div id="bar">
-  <span id="targets"></span>
+  <a id="home" href="news_by_date.html" title="JWST latest releases">🏠</a>
+  <label>data <select id="target"></select></label> <span id="note"></span>
+  <select id="cmap"><option value="grey">grey</option><option value="brown">brown</option></select>
   <span>
     <button data-view="render">3D</button>
     <button data-view="multiplanar">slices</button>
   </span>
   <label>threshold <input id="thr" type="range" min="0" max="1000"></label>
   <label>max <input id="max" type="range" min="0" max="1000"></label>
+  <span>depth <span id="depthval"></span>
+    <button id="deeper" title="stretch depth">▲ +1</button>
+    <button id="shallower" title="shrink depth">▼ −1</button></span>
   <span id="status"></span>
   <span style="margin-left:auto">JWST program 8527, <a href="https://huggingface.co/datasets/yuvharpaz/light-echo">data</a></span>
 </div>
 <canvas id="gl"></canvas>
+<div id="credits">
+  <span>Images: NASA, ESA, CSA, STScI, J. Peek (PI), JWST program 8527.
+    Star removal: <a href="https://www.starnetastro.com/">StarNet2</a>.
+    Viewer: <a href="https://github.com/niivue/niivue">NiiVue</a>.
+    Processing: <a href="https://github.com/yuval-harpaz/astro">yuval-harpaz/astro</a></span>
+  <a href="https://bsky.app/profile/astrobotjwst.bsky.social"><img src="camelfav.ico" alt="astrobot_jwst"></a>
+</div>
 <script type="module">
 import { Niivue } from 'https://unpkg.com/@niivue/niivue@0.69.0/dist/index.js'
 
@@ -43,17 +61,21 @@ const targets = {
 const top = 1.0  // slider range, in volume units
 
 // 'brown' like the 2D images and the pyvista viewer: black - brown - orange - cream
-const stops = ['#000000', '#2e1404', '#6e300a', '#b85c16', '#e8a050', '#ffe2b8']
 const hex = (h, i) => parseInt(h.slice(1 + 2 * i, 3 + 2 * i), 16)
-const brown = {
+const colormap = stops => ({
   R: stops.map(h => hex(h, 0)), G: stops.map(h => hex(h, 1)), B: stops.map(h => hex(h, 2)),
   A: stops.map((h, i) => i === 0 ? 0 : 255),  // below threshold is transparent in 3D
   I: stops.map((h, i) => Math.round(255 * i / (stops.length - 1))),
-}
+})
 
 const nv = new Niivue({ backColor: [0, 0, 0, 1], show3Dcrosshair: false, isColorbar: false })
 await nv.attachTo('gl')
-nv.addColormap('brown', brown)
+nv.addColormap('brown', colormap(['#000000', '#2e1404', '#6e300a', '#b85c16', '#e8a050', '#ffe2b8']))
+nv.addColormap('grey', colormap(['#000000', '#ffffff']))
+const cmap = document.getElementById('cmap')
+cmap.onchange = () => {
+  if (nv.volumes.length) nv.setColormap(nv.volumes[0].id, cmap.value)
+}
 
 const status = document.getElementById('status')
 const thr = document.getElementById('thr')
@@ -78,30 +100,45 @@ function setLevels() {
 thr.oninput = setLevels
 max.oninput = setLevels
 
+// the files store the tilt of the echo surface as a shear in the affine. NiiVue cannot render a shear over 45 deg
+// (Maki), and the dust is a thin sheet (~80 mpc deep, ~2.9 pc wide), so show an untilted box with depth stretched,
+// like the pyvista viewer's z-scale
+const depthMax = 4
+let depth = 1  // 1 = true proportions
+const deeper = document.getElementById('deeper')
+const shallower = document.getElementById('shallower')
+function setDepth() {
+  document.getElementById('depthval').textContent = `×${depth}`
+  deeper.disabled = depth >= depthMax
+  shallower.disabled = depth <= 1
+  if (!nv.volumes.length) return
+  const vol = nv.volumes[0]
+  const v = vol.hdr.pixDims[3]  // isotropic voxels, mpc
+  vol.setAffine([[v, 0, 0, 0], [0, v, 0, 0], [0, 0, -v * depth, 0], [0, 0, 0, 1]])
+  nv.updateGLVolume()
+}
+deeper.onclick = () => { depth = Math.min(depth + 1, depthMax); setDepth() }
+shallower.onclick = () => { depth = Math.max(depth - 1, 1); setDepth() }
+setDepth()
+
 async function load(name) {
   const t = targets[name]
-  document.querySelectorAll('[data-target]').forEach(b => b.classList.toggle('on', b.dataset.target === name))
+  select.value = name
+  note.textContent = `${t.visits} visits, to ${t.date}`
   history.replaceState(null, '', `?t=${name}`)
   status.textContent = `loading ${name} (~${name === 'Greebo' ? 90 : 170} MB) ...`
   while (nv.volumes.length) nv.removeVolume(nv.volumes[0])
-  await nv.loadVolumes([{ url: `${url}${name}.nii.gz`, colormap: 'brown', cal_min: t.thr, cal_max: t.max }])
+  await nv.loadVolumes([{ url: `${url}${name}.nii.gz`, colormap: cmap.value, cal_min: t.thr, cal_max: t.max }])
   thr.value = toSlider(t.thr)
   max.value = toSlider(t.max)
+  setDepth()
   setLevels()
 }
 
-const bar = document.getElementById('targets')
-for (const [name, t] of Object.entries(targets)) {
-  const b = document.createElement('button')
-  b.dataset.target = name
-  b.textContent = name
-  b.title = `${t.visits} visits, to ${t.date}`
-  b.onclick = () => load(name)
-  bar.append(b)
-}
-const note = document.createElement('span')
-note.textContent = ` ${Object.values(targets)[0].visits} visits, to ${Object.values(targets)[0].date}`
-bar.append(note)
+const select = document.getElementById('target')
+const note = document.getElementById('note')
+select.append(...Object.keys(targets).map(name => new Option(name, name)))
+select.onchange = () => load(select.value)
 
 setView('render')
 const first = new URLSearchParams(location.search).get('t')
