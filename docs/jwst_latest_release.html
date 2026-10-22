@@ -117,6 +117,11 @@
       let isSearchMode = false;
       let searchQuery = "";
 
+      // CSV times are UTC without a zone ("2026-10-15 21:17:26.995"); force UTC parsing
+      function parseUTC(str) {
+        return new Date((str || '').trim().replace(' ', 'T') + 'Z');
+      }
+
       async function loadCSV(url) {
         const response = await fetch(url);
         const text = await response.text();
@@ -197,7 +202,7 @@
         } else {
           const startDate = new Date(currentEndDate.getTime() - 7 * 24 * 60 * 60 * 1000);
           filteredData = allData.filter(item => {
-            const date = new Date(item.t_obs_release);
+            const date = parseUTC(item.t_obs_release);
             return date.getTime() > startDate.getTime() && date.getTime() <= currentEndDate.getTime();
           });
 
@@ -222,16 +227,16 @@
           return;
         }
 
-        filteredData.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release));
+        filteredData.sort((a, b) => parseUTC(b.t_obs_release) - parseUTC(a.t_obs_release));
 
         filteredData.forEach(item => {
           const card = document.createElement('div');
           const fitsUrl = item.jpegURL ? item.jpegURL.replace(/\.\w+$/, '.fits') : '#';
           const filterMatch = item.jpegURL ? item.jpegURL.match(/[-_]f(.*?)_i2d/) : null;
           const filter = filterMatch ? filterMatch[1] : 'unknown filter';
-          const releaseDate = new Date(item.t_obs_release);
+          const releaseDate = parseUTC(item.t_obs_release);
           const utcDateOnly = releaseDate.toISOString().split('T')[0];
-          const obsDate = new Date(item.t_max);
+          const obsDate = parseUTC(item.t_max);
           const utcMax = obsDate.toISOString().split('T')[0];
           const instrument = item.instrument_name.replace("/IMAGE", "")
           const titleText = item.obs_title
@@ -301,11 +306,11 @@
           allData = [...latestData, ...olderData];
 
           // Ensure chronological ordering (newest first)
-          allData.sort((a, b) => new Date(b.t_obs_release) - new Date(a.t_obs_release));
+          allData.sort((a, b) => parseUTC(b.t_obs_release) - parseUTC(a.t_obs_release));
 
           // Calculate earliest release date
           if (allData.length > 0) {
-            const releaseDates = allData.map(item => new Date(item.t_obs_release)).filter(d => !isNaN(d));
+            const releaseDates = allData.map(item => parseUTC(item.t_obs_release)).filter(d => !isNaN(d));
             if (releaseDates.length > 0) {
               const earliest = new Date(Math.min(...releaseDates));
               const earliestStr = earliest.toISOString().split('T')[0];
