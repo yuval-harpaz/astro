@@ -29,10 +29,18 @@ args = {'obs_collection': "JWST",
         'dataproduct_type': "image"}
 
 # search images by observation date and by release date
-table_release = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
-table_min = Observations.query_criteria(t_min=[start_time, end_time], **args)
-df_min = table_min.to_pandas()
-df_release = table_release.to_pandas()
+# MAST sometimes fails one of the queries, keep going with whichever works
+def query_df(**kwargs):
+    try:
+        return Observations.query_criteria(**kwargs, **args).to_pandas()
+    except Exception as e:
+        print(f'MAST query {list(kwargs)} failed: {e}')
+        return pd.DataFrame()
+
+df_release = query_df(t_obs_release=[start_time, end_time])
+df_min = query_df(t_min=[start_time, end_time])
+if len(df_min) == 0 and len(df_release) == 0:
+    raise Exception('no new images (or MAST queries failed)')
 if len(df_min) == 0:
     table = df_release
 elif len(df_release) == 0:
