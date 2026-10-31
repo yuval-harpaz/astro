@@ -668,6 +668,67 @@ def filt_num(path):
     return filt
 
 
+def make_log(folder, log_csv=None, search='*.fits'):
+    '''
+    Make a log table for all fits files in a folder, no file is left out.
+    A file is not chosen when the target (median TARG_RA, TARG_DEC) is outside its frame (background / noise
+    measurement), or when another file with the same filter has its center (CRVAL) closer to the target.
+    For equal distances the smaller image is chosen.
+
+    Parameters
+    ----------
+    folder: str
+        path to the fits files
+    log_csv: str | None
+        where to save the log, e.g. root+'logs/Star-Forming-Pillar_2026-05-03.csv'. None for no saving
+    search: str
+        glob pattern for files in folder
+
+    Returns
+    -------
+    df: pd.DataFrame with file, width, height, offset, chosen, CRVAL1, CRVAL2 columns
+    '''
+    if len(folder) > 0 and folder[-1] != '/':
+        folder += '/'
+    files = sorted(os.path.basename(f) for f in glob(folder + search))
+    if len(files) == 0:
+        raise Exception('no files in ' + folder + search)
+    cols = ['width', 'height', 'offset', 'CRVAL1', 'CRVAL2', 'TARG_RA', 'TARG_DEC']
+    info = np.zeros((len(files), len(cols)))
+    wcss = []
+    for ii, fn in enumerate(files):
+        h0 = fits.getheader(folder + fn, 0)
+        h1 = fits.getheader(folder + fn, 1)
+        info[ii, :] = [h1['NAXIS1'], h1['NAXIS2'], np.max(np.abs([h0['XOFFSET'], h0['YOFFSET']])),
+                       h1['CRVAL1'], h1['CRVAL2'], h0['TARG_RA'], h0['TARG_DEC']]
+        wcss.append(WCS(h1))
+    df = pd.DataFrame(info, columns=cols)
+    df.insert(0, 'file', files)
+    target = SkyCoord(ra=np.median(df['TARG_RA']), dec=np.median(df['TARG_DEC']), unit=(u.deg, u.deg))
+    # background / noise measurements don't contain the target
+    on_target = np.zeros(len(df), bool)
+    for ii in range(len(df)):
+        x, y = target.to_pixel(wcss[ii])
+        on_target[ii] = (0 <= x < df['width'][ii]) & (0 <= y < df['height'][ii])
+    dist = target.separation(SkyCoord(ra=df['CRVAL1'], dec=df['CRVAL2'], unit=(u.deg, u.deg))).deg
+    # one file per filter, closest to target, then smaller
+    filt = filt_num(files)
+    chosen = on_target.copy()
+    for ff in np.unique(filt[~np.isnan(filt)]):
+        idx = np.where((filt == ff) & on_target)[0]
+        if len(idx) > 1:
+            best = idx[np.lexsort((df['width'][idx] * df['height'][idx], np.round(dist[idx], 6)))[0]]
+            chosen[idx[idx != best]] = False
+    df['chosen'] = chosen
+    df = df[['file', 'width', 'height', 'offset', 'chosen', 'CRVAL1', 'CRVAL2']]
+    # chosen first, each part sorted by filter
+    df = pd.concat([d.iloc[np.argsort(filt_num(d['file'].values), kind='stable')]
+                    for d in (df[df['chosen']], df[~df['chosen']])], ignore_index=True)
+    if log_csv is not None:
+        df.to_csv(log_csv, index=False)
+    return df
+
+
 def crop_fits(hdu1, center, sizes):
     '''
 
