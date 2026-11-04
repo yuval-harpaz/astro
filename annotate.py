@@ -6,8 +6,23 @@ from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astroquery.simbad import Simbad
+from astroquery.simbad import conf as simbad_conf
 from cv2 import putText, FONT_HERSHEY_SIMPLEX, LINE_AA, getTextSize
 import pandas as pd
+
+
+def query_simbad(coord, radius):
+    """Query SIMBAD around coord with object types, fall back to a mirror when a server is down"""
+    for server in simbad_conf.servers_list:
+        try:
+            my_simbad = Simbad()
+            my_simbad.server = server
+            my_simbad.TIMEOUT = 300  # seconds
+            my_simbad.add_votable_fields('otype')
+            return my_simbad.query_region(coord, radius=radius)
+        except Exception as e:
+            print(f'SIMBAD server {server} failed: {e}')
+    raise Exception('all SIMBAD servers failed')
 
 
 def add_time(spaced, h_d):
@@ -83,14 +98,9 @@ def annotate(img_file, fits_file, crop=None, fontScale=0.65,
     # Query SIMBAD
     wcs = WCS(header)
     print('querying SIMBAD')
-    my_simbad = Simbad()
-    my_simbad.TIMEOUT = 300  # seconds
-    my_simbad.add_votable_fields('otype')
-    result_table = my_simbad.query_region(
-        SkyCoord(ra=header['CRVAL1'],
-                 dec=header['CRVAL2'],
-                 unit=(u.deg, u.deg), frame='fk5'),
-        radius=0.1 * u.deg)
+    result_table = query_simbad(SkyCoord(ra=header['CRVAL1'], dec=header['CRVAL2'],
+                                         unit=(u.deg, u.deg), frame='fk5'),
+                                radius=0.1 * u.deg)
     result_table = result_table.to_pandas()
     if 'OTYPE' in result_table.columns:
         result_table['otype'] = result_table['OTYPE']
