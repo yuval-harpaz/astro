@@ -1,4 +1,5 @@
 release_date,collected_from,collected_to,NGC,target_name,filters,jpeg,proposal,title,obsid,posted,target_classification
+2026-11-04,2025-11-04 00:48:36.965,2025-11-04 02:41:21.188,134,NGC0134,115 200 277,mast:JWST/product/jw08277-o001_t001_nircam_clear-f115w_i2d.jpg,8277,A Comprehensive Survey of the Stellar Halos of Milky Way Analogs out to 20 Mpc: Revealing Galaxy Merger Histories and Their Effects,355974998,not yet,
 2026-11-03,2025-11-02 14:43:07.179,2025-11-02 16:11:52.617,6232,NGC-6232, 560  770 1500,mast:JWST/product/jw07140-o045_t011_miri_f560w_i2d.jpg,7140,A JWST Survey of Compton Thick AGN,355782639,not yet,Galaxy; Active galaxies
 2026-11-03,2025-11-02 16:27:00.652,2025-11-02 17:17:41.349,6232,NGC-6232-image, 560  770 1500,mast:JWST/product/jw07140-o047_t075_miri_f560w-sub128_i2d.jpg,7140,A JWST Survey of Compton Thick AGN,355782619,not yet,Galaxy; Active galaxies
 2026-11-02,2025-11-02 02:51:45.005,2025-11-02 03:03:55.159,2419,NGC-2419, 90 277,mast:JWST/product/jw09225-o002_t002_nircam_clear-f090w_i2d.jpg,9225,Enabling cross instrument proper motions with Draco dSph and NGC 2419,355782106,not yet,Stellar Cluster; Globular star clusters
