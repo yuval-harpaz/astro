@@ -128,12 +128,19 @@
       flex-wrap: wrap;
     }
 
-    #chosen { display: flex; flex-direction: column; gap: 2px; font-size: 12px; min-width: 260px; }
+    #chosen { display: flex; flex-direction: column; gap: 2px; font-size: 12px; min-width: 0; flex: 0 1 auto; white-space: nowrap; overflow: hidden; }
+    #state { display: flex; flex-direction: column; gap: 2px; white-space: nowrap; }
     #chosen .r { color: var(--r); }
     #chosen .g { color: var(--g); }
     #chosen .b { color: var(--b); }
 
     #status { color: var(--accent); }
+    #brand { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    #brand h1 { margin: 0; font-size: 20px; color: var(--accent); font-weight: 600; letter-spacing: .5px; white-space: nowrap; }
+    #brand .bsky img { width: 26px; height: 26px; display: block; }
+    #donate-button img { height: 30px; display: block; }
+    #ref-hint { font-size: 11px; color: #aaa; }
+    #ref-hint.warn { color: #ffb347; }
     #mem { color: #aaa; font-size: 12px; }
 
     #main { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 10px; gap: 8px; }
@@ -165,7 +172,7 @@
     #panel { background: var(--panel); padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 7px; }
     #panel h4 { margin: 4px 0 0; color: var(--accent); font-size: 13px; }
     #panel .row label.lbl { width: 70px; color: #aaa; }
-    #panel select { flex: 1; }
+    #panel select { flex: 1; min-width: 0; width: 100%; text-overflow: ellipsis; }
     .hint { font-size: 11px; color: #888; }
 
     #nudge-pad { display: grid; grid-template-columns: repeat(3, 34px); gap: 3px; }
@@ -232,8 +239,29 @@
         </span>
         <button id="script-btn" disabled title="Download a Python script that does the same processing locally (full resolution by default) and saves a jpg">Local script</button>
         <div id="chosen"></div>
-        <span id="status">Loading Python…</span>
-        <span id="mem"></span>
+        <div id="state">
+          <span id="status">Loading Python…</span>
+          <span id="mem"></span>
+        </div>
+        <div id="brand">
+          <h1>JWST Color Lab</h1>
+          <a class="bsky" href="https://bsky.app/profile/astrobotjwst.bsky.social" target="_blank" title="JWST bot on Bluesky"><img src="bsky.png" alt="astrobotjwst.bsky.social"></a>
+          <div id="donate-button-container">
+            <div id="donate-button"></div>
+            <script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>
+            <script>
+              PayPal.Donation.Button({
+                env: 'production',
+                hosted_button_id: 'X7NWK2SA9WZM2',
+                image: {
+                  src: 'https://www.paypalobjects.com/en_US/IL/i/btn/btn_donateCC_LG.gif',
+                  alt: 'Donate with PayPal button',
+                  title: 'PayPal - The safer, easier way to pay online!',
+                }
+              }).render('#donate-button');
+            </script>
+          </div>
+        </div>
       </div>
 
       <div id="main">
@@ -259,6 +287,10 @@
               <option value="filt05">filt05: color by wavelength</option>
             </select>
           </div>
+          <div class="row"><label class="lbl" for="ref" title="Layer whose grid all others are reprojected to (auto_plot's reproject_to)">Reference</label>
+            <select id="ref"></select>
+          </div>
+          <div id="ref-hint"></div>
           <div class="row"><label class="lbl" for="func">Function</label>
             <select id="func">
               <option value="none" selected>none</option>
@@ -282,7 +314,7 @@
           <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours, like the bot"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
           <label title="Pixels missing in one channel get the max of the other two (grey_zeros), like the bot"><input type="checkbox" id="grey" checked> grey missing</label>
 
-          <h4>Nudge a layer</h4>
+          <h4>Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
           <div class="row">
             <select id="nudge-layer"></select>
             <input type="number" id="nudge-n" value="1" min="1" max="200" step="1" title="pixels per click">
@@ -310,7 +342,8 @@
     const worker = new Worker('color_lab_worker.js');
     let busy = true, pending = false, hasImage = false;
     let lastName = 'jwst_color';
-    let lastRefFactor = null;
+    let lastPixscale = null;   // arcsec per pixel of the shown image
+    let layerInfo = {};        // fname -> [full nx, full ny, block factor, full-res arcsec/pixel]
     let lastSel = null;
 
     function logLine(msg) {
@@ -346,8 +379,9 @@
         c.getContext('2d').putImageData(new ImageData(d.rgba, d.w, d.h), 0, 0);
         showMem(d);
         hasImage = true;
-        lastRefFactor = d.refFactor;
-        if (shiftUnit === null) shiftUnit = d.refFactor;
+        lastPixscale = d.pixscale;
+        Object.assign(layerInfo, d.layers);
+        updateRef();
         $('save-btn').disabled = false;
         $('credit').innerHTML = creditHTML(lastSel, d.crval);
         setBusy(false, 'Done');
@@ -399,6 +433,31 @@
       if (names.includes(prev)) sel.value = prev;
       for (const k of Object.keys(shifts)) if (!names.includes(k)) delete shifts[k];
       showShifts();
+      updateRef();
+    }
+
+    // reference grid (auto_plot's reproject_to). In the browser every layer is capped at the chosen MP, so a
+    // high-resolution reference mostly matters for the local script at full resolution: show that size.
+    function updateRef() {
+      const names = allChosen();
+      const sel = $('ref'), prev = sel.value;
+      const mp = (n) => layerInfo[n] ? layerInfo[n][0] * layerInfo[n][1] / 1e6 : null;
+      const label = (n) => `${filterOf(n)} ${n.split('_')[0]}` + (mp(n) ? ` · ${mp(n).toFixed(1)} MP full res` : '');
+      sel.innerHTML = '';
+      sel.add(new Option(names.length ? `auto: first chosen (${filterOf(names[0])})` : 'auto: first chosen', ''));
+      for (const n of names) sel.add(new Option(label(n), n));
+      sel.value = names.includes(prev) ? prev : '';
+      const ref = sel.value || names[0];
+      const hint = $('ref-hint');
+      hint.className = '';
+      if (!ref || !mp(ref)) { hint.textContent = names.length ? 'Sizes are shown after the first compose.' : ''; return; }
+      const [nx, ny] = layerInfo[ref];
+      const known = names.filter(mp), smallest = Math.min(...known.map(mp));
+      hint.textContent = `Local script at full res: ${nx}×${ny} (${mp(ref).toFixed(1)} MP, ~${(mp(ref) * 0.1).toFixed(1)} GB RAM).`;
+      if (mp(ref) > 1.5 * smallest) {
+        hint.className = 'warn';
+        hint.textContent += ` ${(mp(ref) / smallest).toFixed(1)}× the pixels of the smallest layer.`;
+      }
     }
 
     function outName(sel) {
@@ -418,7 +477,7 @@
         lims: [(isNaN(lo) ? 3 : lo) / 100, (isNaN(hi) ? 98 : hi) / 100],
         grey: $('grey').checked,
         shifts: shiftsOut,
-        shift_ref_factor: shiftUnit,
+        ref: $('ref').value || null,
       };
     }
 
@@ -434,25 +493,25 @@
     $('compose-btn').onclick = compose;
 
     // processing controls re-compose right away when an image is shown (layers are cached, so it is fast)
-    for (const id of ['method', 'func', 'factor', 'lim-lo', 'lim-hi', 'fill', 'grey', 'maxmp']) {
+    for (const id of ['method', 'ref', 'func', 'factor', 'lim-lo', 'lim-hi', 'fill', 'grey', 'maxmp']) {
       $(id).addEventListener('change', () => { updateChosen(); if (hasImage) compose(); });
     }
 
     $('clear-btn').onclick = () => {
       for (const c of ['r', 'g', 'b']) chosen[c].clear();
       for (const k of Object.keys(shifts)) delete shifts[k];
-      shiftUnit = null;
       document.querySelectorAll('.card input[type=checkbox]').forEach(cb => cb.checked = false);
       updateChosen();
     };
 
     // ---------- nudge ----------
-    const shifts = {};    // fname -> [dx right, dy up] in reference pixels at block factor shiftUnit
-    let shiftUnit = null;
+    const shifts = {};    // fname -> [dx right, dy up] in arcsec, independent of size and reference
 
     function showShifts() {
+      const px = (a) => lastPixscale ? Math.round(a / lastPixscale) : '?';
       const parts = Object.entries(shifts).filter(([, v]) => v[0] || v[1])
-        .map(([k, v]) => `${filterOf(k)}: ${v[0] > 0 ? '→' : '←'}${Math.abs(v[0])} ${v[1] > 0 ? '↑' : '↓'}${Math.abs(v[1])}`);
+        .map(([k, v]) => `${filterOf(k)}: ${v[0] >= 0 ? '→' : '←'}${Math.abs(px(v[0]))} ${v[1] >= 0 ? '↑' : '↓'}${Math.abs(px(v[1]))} px` +
+          ` <span class="hint">(${v[0].toFixed(2)}″, ${v[1].toFixed(2)}″)</span>`);
       $('shifts').innerHTML = parts.length ? parts.join('<br>') : 'no nudges';
     }
 
@@ -460,14 +519,11 @@
       btn.onclick = () => {
         const name = $('nudge-layer').value;
         if (!name) return;
-        if (lastRefFactor && shiftUnit && shiftUnit !== lastRefFactor) {  // size changed: convert to current pixels
-          for (const v of Object.values(shifts)) { v[0] = Math.round(v[0] * shiftUnit / lastRefFactor); v[1] = Math.round(v[1] * shiftUnit / lastRefFactor); }
-        }
-        shiftUnit = lastRefFactor;
+        if (!lastPixscale) { logLine('Compose first, then nudge.'); return; }
         const [dx, dy] = btn.dataset.d.split(',').map(Number);
         const n = Math.max(1, parseInt($('nudge-n').value) || 1);
         const v = shifts[name] || [0, 0];
-        shifts[name] = (dx === 0 && dy === 0) ? [0, 0] : [v[0] + dx * n, v[1] + dy * n];
+        shifts[name] = (dx === 0 && dy === 0) ? [0, 0] : [v[0] + dx * n * lastPixscale, v[1] + dy * n * lastPixscale];
         showShifts();
         if (hasImage) compose();
       };
@@ -517,7 +573,7 @@
       const name = outName(sel);
       const o = options();
       const code = await (await fetch('color_lab.py?v=' + Date.now())).text();
-      const shiftsPy = '{' + Object.entries(o.shifts).map(([k, v]) => `${pyStr(k)}: [${v[0]}, ${v[1]}]`).join(', ') + '}';
+      const shiftsPy = '{' + Object.entries(o.shifts).map(([k, v]) => `${pyStr(k)}: [${v[0].toFixed(4)}, ${v[1].toFixed(4)}]`).join(', ') + '}';
       const credit = creditText(sel, null, false);
       const head = `"""Stand-alone JWST color composition, generated by JWST Color Lab
 (https://yuval-harpaz.github.io/astro/color_lab.html) on ${new Date().toISOString().slice(0, 16)}Z.
@@ -560,8 +616,8 @@ OPTIONS = dict(
     factor=${o.factor === null ? 'None' : o.factor},  # level_adjust factor, None = linear
     lims=[${o.lims[0]}, ${o.lims[1]}],  # level_adjust limits (quantiles)
     grey=${o.grey ? 'True' : 'False'},  # grey_zeros
-    shifts=${shiftsPy},  # nudges [right, up] in reference pixels at block factor shift_ref_factor
-    shift_ref_factor=${o.shift_ref_factor ?? 'None'},
+    ref=${o.ref ? pyStr(o.ref) : 'None'},  # reference grid (reproject_to); None = first listed. A short-wavelength reference makes a bigger image
+    shifts=${shiftsPy},  # nudges [right, up] in arcsec
 )
 CREDIT = ${pyStr(credit)}
 

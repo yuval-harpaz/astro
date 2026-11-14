@@ -19,12 +19,13 @@ import warnings
 import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS, FITSFixedWarning
+from astropy.wcs.utils import proj_plane_pixel_scales
 from scipy.ndimage import map_coordinates, maximum_filter, label
 
 warnings.simplefilter('ignore', FITSFixedWarning)
 
 S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/'
-RAW = {}     # name -> (data float32 2D, WCS), downsampled and hole-filled
+RAW = {}     # name -> (data float32 2D, WCS, block factor, (full nx, full ny)), downsampled and hole-filled
 REPROJ = {}  # (name, ref) -> float32 2D on ref grid
 _T0 = [time.time()]
 
@@ -323,7 +324,8 @@ def _add(name, data, header_text, factor, fill):
         t = time.time()
         data, n, it = fill_holes(data)
         step(f'{short(name)}: fill holes, {n} hole pixels, {it} iterations, {time.time() - t:.1f}s')
-    RAW[name] = (data, binned_wcs(header_text, factor), factor)
+    hdr = fits.Header.fromstring(header_text)
+    RAW[name] = (data, binned_wcs(header_text, factor), factor, (int(hdr['NAXIS1']), int(hdr['NAXIS2'])))
 
 
 def has_layer(name):
@@ -378,7 +380,7 @@ def forget(keep, max_raw=8):
     gc.collect()
 
 
-DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, shift_ref_factor=None)
+DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, ref=None)
 
 
 def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98)):
@@ -399,18 +401,18 @@ def compose_rgb(red, green, blue, **opts):
     """Returns uint8 (ny, nx, 3) with FITS orientation (origin lower-left). Reference = first layer listed.
     opts: method 'rgb' (layers per channel, like the bot) | 'filt05' (all layers colored by wavelength, like auto_plot),
     func 'none' | 'log', factor 1-4 | None (linear), lims [low, high] quantiles, grey (grey_zeros),
-    shifts {name: [dx, dy]} in reference pixels at block factor shift_ref_factor (None = current grid), so nudges
-    made in the browser at 1 MP keep their size on sky at any other resolution."""
+    shifts {name: [dx, dy]} in arcsec (right, up), so nudges keep their size on the sky at any resolution or reference,
+    ref: name of the layer whose grid all others are reprojected to (like auto_plot's reproject_to); None = first listed."""
     o = dict(DEFAULTS)
     o.update({k: v for k, v in opts.items() if v is not None or k == 'factor'})
     red, green, blue = list(red), list(green), list(blue)
     allnames = list(dict.fromkeys(red + green + blue))
     if not allnames:
         raise ValueError('no layers chosen')
-    ref = allnames[0]
+    ref = o['ref'] if o['ref'] in allnames else allnames[0]
     ny, nx = RAW[ref][0].shape
     shifts = o['shifts'] or {}
-    scale = 1.0 if not o['shift_ref_factor'] else float(o['shift_ref_factor']) / RAW[ref][2]
+    scale = 1.0 / pixscale(ref)  # arcsec -> pixels of the reference grid
 
     def layer(name):
         lay = reproject_to(name, ref).copy()
@@ -458,10 +460,30 @@ def compose_rgb(red, green, blue, **opts):
     return out
 
 
+def pixscale(name):
+    """Pixel size (arcsec) of a loaded, downsampled layer."""
+    return float(np.mean(proj_plane_pixel_scales(RAW[name][1])) * 3600)
+
+
 def ref_info(name):
-    """(block factor, CRVAL1, CRVAL2) of a loaded layer."""
-    _, wcs, f = RAW[name]
-    return f, float(wcs.wcs.crval[0]), float(wcs.wcs.crval[1])
+    """(block factor, CRVAL1, CRVAL2, pixel scale arcsec) of a loaded layer."""
+    _, wcs, f, _ = RAW[name]
+    return f, float(wcs.wcs.crval[0]), float(wcs.wcs.crval[1]), pixscale(name)
+
+
+def layer_info():
+    """{name: [full nx, full ny, block factor, full-resolution pixel scale arcsec]} for all loaded layers."""
+    return {k: [v[3][0], v[3][1], v[2], pixscale(k) / v[2]] for k, v in RAW.items()}
+
+
+def size_report(names, ref, max_mp=0):
+    """Warn when the reference grid is much larger than the smallest layer (e.g. reprojecting MIRI to NIRCam SW)."""
+    ny, nx = RAW[ref][0].shape
+    mp = nx * ny / 1e6
+    smallest = min(RAW[n][0].size for n in names) / 1e6
+    step(f'reference grid {short(ref)}: {nx}x{ny} = {mp:.1f} MP' + ('' if max_mp else f', about {mp * 0.1:.1f} GB RAM to process'))
+    if mp > 1.5 * smallest:
+        step(f'note: {mp / smallest:.1f}x the pixels of the smallest layer; a lower-resolution reference saves RAM')
 
 
 def compose(red, green, blue, opts=None):
@@ -481,12 +503,15 @@ def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='',
     for name in dict.fromkeys(list(red) + list(green) + list(blue)):
         data, text, f = read_sci(name, max_mp)
         _add(name, data, text, f, fill)
+    names = list(dict.fromkeys(list(red) + list(green) + list(blue)))
+    size_report(names, opts.get('ref') if opts.get('ref') in names else names[0], max_mp)
     rgb = compose_rgb(red, green, blue, **opts)
     from PIL import Image
     Image.fromarray(rgb[::-1]).save(out, quality=95)
     step(f'saved {out}')
     if credit:
-        _, c1, c2 = ref_info(list(dict.fromkeys(list(red) + list(green) + list(blue)))[0])
+        ref = opts.get('ref') if opts.get('ref') in names else names[0]
+        _, c1, c2, _ = ref_info(ref)
         if 'CRVAL' not in credit:
             credit = credit.replace('.\nCredits', f'. CRVAL: {c1:.6f}, {c2:.6f}\nCredits', 1)
         print('\n' + credit)

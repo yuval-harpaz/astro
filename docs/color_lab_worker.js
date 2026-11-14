@@ -134,7 +134,9 @@ self.onmessage = async (ev) => {
   try {
     if (cmd === 'compose') {
       const { red, green, blue, maxMP, fill, opts } = ev.data;
-      const names = [...new Set([...red, ...green, ...blue])];  // names[0] is the reference grid (same as compose())
+      let names = [...new Set([...red, ...green, ...blue])];
+      const ref = names.includes(opts.ref) ? opts.ref : names[0];  // reference grid (same rule as compose())
+      names = [ref, ...names.filter(n => n !== ref)];
       cl = py.pyimport('color_lab');
       t0 = performance.now(); cl.reset_clock();
       const key = JSON.stringify({ maxMP, fill });
@@ -154,11 +156,13 @@ self.onmessage = async (ev) => {
       const res = cl.compose(py.toPy(red), py.toPy(green), py.toPy(blue), pyOpts);
       pyOpts.destroy();
       const [bytesProxy, h, w] = res.toJs();
-      const info = cl.ref_info(names[0]);
-      const [refFactor, crval1, crval2] = info.toJs(); info.destroy();
+      const info = cl.ref_info(ref);
+      const [refFactor, crval1, crval2, pixscale] = info.toJs(); info.destroy();
+      const li = cl.layer_info();
+      const layers = li.toJs({ dict_converter: Object.fromEntries }); li.destroy();
       const rgba = new Uint8ClampedArray(bytesProxy);  // copy out of WASM
       res.destroy();
-      self.postMessage({ type: 'image', id, w, h, rgba, refFactor, crval: [crval1, crval2], ...memInfo() }, [rgba.buffer]);
+      self.postMessage({ type: 'image', id, w, h, rgba, ref, refFactor, pixscale, layers, crval: [crval1, crval2], ...memInfo() }, [rgba.buffer]);
     }
   } catch (e) {
     post('error', { id, msg: e.message });
