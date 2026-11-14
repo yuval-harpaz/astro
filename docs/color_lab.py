@@ -12,6 +12,7 @@ Pipeline, following the color bot (astro_jwst_news_color.py) defaults:
 Reprojected layers are cached per reference, so stretch settings can be changed without reprojecting.
 """
 import gc
+import re
 import time
 import urllib.request
 import warnings
@@ -36,12 +37,16 @@ def step(msg):
     print(f'[{time.time() - _T0[0]:6.1f}s] {msg}', flush=True)
 
 
+def filt_num(name):
+    """Filter number like astro_utils.filt_num: the last [-_]fNNN in the name (f444w -> 444, f2550w -> 2550)."""
+    m = re.findall(r'[-_]f(\d{3,4})', name.lower())
+    return int(m[-1]) if m else 0
+
+
 def short(name):
     """jw07321-o004_t002_nircam_clear-f444w_i2d.fits -> F444W"""
-    for part in name.replace('-', '_').split('_'):
-        if len(part) > 3 and part[0] == 'f' and part[1:4].isdigit():
-            return part.upper()
-    return name
+    m = re.findall(r'[-_](f\d{3,4}[a-z]*\d?)', name.lower())
+    return m[-1].upper() if m else name
 
 
 # ---------- stretch, copied from bot_grabber.py ----------
@@ -120,6 +125,61 @@ def grey_zeros(img, bad=[0, 1, 2], thr=0, replace=np.min):
         layer[mask] = replace(img[..., okay], 2)[mask]
         img[..., bd] = layer
     return img
+
+
+def log1(arr):
+    # copied from astro_utils.py, shown as "log" in the GUI
+    arr[arr < 0] = 0
+    arr += 1
+    arr = np.log10(arr)
+    return arr
+
+
+def blc_image(img):
+    # copied from astro_utils.py (float version): per channel, subtract the non-zero minimum and divide by max
+    for ii in range(3):
+        layer = img[..., ii]
+        layer[layer <= 0] = np.nan
+        layer = layer - np.nanmin(layer)
+        layer = layer / np.nanmax(layer)
+        layer[np.isnan(layer)] = 0
+        img[..., ii] = layer
+    return img
+
+
+# matplotlib's 'hsv' colormap segment data (x, value), so colors match auto_plot without importing matplotlib
+_HSV = {'red': [(0.0, 1.0), (0.15873, 1.0), (0.174603, 0.96875), (0.333333, 0.03125), (0.349206, 0.0), (0.666667, 0.0),
+                (0.68254, 0.03125), (0.84127, 0.96875), (0.857143, 1.0), (1.0, 1.0)],
+        'green': [(0.0, 0.0), (0.15873, 0.9375), (0.174603, 1.0), (0.507937, 1.0), (0.666667, 0.0625), (0.68254, 0.0), (1.0, 0.0)],
+        'blue': [(0.0, 0.0), (0.333333, 0.0), (0.349206, 0.0625), (0.507937, 1.0), (0.84127, 1.0), (0.857143, 0.9375), (1.0, 0.09375)]}
+
+
+def hsv_cmap(x):
+    """Same as matplotlib.cm.hsv(x)[:, :3] (256-entry lookup table)."""
+    lut_x = np.linspace(0, 1, 256)
+    lut = np.stack([np.interp(lut_x, *zip(*_HSV[c])) for c in ['red', 'green', 'blue']], 1)
+    return lut[np.clip((np.asarray(x) * 256).astype(int), 0, 255)]
+
+
+def colors_by_filt(filt, subtract_blue=0.5):
+    """Colors of astro_utils.assign_colors_by_filt (method='filt05', colormap='hsv'): long wavelength red,
+    short wavelength blue/violet."""
+    filt = np.asarray(filt, float)
+    filtnorm = filt - filt.min() * subtract_blue
+    filtnorm = filtnorm / filtnorm.max()
+    return [tuple(c) for c in hsv_cmap((1 - filtnorm) * 0.680)]
+
+
+def shift_layer(img, dx, dy):
+    """Move the image content dx pixels right and dy pixels up (array rows increase upward in FITS)."""
+    if not dx and not dy:
+        return img
+    out = np.full_like(img, np.nan)
+    ny, nx = img.shape
+    if abs(dx) >= nx or abs(dy) >= ny:
+        return out
+    out[max(dy, 0):ny + min(dy, 0), max(dx, 0):nx + min(dx, 0)] = img[max(-dy, 0):ny + min(-dy, 0), max(-dx, 0):nx + min(-dx, 0)]
+    return out
 
 
 # ---------- hole filling, vectorized astro_fill_holes.hole_func_fill(func='max') ----------
@@ -263,7 +323,7 @@ def _add(name, data, header_text, factor, fill):
         t = time.time()
         data, n, it = fill_holes(data)
         step(f'{short(name)}: fill holes, {n} hole pixels, {it} iterations, {time.time() - t:.1f}s')
-    RAW[name] = (data, binned_wcs(header_text, factor))
+    RAW[name] = (data, binned_wcs(header_text, factor), factor)
 
 
 def has_layer(name):
@@ -275,12 +335,12 @@ def reproject_to(name, ref, chunk=256):
     if key in REPROJ:
         step(f'{short(name)}: reprojected layer cached')
         return REPROJ[key]
-    data, wcs = RAW[name]
+    data, wcs = RAW[name][:2]
     if name == ref:
         out = data
     else:
         t = time.time()
-        ref_data, ref_wcs = RAW[ref]
+        ref_data, ref_wcs = RAW[ref][:2]
         ny, nx = ref_data.shape
         out = np.empty((ny, nx), np.float32)
         xx = np.arange(nx, dtype=np.float64)
@@ -318,31 +378,77 @@ def forget(keep, max_raw=8):
     gc.collect()
 
 
-def compose_rgb(red, green, blue, factor=2.0, grey=True):
-    """Returns uint8 (ny, nx, 3) with FITS orientation (origin lower-left). Reference = first layer listed."""
+DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, shift_ref_factor=None)
+
+
+def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98)):
+    t = time.time()
+    lims = [float(lims[0]), float(lims[1])]
+    if lims == [0.03, 0.98]:
+        lims = [0.03, 0.98]  # exact bot values select level_adjust's backward-compatible path
+    if func == 'log':
+        lay = log1(lay)
+    factor = None if factor in (None, 0, 'linear') else float(factor)
+    out = level_adjust(lay, lims=lims, factor=factor)
+    desc = ('log -> ' if func == 'log' else '') + f'level_adjust(factor={"None (linear)" if factor is None else f"{factor:g}"}, lims={lims[0] * 100:g}%-{lims[1] * 100:g}%)'
+    step(f'{short(name)}: {desc}, {time.time() - t:.1f}s')
+    return out
+
+
+def compose_rgb(red, green, blue, **opts):
+    """Returns uint8 (ny, nx, 3) with FITS orientation (origin lower-left). Reference = first layer listed.
+    opts: method 'rgb' (layers per channel, like the bot) | 'filt05' (all layers colored by wavelength, like auto_plot),
+    func 'none' | 'log', factor 1-4 | None (linear), lims [low, high] quantiles, grey (grey_zeros),
+    shifts {name: [dx, dy]} in reference pixels at block factor shift_ref_factor (None = current grid), so nudges
+    made in the browser at 1 MP keep their size on sky at any other resolution."""
+    o = dict(DEFAULTS)
+    o.update({k: v for k, v in opts.items() if v is not None or k == 'factor'})
     red, green, blue = list(red), list(green), list(blue)
-    allnames = red + green + blue
+    allnames = list(dict.fromkeys(red + green + blue))
     if not allnames:
         raise ValueError('no layers chosen')
     ref = allnames[0]
     ny, nx = RAW[ref][0].shape
-    rgb = np.zeros((ny, nx, 3), np.float32)
-    for ich, names in enumerate([red, green, blue]):
-        if not names:
-            continue
-        acc = np.zeros((ny, nx), np.float32)
-        for name in names:
-            lay = reproject_to(name, ref).copy()
-            t = time.time()
-            acc += level_adjust(lay, factor=factor)
-            step(f'{short(name)}: level_adjust(factor={factor:g}), {time.time() - t:.1f}s')
-        rgb[..., ich] = acc / len(names)
-        step(f'{"RGB"[ich]} = ' + (f'mean of {len(names)} layers' if len(names) > 1 else short(names[0])))
-    if not green and red and blue:  # like the bot with 2 files
-        rgb[..., 1] = (rgb[..., 0] + rgb[..., 2]) / 2
-        step('G = (R + B) / 2')
+    shifts = o['shifts'] or {}
+    scale = 1.0 if not o['shift_ref_factor'] else float(o['shift_ref_factor']) / RAW[ref][2]
+
+    def layer(name):
+        lay = reproject_to(name, ref).copy()
+        dx, dy = shifts.get(name, (0, 0))
+        dx, dy = int(round(float(dx) * scale)), int(round(float(dy) * scale))
+        if dx or dy:
+            lay = shift_layer(lay, dx, dy)
+            step(f'{short(name)}: nudged {dx:+d} px right, {dy:+d} px up')
+        return stretch(lay, name, o['func'], o['factor'], o['lims'])
+
+    if o['method'] == 'filt05':
+        names = sorted(allnames, key=filt_num)
+        cols = colors_by_filt([filt_num(n) for n in names])
+        rgb = np.zeros((ny, nx, 3), np.float64)
+        for name, col in zip(names, cols):
+            lay = layer(name)
+            lay[np.isnan(lay)] = 0
+            for ich in range(3):
+                rgb[..., ich] += lay * col[ich]
+            step(f'{short(name)}: color by wavelength (filt05) = RGB({col[0]:.2f}, {col[1]:.2f}, {col[2]:.2f})')
+        rgb /= np.max(rgb)
+        rgb = blc_image(rgb)
+        step('filt05: normalize, then per-channel baseline correction (blc_image)')
+    else:
+        rgb = np.zeros((ny, nx, 3), np.float32)
+        for ich, names in enumerate([red, green, blue]):
+            if not names:
+                continue
+            acc = np.zeros((ny, nx), np.float32)
+            for name in names:
+                acc += layer(name)
+            rgb[..., ich] = acc / len(names)
+            step(f'{"RGB"[ich]} = ' + (f'mean of {len(names)} layers' if len(names) > 1 else short(names[0])))
+        if not green and red and blue:  # like the bot with 2 files
+            rgb[..., 1] = (rgb[..., 0] + rgb[..., 2]) / 2
+            step('G = (R + B) / 2')
     rgb[np.isnan(rgb)] = 0
-    if grey:
+    if o['grey']:
         rgb = grey_zeros(rgb, replace=np.max)
         step('grey_zeros: fill zero pixels of each channel with max of the other two')
     out = np.clip(rgb * 255, 0, 255).astype(np.uint8)
@@ -352,9 +458,16 @@ def compose_rgb(red, green, blue, factor=2.0, grey=True):
     return out
 
 
-def compose(red, green, blue, factor=2.0, grey=True):
-    """For the browser: returns (rgba bytes flipped for canvas, height, width)."""
-    rgb = compose_rgb(red, green, blue, factor, grey)
+def ref_info(name):
+    """(block factor, CRVAL1, CRVAL2) of a loaded layer."""
+    _, wcs, f = RAW[name]
+    return f, float(wcs.wcs.crval[0]), float(wcs.wcs.crval[1])
+
+
+def compose(red, green, blue, opts=None):
+    """For the browser: returns (rgba bytes flipped for canvas, height, width). opts: dict, see compose_rgb."""
+    opts = opts.to_py() if hasattr(opts, 'to_py') else dict(opts or {})
+    rgb = compose_rgb(red, green, blue, **opts)
     ny, nx = rgb.shape[:2]
     rgba = np.empty((ny, nx, 4), np.uint8)
     rgba[..., :3] = rgb[::-1]  # FITS origin is lower-left, canvas is upper-left
@@ -362,13 +475,18 @@ def compose(red, green, blue, factor=2.0, grey=True):
     return rgba.tobytes(), ny, nx
 
 
-def run_local(red, green, blue, max_mp=0, fill=True, grey=True, factor=2.0, out='color.jpg'):
-    """Stand-alone: download, process and save a jpg. max_mp=0 means full resolution."""
+def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='', **opts):
+    """Stand-alone: download, process and save a jpg. max_mp=0 means full resolution. opts: see compose_rgb."""
     reset_clock()
     for name in dict.fromkeys(list(red) + list(green) + list(blue)):
         data, text, f = read_sci(name, max_mp)
         _add(name, data, text, f, fill)
-    rgb = compose_rgb(red, green, blue, factor, grey)
+    rgb = compose_rgb(red, green, blue, **opts)
     from PIL import Image
     Image.fromarray(rgb[::-1]).save(out, quality=95)
     step(f'saved {out}')
+    if credit:
+        _, c1, c2 = ref_info(list(dict.fromkeys(list(red) + list(green) + list(blue)))[0])
+        if 'CRVAL' not in credit:
+            credit = credit.replace('.\nCredits', f'. CRVAL: {c1:.6f}, {c2:.6f}\nCredits', 1)
+        print('\n' + credit)

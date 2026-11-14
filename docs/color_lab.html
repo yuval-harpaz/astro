@@ -28,6 +28,8 @@
       font-size: 14px;
     }
 
+    a { color: var(--accent); }
+
     #app {
       display: grid;
       grid-template-columns: 360px 1fr;
@@ -50,16 +52,18 @@
       gap: 6px;
     }
 
-    #left-controls .row { display: flex; gap: 6px; }
+    .row { display: flex; gap: 6px; align-items: center; }
 
-    input[type=text] {
-      flex: 1;
+    input[type=text], input[type=number], select {
       background: var(--bg);
       border: 1px solid var(--accent2);
       color: white;
-      padding: 6px;
+      padding: 5px;
       border-radius: 4px;
     }
+
+    input[type=text] { flex: 1; }
+    input[type=number] { width: 64px; }
 
     button {
       background: var(--accent);
@@ -73,6 +77,12 @@
 
     button:hover { background: var(--accent2); }
     button:disabled { background: #444; color: #888; cursor: default; }
+    button.ghost { background: transparent; color: var(--accent); border: 1px solid var(--accent2); }
+    button.ghost:hover { background: var(--accent2); color: var(--bg); }
+
+    .split { display: inline-flex; }
+    .split button { border-radius: 4px 0 0 4px; }
+    .split select { border-radius: 0 4px 4px 0; border-left: none; }
 
     #range { color: var(--accent); font-style: italic; font-size: 12px; }
 
@@ -99,29 +109,34 @@
     .rgb label.b { color: var(--b); }
     .rgb .filt { margin-left: auto; color: white; font-weight: bold; }
 
-    /* ---------- right: compose ---------- */
-    #right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+    /* ---------- right ---------- */
+    #right {
+      display: grid;
+      grid-template-columns: 1fr 330px;
+      grid-template-rows: auto 1fr;
+      min-width: 0;
+      min-height: 0;
+    }
 
     #top {
+      grid-column: 1 / 3;
       padding: 10px;
       background: var(--panel);
       display: flex;
-      gap: 16px;
+      gap: 12px;
       align-items: center;
       flex-wrap: wrap;
     }
 
-    #chosen { display: flex; flex-direction: column; gap: 2px; font-size: 12px; min-width: 300px; }
+    #chosen { display: flex; flex-direction: column; gap: 2px; font-size: 12px; min-width: 260px; }
     #chosen .r { color: var(--r); }
     #chosen .g { color: var(--g); }
     #chosen .b { color: var(--b); }
 
-    select { background: var(--bg); color: white; border: 1px solid var(--accent2); padding: 4px; }
-
     #status { color: var(--accent); }
     #mem { color: #aaa; font-size: 12px; }
 
-    #view { flex: 1; display: flex; min-height: 0; padding: 10px; gap: 10px; }
+    #main { display: flex; flex-direction: column; min-width: 0; min-height: 0; padding: 10px; gap: 8px; }
 
     #canvas-wrap {
       flex: 1;
@@ -133,10 +148,33 @@
       background: #000;
     }
 
-    canvas { max-width: 100%; max-height: 100%; image-rendering: auto; }
+    canvas { max-width: 100%; max-height: 100%; }
+
+    #credit { font-size: 12px; line-height: 1.5; white-space: pre-line; min-height: 3em; }
+    #about { font-size: 12px; color: #999; }
+
+    /* side: control panel above the log */
+    #side {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      padding: 10px 10px 10px 0;
+      gap: 10px;
+    }
+
+    #panel { background: var(--panel); padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 7px; }
+    #panel h4 { margin: 4px 0 0; color: var(--accent); font-size: 13px; }
+    #panel .row label.lbl { width: 70px; color: #aaa; }
+    #panel select { flex: 1; }
+    .hint { font-size: 11px; color: #888; }
+
+    #nudge-pad { display: grid; grid-template-columns: repeat(3, 34px); gap: 3px; }
+    #nudge-pad button { padding: 4px 0; }
+    #shifts { font-size: 11px; color: #aaa; }
 
     #log {
-      width: 320px;
+      flex: 1;
+      min-height: 120px;
       overflow-y: auto;
       font-family: ui-monospace, monospace;
       font-size: 11px;
@@ -144,14 +182,10 @@
       background: var(--panel);
       padding: 6px;
       color: #aaa;
+      border-radius: 6px;
     }
 
-    #narrow {
-      display: none;
-      padding: 40px;
-      text-align: center;
-      font-size: 18px;
-    }
+    #narrow { display: none; padding: 40px; text-align: center; font-size: 18px; }
 
     @media (max-width: 1100px) {
       #app { display: none; }
@@ -181,6 +215,7 @@
     <div id="right">
       <div id="top">
         <button id="compose-btn" disabled>Compose</button>
+        <button id="clear-btn" class="ghost" title="Uncheck all images and reset nudges">Clear</button>
         <label title="Each layer is block-averaged to about this size before processing. The bot uses 1 MP.">Size
           <select id="maxmp">
             <option value="1" selected>1 MP (bot)</option>
@@ -188,28 +223,95 @@
             <option value="9">9 MP</option>
           </select>
         </label>
-        <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours, like the bot. Changing this reprocesses from scratch."><input type="checkbox" id="fill" checked> fill holes</label>
-        <label title="Pixels missing in one channel get the max of the other two (grey_zeros), like the bot."><input type="checkbox" id="grey" checked> grey missing</label>
-        <button id="save-jpg" disabled>Save JPG</button>
-        <button id="save-png" disabled>Save PNG</button>
+        <span class="split">
+          <button id="save-btn" disabled>Save</button>
+          <select id="save-fmt" title="File format">
+            <option value="jpg" selected>JPG</option>
+            <option value="png">PNG</option>
+          </select>
+        </span>
         <button id="script-btn" disabled title="Download a Python script that does the same processing locally (full resolution by default) and saves a jpg">Local script</button>
         <div id="chosen"></div>
         <span id="status">Loading Python…</span>
         <span id="mem"></span>
       </div>
-      <div id="view">
+
+      <div id="main">
         <div id="canvas-wrap"><canvas id="canvas" width="0" height="0"></canvas></div>
+        <div id="credit"></div>
+        <div id="about">
+          JWST Color Lab by Yuval Harpaz ·
+          <a href="https://github.com/yuval-harpaz/astro" target="_blank">GitHub</a> ·
+          <a href="jwst_latest_release.html" target="_blank">JWST latest releases</a> ·
+          <a href="https://bsky.app/profile/astrobotjwst.bsky.social" target="_blank">Bluesky bot</a>.
+          Data from <a href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank">STScI | MAST</a>.
+          The level_adjust stretch is borrowed, with permission, from
+          <a href="https://github.com/Rachmanin0xFF/jwst-twitter-bot" target="_blank">Rachmanin0xFF's jwst-twitter-bot</a>.
+        </div>
+      </div>
+
+      <div id="side">
+        <div id="panel">
+          <h4>Processing</h4>
+          <div class="row"><label class="lbl" for="method">Colors</label>
+            <select id="method">
+              <option value="rgb" selected>R / G / B as checked (bot)</option>
+              <option value="filt05">filt05: color by wavelength</option>
+            </select>
+          </div>
+          <div class="row"><label class="lbl" for="func">Function</label>
+            <select id="func">
+              <option value="none" selected>none</option>
+              <option value="log">log</option>
+            </select>
+          </div>
+          <div class="row"><label class="lbl" for="factor">Factor</label>
+            <select id="factor" title="level_adjust factor (power). linear = normalize between the limits only">
+              <option value="1">1</option>
+              <option value="2" selected>2 (bot)</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="linear">linear</option>
+            </select>
+          </div>
+          <div class="row"><label class="lbl">Limits %</label>
+            <input type="number" id="lim-lo" value="3" min="0" max="50" step="0.5" title="lower percentile">
+            <span>–</span>
+            <input type="number" id="lim-hi" value="98" min="50" max="100" step="0.1" title="upper percentile">
+          </div>
+          <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours, like the bot"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
+          <label title="Pixels missing in one channel get the max of the other two (grey_zeros), like the bot"><input type="checkbox" id="grey" checked> grey missing</label>
+
+          <h4>Nudge a layer</h4>
+          <div class="row">
+            <select id="nudge-layer"></select>
+            <input type="number" id="nudge-n" value="1" min="1" max="200" step="1" title="pixels per click">
+            <span class="hint">px</span>
+          </div>
+          <div class="row">
+            <div id="nudge-pad">
+              <span></span><button data-d="0,1" title="up">↑</button><span></span>
+              <button data-d="-1,0" title="left">←</button><button data-d="0,0" class="ghost" title="reset this layer">0</button><button data-d="1,0" title="right">→</button>
+              <span></span><button data-d="0,-1" title="down">↓</button><span></span>
+            </div>
+            <div id="shifts"></div>
+          </div>
+        </div>
         <div id="log"></div>
       </div>
     </div>
   </div>
 
   <script>
+    const $ = (id) => document.getElementById(id);
+    const MAST = 'https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html';
+
     // ---------- worker ----------
     const worker = new Worker('color_lab_worker.js');
-    const $ = (id) => document.getElementById(id);
-    let busy = true;
+    let busy = true, pending = false, hasImage = false;
     let lastName = 'jwst_color';
+    let lastRefFactor = null;
+    let lastSel = null;
 
     function logLine(msg) {
       const el = $('log');
@@ -228,6 +330,7 @@
       busy = b;
       if (msg !== undefined) $('status').textContent = msg;
       updateChosen();
+      if (!b && pending) { pending = false; compose(); }
     }
 
     worker.onmessage = (ev) => {
@@ -235,14 +338,18 @@
       if (d.type === 'log') logLine(d.msg);
       else if (d.type === 'ready') { showMem(d); setBusy(false, 'Ready'); }
       else if (d.type === 'mem') showMem(d);
-      else if (d.type === 'progress') $('status').textContent = `Downloading ${d.fname.split('_').slice(2, 4).join(' ')} ${Math.round(d.frac * 100)}%`;
+      else if (d.type === 'progress') $('status').textContent = `Downloading ${filterOf(d.fname)} ${Math.round(d.frac * 100)}%`;
       else if (d.type === 'error') { logLine('ERROR: ' + d.msg); setBusy(false, 'Error (see log)'); }
       else if (d.type === 'image') {
         const c = $('canvas');
         c.width = d.w; c.height = d.h;
         c.getContext('2d').putImageData(new ImageData(d.rgba, d.w, d.h), 0, 0);
         showMem(d);
-        $('save-jpg').disabled = $('save-png').disabled = false;
+        hasImage = true;
+        lastRefFactor = d.refFactor;
+        if (shiftUnit === null) shiftUnit = d.refFactor;
+        $('save-btn').disabled = false;
+        $('credit').innerHTML = creditHTML(lastSel, d.crval);
         setBusy(false, 'Done');
       }
     };
@@ -250,44 +357,145 @@
 
     // ---------- selection ----------
     const chosen = { r: new Set(), g: new Set(), b: new Set() };
-    const filterOf = (f) => (f.match(/[-_](f\d{3,4}[a-z]*\d?)/i) || [, '?'])[1].toUpperCase();
+    const lastMatch = (f, re) => { const m = [...f.matchAll(re)]; return m.length ? m[m.length - 1][1] : null; };
+    // like astro_utils.filt_num: the last fNNN in the file name
+    const filterOf = (f) => (lastMatch(f, /[-_](f\d{3,4}[a-z]*\d?)/gi) || '?').toUpperCase();
     // F070W..F480M (NIRCam) and F560W..F2550W (MIRI) share units of 10 nm, so the number sorts by wavelength
-    const waveOf = (f) => parseInt((f.match(/[-_]f(\d{3,4})/i) || [, '0'])[1]);
-    const targetOf = {};  // fname -> target name
+    const waveOf = (f) => parseInt(lastMatch(f, /[-_]f(\d{3,4})/gi) || '0');
+    const itemOf = {};  // fname -> CSV row
+
+    const selection = () => ({ red: [...chosen.r], green: [...chosen.g], blue: [...chosen.b] });
+    const allChosen = (sel = selection()) => [...new Set([...sel.red, ...sel.green, ...sel.blue])];
 
     function updateChosen() {
       const el = $('chosen');
       el.innerHTML = '';
-      for (const c of ['r', 'g', 'b']) {
+      const filt05 = $('method').value === 'filt05';
+      if (filt05) {
+        const names = allChosen().sort((a, b) => waveOf(b) - waveOf(a));
         const line = document.createElement('div');
-        line.className = c;
-        const names = [...chosen[c]];
-        line.textContent = `${c.toUpperCase()}: ` + (names.length ? names.map(n => `${filterOf(n)} (${n.split('_')[0]})`).join(', ') : '—');
+        line.textContent = 'filt05: ' + (names.length ? names.map(filterOf).join(', ') : '—');
         el.appendChild(line);
+      } else {
+        for (const c of ['r', 'g', 'b']) {
+          const line = document.createElement('div');
+          line.className = c;
+          const names = [...chosen[c]];
+          line.textContent = `${c.toUpperCase()}: ` + (names.length ? names.map(n => `${filterOf(n)} (${n.split('_')[0]})`).join(', ') : '—');
+          el.appendChild(line);
+        }
       }
-      const n = chosen.r.size + chosen.g.size + chosen.b.size;
-      $('compose-btn').disabled = busy || n === 0;
-      $('script-btn').disabled = n === 0;
+      const names = allChosen();
+      $('compose-btn').disabled = busy || names.length === 0;
+      $('script-btn').disabled = names.length === 0;
       document.querySelectorAll('.card').forEach(card => {
         const f = card.dataset.fname;
-        card.classList.toggle('sel', chosen.r.has(f) || chosen.g.has(f) || chosen.b.has(f));
+        card.classList.toggle('sel', names.includes(f));
       });
+      // nudge layer list
+      const sel = $('nudge-layer'), prev = sel.value;
+      sel.innerHTML = names.length ? '' : '<option value="">(no layers)</option>';
+      for (const n of names) sel.add(new Option(`${filterOf(n)} ${n.split('_')[0]}`, n));
+      if (names.includes(prev)) sel.value = prev;
+      for (const k of Object.keys(shifts)) if (!names.includes(k)) delete shifts[k];
+      showShifts();
     }
 
-    const selection = () => ({ red: [...chosen.r], green: [...chosen.g], blue: [...chosen.b] });
     function outName(sel) {
-      const all = [...sel.red, ...sel.green, ...sel.blue];
-      const tgt = (targetOf[all[0]] || all[0].split('_')[0]).replace(/[^\w.-]+/g, '_');
+      const all = allChosen(sel);
+      const tgt = ((itemOf[all[0]] || {}).target_name || all[0].split('_')[0]).replace(/[^\w.-]+/g, '_');
       return `${tgt}_${all.map(filterOf).join('-')}`;
     }
 
-    $('compose-btn').onclick = () => {
+    function options() {
+      const lo = parseFloat($('lim-lo').value), hi = parseFloat($('lim-hi').value);
+      const shiftsOut = {};
+      for (const [k, v] of Object.entries(shifts)) if (v[0] || v[1]) shiftsOut[k] = v;
+      return {
+        method: $('method').value,
+        func: $('func').value,
+        factor: $('factor').value === 'linear' ? null : parseFloat($('factor').value),
+        lims: [(isNaN(lo) ? 3 : lo) / 100, (isNaN(hi) ? 98 : hi) / 100],
+        grey: $('grey').checked,
+        shifts: shiftsOut,
+        shift_ref_factor: shiftUnit,
+      };
+    }
+
+    function compose() {
       const sel = selection();
+      if (!allChosen(sel).length) return;
+      if (busy) { pending = true; return; }
       lastName = outName(sel);
+      lastSel = sel;
       setBusy(true, 'Working…');
-      worker.postMessage({ cmd: 'compose', ...sel, maxMP: parseFloat($('maxmp').value), fill: $('fill').checked, grey: $('grey').checked });
+      worker.postMessage({ cmd: 'compose', ...sel, maxMP: parseFloat($('maxmp').value), fill: $('fill').checked, opts: options() });
+    }
+    $('compose-btn').onclick = compose;
+
+    // processing controls re-compose right away when an image is shown (layers are cached, so it is fast)
+    for (const id of ['method', 'func', 'factor', 'lim-lo', 'lim-hi', 'fill', 'grey', 'maxmp']) {
+      $(id).addEventListener('change', () => { updateChosen(); if (hasImage) compose(); });
+    }
+
+    $('clear-btn').onclick = () => {
+      for (const c of ['r', 'g', 'b']) chosen[c].clear();
+      for (const k of Object.keys(shifts)) delete shifts[k];
+      shiftUnit = null;
+      document.querySelectorAll('.card input[type=checkbox]').forEach(cb => cb.checked = false);
+      updateChosen();
     };
 
+    // ---------- nudge ----------
+    const shifts = {};    // fname -> [dx right, dy up] in reference pixels at block factor shiftUnit
+    let shiftUnit = null;
+
+    function showShifts() {
+      const parts = Object.entries(shifts).filter(([, v]) => v[0] || v[1])
+        .map(([k, v]) => `${filterOf(k)}: ${v[0] > 0 ? '→' : '←'}${Math.abs(v[0])} ${v[1] > 0 ? '↑' : '↓'}${Math.abs(v[1])}`);
+      $('shifts').innerHTML = parts.length ? parts.join('<br>') : 'no nudges';
+    }
+
+    document.querySelectorAll('#nudge-pad button').forEach(btn => {
+      btn.onclick = () => {
+        const name = $('nudge-layer').value;
+        if (!name) return;
+        if (lastRefFactor && shiftUnit && shiftUnit !== lastRefFactor) {  // size changed: convert to current pixels
+          for (const v of Object.values(shifts)) { v[0] = Math.round(v[0] * shiftUnit / lastRefFactor); v[1] = Math.round(v[1] * shiftUnit / lastRefFactor); }
+        }
+        shiftUnit = lastRefFactor;
+        const [dx, dy] = btn.dataset.d.split(',').map(Number);
+        const n = Math.max(1, parseInt($('nudge-n').value) || 1);
+        const v = shifts[name] || [0, 0];
+        shifts[name] = (dx === 0 && dy === 0) ? [0, 0] : [v[0] + dx * n, v[1] + dy * n];
+        showShifts();
+        if (hasImage) compose();
+      };
+    });
+
+    // ---------- credits, in the form the bot posts ----------
+    function esc(s) { return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+    function creditText(sel, crval, html) {
+      const names = allChosen(sel);
+      const items = names.map(n => itemOf[n] || {});
+      const target = [...new Set(items.map(i => i.target_name).filter(Boolean))].join(', ') || names[0].split('_')[0];
+      const num = (n) => String(waveOf(n));
+      let filt;
+      if ($('method').value === 'filt05') filt = 'Filters (colored by wavelength): ' + names.slice().sort((a, b) => waveOf(b) - waveOf(a)).map(num).join(', ');
+      else filt = 'RGB Filters: ' + [sel.red, sel.green, sel.blue].filter(l => l.length).map(l => l.map(num).join('+')).join(', ');
+      const pis = [...new Set(items.map(i => i.proposal_pi).filter(Boolean))].join('; ');
+      const progs = [...new Set(items.map(i => i.proposal_id).filter(Boolean))].join(', ');
+      const crv = crval ? ` CRVAL: ${crval[0].toFixed(6)}, ${crval[1].toFixed(6)}` : '';
+      const stsci = html ? `<a href="${MAST}" target="_blank">STScI</a>` : 'STScI';
+      const e = html ? esc : (s) => s;
+      return `\u{1F916} image processing for #JWST \u{1F52D} data (${e(target)}). ${e(filt)}\n` +
+        `PI: ${e(pis)}, program ${e(progs)}.${crv}\n` +
+        `Credits: NASA, ESA, CSA, ${stsci}.`;
+    }
+    const creditHTML = (sel, crval) => creditText(sel, crval, true);
+
+    // ---------- save ----------
     function download(blob, name) {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
@@ -295,34 +503,72 @@
       a.click();
       setTimeout(() => URL.revokeObjectURL(a.href), 1000);
     }
-    $('save-png').onclick = () => $('canvas').toBlob((b) => download(b, lastName + '.png'), 'image/png');
-    $('save-jpg').onclick = () => $('canvas').toBlob((b) => download(b, lastName + '.jpg'), 'image/jpeg', 0.95);
+    $('save-btn').onclick = () => {
+      const fmt = $('save-fmt').value;
+      $('canvas').toBlob((b) => download(b, `${lastName}.${fmt}`), fmt === 'png' ? 'image/png' : 'image/jpeg', 0.95);
+    };
+
+    // ---------- local script ----------
+    const pyStr = (s) => "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n') + "'";
+    const pyList = (l) => '[' + l.map(pyStr).join(', ') + ']';
 
     $('script-btn').onclick = async () => {
       const sel = selection();
       const name = outName(sel);
+      const o = options();
       const code = await (await fetch('color_lab.py?v=' + Date.now())).text();
-      const pyList = (l) => '[' + l.map(f => `'${f}'`).join(', ') + ']';
+      const shiftsPy = '{' + Object.entries(o.shifts).map(([k, v]) => `${pyStr(k)}: [${v[0]}, ${v[1]}]`).join(', ') + '}';
+      const credit = creditText(sel, null, false);
+      const head = `"""Stand-alone JWST color composition, generated by JWST Color Lab
+(https://yuval-harpaz.github.io/astro/color_lab.html) on ${new Date().toISOString().slice(0, 16)}Z.
+
+Run:  python ${name}.py
+It downloads only the SCI extension of each FITS file from the STScI S3 mirror, processes it like the color bot
+and saves ${name}.jpg. Settings are at the bottom of this file.
+"""
+import importlib.util
+import sys
+
+if sys.version_info < (3, 8):
+    sys.exit(f'Python 3.8 or newer is needed, this is {sys.version.split()[0]}')
+_missing = [pip for mod, pip in [('numpy', 'numpy'), ('scipy', 'scipy'), ('astropy', 'astropy'), ('PIL', 'pillow')]
+            if importlib.util.find_spec(mod) is None]
+if _missing:
+    print('Missing Python packages: ' + ', '.join(_missing))
+    print('Install them with:')
+    print(f'    {sys.executable} -m pip install ' + ' '.join(_missing))
+    print('or, in a conda environment:')
+    print('    conda install -c conda-forge ' + ' '.join(_missing))
+    sys.exit(1)
+
+# ====================================== color_lab.py ======================================
+`;
       const main = `
 
 # ======================================================================================================
-# Generated by color_lab.html on ${new Date().toISOString().slice(0, 16)}Z
-# Requirements: pip install numpy scipy astropy pillow
-# Run: python ${name}.py
-# MAX_MP = 0 processes at full resolution (needs ~2 GB RAM for 3 NIRCam short-wave layers);
-# set e.g. MAX_MP = 1 to match the browser / bot size.
+# Settings (from the browser). MAX_MP = 0 processes at full resolution (about 2 GB RAM for three NIRCam
+# short-wavelength layers); set MAX_MP = 1 to match the browser / bot size.
 # ======================================================================================================
 RED = ${pyList(sel.red)}
 GREEN = ${pyList(sel.green)}
 BLUE = ${pyList(sel.blue)}
 MAX_MP = 0
 FILL_HOLES = ${$('fill').checked ? 'True' : 'False'}
-GREY_MISSING = ${$('grey').checked ? 'True' : 'False'}
+OPTIONS = dict(
+    method=${pyStr(o.method)},  # 'rgb' or 'filt05'
+    func=${pyStr(o.func)},  # 'none' or 'log'
+    factor=${o.factor === null ? 'None' : o.factor},  # level_adjust factor, None = linear
+    lims=[${o.lims[0]}, ${o.lims[1]}],  # level_adjust limits (quantiles)
+    grey=${o.grey ? 'True' : 'False'},  # grey_zeros
+    shifts=${shiftsPy},  # nudges [right, up] in reference pixels at block factor shift_ref_factor
+    shift_ref_factor=${o.shift_ref_factor ?? 'None'},
+)
+CREDIT = ${pyStr(credit)}
 
 if __name__ == '__main__':
-    run_local(RED, GREEN, BLUE, max_mp=MAX_MP, fill=FILL_HOLES, grey=GREY_MISSING, out='${name}.jpg')
+    run_local(RED, GREEN, BLUE, max_mp=MAX_MP, fill=FILL_HOLES, out=${pyStr(name + '.jpg')}, credit=CREDIT, **OPTIONS)
 `;
-      download(new Blob([code + main], { type: 'text/x-python' }), name + '.py');
+      download(new Blob([head + code + main], { type: 'text/x-python' }), name + '.py');
     };
 
     // ---------- cards (same data and logic as jwst_latest_release.html) ----------
@@ -357,14 +603,14 @@ if __name__ == '__main__':
       });
     }
 
-    function esc(s) { return (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+    const fileOf = (it) => (it.dataURL || it.jpegURL.replace(/\.\w+$/, '.fits')).split('/').pop();
 
     function makeCard(item) {
-      const fname = (item.dataURL || item.jpegURL.replace(/\.\w+$/, '.fits')).split('/').pop();
+      const fname = fileOf(item);
       const card = document.createElement('div');
       card.className = 'card';
       card.dataset.fname = fname;
-      targetOf[fname] = item.target_name;
+      itemOf[fname] = item;
       const instrument = (item.instrument_name || '').replace('/IMAGE', '');
       card.innerHTML = `
         <img loading="lazy" src="${esc(item.jpegURL)}" alt="${esc(item.target_name)}" title="${esc(fname)}">
@@ -406,7 +652,6 @@ if __name__ == '__main__':
       }
       rows = rows.filter(it => it.jpegURL);
       // group by object (newest release first), within an object long -> short wavelength (red -> blue)
-      const fileOf = (it) => (it.dataURL || it.jpegURL).split('/').pop();
       const newest = {};
       for (const it of rows) newest[it.target_name] = Math.max(newest[it.target_name] || 0, parseUTC(it.t_obs_release).getTime());
       rows.sort((a, b) => (newest[b.target_name] - newest[a.target_name]) || (a.target_name || '').localeCompare(b.target_name || '')
@@ -436,8 +681,7 @@ if __name__ == '__main__':
       const get = (u) => fetch(u).then(r => r.ok ? r.text() : '').catch(() => '');
       const [a, b] = await Promise.all(['latest.csv', 'older.csv'].map(async u => (await get(remote + u)) || get(u)));
       allData = [...(a ? parseCSV(a) : []), ...(b ? parseCSV(b) : [])];
-      // optional ?q=target in URL
-      const q = new URLSearchParams(location.search).get('q');
+      const q = new URLSearchParams(location.search).get('q');  // optional ?q=target
       if (q) { $('search-input').value = q; searchQuery = q; isSearchMode = true; }
       updateView();
     })();

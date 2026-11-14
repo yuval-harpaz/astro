@@ -66,7 +66,7 @@ async function readHeader(url, offset) {
   }
 }
 
-const shortName = (f) => ((f.match(/[-_](f\d{3,4}[a-z]*\d?)/i) || [, f])[1]).toUpperCase();
+const shortName = (f) => { const m = [...f.matchAll(/[-_](f\d{3,4}[a-z]*\d?)/gi)]; return m.length ? m[m.length - 1][1].toUpperCase() : f; };
 
 // Download SCI and block-average (nan-mean) by an integer factor so the image is <= maxMP megapixels.
 async function readSci(fname, maxMP) {
@@ -133,7 +133,7 @@ self.onmessage = async (ev) => {
   let cl = null;
   try {
     if (cmd === 'compose') {
-      const { red, green, blue, maxMP, fill, grey } = ev.data;
+      const { red, green, blue, maxMP, fill, opts } = ev.data;
       const names = [...new Set([...red, ...green, ...blue])];  // names[0] is the reference grid (same as compose())
       cl = py.pyimport('color_lab');
       t0 = performance.now(); cl.reset_clock();
@@ -150,11 +150,15 @@ self.onmessage = async (ev) => {
         cl.add_layer(n, new Uint8Array(L.data.buffer), L.ny, L.nx, L.header, L.factor, fill);
         post('mem', memInfo());
       }
-      const res = cl.compose(py.toPy(red), py.toPy(green), py.toPy(blue), 2.0, grey);
+      const pyOpts = py.toPy(opts);
+      const res = cl.compose(py.toPy(red), py.toPy(green), py.toPy(blue), pyOpts);
+      pyOpts.destroy();
       const [bytesProxy, h, w] = res.toJs();
+      const info = cl.ref_info(names[0]);
+      const [refFactor, crval1, crval2] = info.toJs(); info.destroy();
       const rgba = new Uint8ClampedArray(bytesProxy);  // copy out of WASM
       res.destroy();
-      self.postMessage({ type: 'image', id, w, h, rgba, ...memInfo() }, [rgba.buffer]);
+      self.postMessage({ type: 'image', id, w, h, rgba, refFactor, crval: [crval1, crval2], ...memInfo() }, [rgba.buffer]);
     }
   } catch (e) {
     post('error', { id, msg: e.message });
