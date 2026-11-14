@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>JWST Color Lab</title>
+  <link rel="icon" type="image/x-icon" href="camelfav.ico">
+  <style>
+    :root {
+      --bg: #0b0c10;
+      --panel: #1f2833;
+      --text: #c5c6c7;
+      --accent: #66fcf1;
+      --accent2: #45a29e;
+      --r: #ff5a5a;
+      --g: #5aff7a;
+      --b: #5a8cff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+    }
+
+    #app {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      height: 100vh;
+    }
+
+    /* ---------- left: cards ---------- */
+    #left {
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--accent2);
+      min-height: 0;
+    }
+
+    #left-controls {
+      padding: 10px;
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #left-controls .row { display: flex; gap: 6px; }
+
+    input[type=text] {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--accent2);
+      color: white;
+      padding: 6px;
+      border-radius: 4px;
+    }
+
+    button {
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover { background: var(--accent2); }
+    button:disabled { background: #444; color: #888; cursor: default; }
+
+    #range { color: var(--accent); font-style: italic; font-size: 12px; }
+
+    #cards { overflow-y: auto; padding: 10px; flex: 1; }
+
+    .card {
+      background: var(--panel);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow: hidden;
+      border: 2px solid transparent;
+    }
+
+    .card.sel { border-color: var(--accent); }
+    .card img { width: 100%; display: block; background: #000; min-height: 80px; }
+    .card .info { padding: 6px 8px; font-size: 12px; line-height: 1.35; }
+    .card h3 { margin: 0 0 3px; color: var(--accent); font-size: 14px; }
+    .card .info p { margin: 0; }
+
+    .rgb { display: flex; gap: 12px; padding: 6px 8px 8px; align-items: center; }
+    .rgb label { display: flex; align-items: center; gap: 3px; cursor: pointer; font-weight: bold; }
+    .rgb label.r { color: var(--r); }
+    .rgb label.g { color: var(--g); }
+    .rgb label.b { color: var(--b); }
+    .rgb .filt { margin-left: auto; color: white; font-weight: bold; }
+
+    /* ---------- right: compose ---------- */
+    #right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+
+    #top {
+      padding: 10px;
+      background: var(--panel);
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    #chosen { display: flex; flex-direction: column; gap: 2px; font-size: 12px; min-width: 300px; }
+    #chosen .r { color: var(--r); }
+    #chosen .g { color: var(--g); }
+    #chosen .b { color: var(--b); }
+
+    select { background: var(--bg); color: white; border: 1px solid var(--accent2); padding: 4px; }
+
+    #status { color: var(--accent); }
+    #mem { color: #aaa; font-size: 12px; }
+
+    #view { flex: 1; display: flex; min-height: 0; padding: 10px; gap: 10px; }
+
+    #canvas-wrap {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 0;
+      min-height: 0;
+      background: #000;
+    }
+
+    canvas { max-width: 100%; max-height: 100%; image-rendering: auto; }
+
+    #log {
+      width: 320px;
+      overflow-y: auto;
+      font-family: ui-monospace, monospace;
+      font-size: 11px;
+      white-space: pre-wrap;
+      background: var(--panel);
+      padding: 6px;
+      color: #aaa;
+    }
+
+    #narrow {
+      display: none;
+      padding: 40px;
+      text-align: center;
+      font-size: 18px;
+    }
+
+    @media (max-width: 1100px) {
+      #app { display: none; }
+      #narrow { display: block; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="narrow">JWST Color Lab is meant for a PC screen (at least 1100 px wide).</div>
+  <div id="app">
+    <div id="left">
+      <div id="left-controls">
+        <div class="row">
+          <button id="prev-btn">◀ 7 days</button>
+          <button id="next-btn">7 days ▶</button>
+          <span id="range"></span>
+        </div>
+        <div class="row">
+          <input type="text" id="search-input" placeholder="Search target, title, filter...">
+          <button id="search-btn">Search</button>
+        </div>
+      </div>
+      <div id="cards">Loading…</div>
+    </div>
+
+    <div id="right">
+      <div id="top">
+        <button id="compose-btn" disabled>Compose</button>
+        <label title="Each layer is block-averaged to about this size before processing. The bot uses 1 MP.">Size
+          <select id="maxmp">
+            <option value="1" selected>1 MP (bot)</option>
+            <option value="4">4 MP</option>
+            <option value="9">9 MP</option>
+          </select>
+        </label>
+        <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours, like the bot. Changing this reprocesses from scratch."><input type="checkbox" id="fill" checked> fill holes</label>
+        <label title="Pixels missing in one channel get the max of the other two (grey_zeros), like the bot."><input type="checkbox" id="grey" checked> grey missing</label>
+        <button id="save-jpg" disabled>Save JPG</button>
+        <button id="save-png" disabled>Save PNG</button>
+        <button id="script-btn" disabled title="Download a Python script that does the same processing locally (full resolution by default) and saves a jpg">Local script</button>
+        <div id="chosen"></div>
+        <span id="status">Loading Python…</span>
+        <span id="mem"></span>
+      </div>
+      <div id="view">
+        <div id="canvas-wrap"><canvas id="canvas" width="0" height="0"></canvas></div>
+        <div id="log"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---------- worker ----------
+    const worker = new Worker('color_lab_worker.js');
+    const $ = (id) => document.getElementById(id);
+    let busy = true;
+    let lastName = 'jwst_color';
+
+    function logLine(msg) {
+      const el = $('log');
+      el.textContent += msg + '\n';
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function showMem(m) {
+      const parts = [];
+      if (m.heapMB != null) parts.push(`WASM heap ${m.heapMB} MB`);
+      if (performance.memory) parts.push(`JS heap ${Math.round(performance.memory.usedJSHeapSize / 1048576)} MB`);
+      $('mem').textContent = parts.join(' · ');
+    }
+
+    function setBusy(b, msg) {
+      busy = b;
+      if (msg !== undefined) $('status').textContent = msg;
+      updateChosen();
+    }
+
+    worker.onmessage = (ev) => {
+      const d = ev.data;
+      if (d.type === 'log') logLine(d.msg);
+      else if (d.type === 'ready') { showMem(d); setBusy(false, 'Ready'); }
+      else if (d.type === 'mem') showMem(d);
+      else if (d.type === 'progress') $('status').textContent = `Downloading ${d.fname.split('_').slice(2, 4).join(' ')} ${Math.round(d.frac * 100)}%`;
+      else if (d.type === 'error') { logLine('ERROR: ' + d.msg); setBusy(false, 'Error (see log)'); }
+      else if (d.type === 'image') {
+        const c = $('canvas');
+        c.width = d.w; c.height = d.h;
+        c.getContext('2d').putImageData(new ImageData(d.rgba, d.w, d.h), 0, 0);
+        showMem(d);
+        $('save-jpg').disabled = $('save-png').disabled = false;
+        setBusy(false, 'Done');
+      }
+    };
+    worker.onerror = (e) => { logLine('worker error: ' + e.message); setBusy(false, 'Error'); };
+
+    // ---------- selection ----------
+    const chosen = { r: new Set(), g: new Set(), b: new Set() };
+    const filterOf = (f) => (f.match(/[-_](f\d{3,4}[a-z]*\d?)/i) || [, '?'])[1].toUpperCase();
+    // F070W..F480M (NIRCam) and F560W..F2550W (MIRI) share units of 10 nm, so the number sorts by wavelength
+    const waveOf = (f) => parseInt((f.match(/[-_]f(\d{3,4})/i) || [, '0'])[1]);
+    const targetOf = {};  // fname -> target name
+
+    function updateChosen() {
+      const el = $('chosen');
+      el.innerHTML = '';
+      for (const c of ['r', 'g', 'b']) {
+        const line = document.createElement('div');
+        line.className = c;
+        const names = [...chosen[c]];
+        line.textContent = `${c.toUpperCase()}: ` + (names.length ? names.map(n => `${filterOf(n)} (${n.split('_')[0]})`).join(', ') : '—');
+        el.appendChild(line);
+      }
+      const n = chosen.r.size + chosen.g.size + chosen.b.size;
+      $('compose-btn').disabled = busy || n === 0;
+      $('script-btn').disabled = n === 0;
+      document.querySelectorAll('.card').forEach(card => {
+        const f = card.dataset.fname;
+        card.classList.toggle('sel', chosen.r.has(f) || chosen.g.has(f) || chosen.b.has(f));
+      });
+    }
+
+    const selection = () => ({ red: [...chosen.r], green: [...chosen.g], blue: [...chosen.b] });
+    function outName(sel) {
+      const all = [...sel.red, ...sel.green, ...sel.blue];
+      const tgt = (targetOf[all[0]] || all[0].split('_')[0]).replace(/[^\w.-]+/g, '_');
+      return `${tgt}_${all.map(filterOf).join('-')}`;
+    }
+
+    $('compose-btn').onclick = () => {
+      const sel = selection();
+      lastName = outName(sel);
+      setBusy(true, 'Working…');
+      worker.postMessage({ cmd: 'compose', ...sel, maxMP: parseFloat($('maxmp').value), fill: $('fill').checked, grey: $('grey').checked });
+    };
+
+    function download(blob, name) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+    $('save-png').onclick = () => $('canvas').toBlob((b) => download(b, lastName + '.png'), 'image/png');
+    $('save-jpg').onclick = () => $('canvas').toBlob((b) => download(b, lastName + '.jpg'), 'image/jpeg', 0.95);
+
+    $('script-btn').onclick = async () => {
+      const sel = selection();
+      const name = outName(sel);
+      const code = await (await fetch('color_lab.py?v=' + Date.now())).text();
+      const pyList = (l) => '[' + l.map(f => `'${f}'`).join(', ') + ']';
+      const main = `
+
+# ======================================================================================================
+# Generated by color_lab.html on ${new Date().toISOString().slice(0, 16)}Z
+# Requirements: pip install numpy scipy astropy pillow
+# Run: python ${name}.py
+# MAX_MP = 0 processes at full resolution (needs ~2 GB RAM for 3 NIRCam short-wave layers);
+# set e.g. MAX_MP = 1 to match the browser / bot size.
+# ======================================================================================================
+RED = ${pyList(sel.red)}
+GREEN = ${pyList(sel.green)}
+BLUE = ${pyList(sel.blue)}
+MAX_MP = 0
+FILL_HOLES = ${$('fill').checked ? 'True' : 'False'}
+GREY_MISSING = ${$('grey').checked ? 'True' : 'False'}
+
+if __name__ == '__main__':
+    run_local(RED, GREEN, BLUE, max_mp=MAX_MP, fill=FILL_HOLES, grey=GREY_MISSING, out='${name}.jpg')
+`;
+      download(new Blob([code + main], { type: 'text/x-python' }), name + '.py');
+    };
+
+    // ---------- cards (same data and logic as jwst_latest_release.html) ----------
+    let allData = [];
+    let currentEndDate = new Date();
+    let isSearchMode = false;
+    let searchQuery = '';
+
+    function parseUTC(str) { return new Date((str || '').trim().replace(' ', 'T') + 'Z'); }
+
+    function parseCSV(csv) {
+      const lines = csv.trim().split('\n');
+      const headers = lines[0].split(',').map(h => h.trim());
+      return lines.slice(1).map(line => {
+        const values = [];
+        let current = '', inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+          else if (ch === '"') inQuotes = !inQuotes;
+          else if (ch === ',' && !inQuotes) { values.push(current); current = ''; }
+          else current += ch;
+        }
+        values.push(current);
+        const obj = {};
+        headers.forEach((h, i) => {
+          let v = values[i]?.trim() || '';
+          if ((h === 'jpegURL' || h === 'dataURL') && v.startsWith('mast:')) v = v.replace('mast:', 'https://mast.stsci.edu/portal/Download/file/');
+          obj[h] = v;
+        });
+        return obj;
+      });
+    }
+
+    function esc(s) { return (s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+    function makeCard(item) {
+      const fname = (item.dataURL || item.jpegURL.replace(/\.\w+$/, '.fits')).split('/').pop();
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.dataset.fname = fname;
+      targetOf[fname] = item.target_name;
+      const instrument = (item.instrument_name || '').replace('/IMAGE', '');
+      card.innerHTML = `
+        <img loading="lazy" src="${esc(item.jpegURL)}" alt="${esc(item.target_name)}" title="${esc(fname)}">
+        <div class="rgb">
+          <label class="r"><input type="checkbox" data-c="r">R</label>
+          <label class="g"><input type="checkbox" data-c="g">G</label>
+          <label class="b"><input type="checkbox" data-c="b">B</label>
+          <span class="filt">${esc(instrument)} ${filterOf(fname)}</span>
+        </div>
+        <div class="info">
+          <h3>${esc(item.target_name)}</h3>
+          <p>Proposal ${esc(item.proposal_id)}, PI ${esc(item.proposal_pi)}</p>
+          <p>Observed ${parseUTC(item.t_max).toISOString().slice(0, 10)}, released ${parseUTC(item.t_obs_release).toISOString().slice(0, 10)}</p>
+          <p title="${esc(fname)}">${esc(item.obs_title)}</p>
+        </div>`;
+      card.querySelectorAll('input').forEach(cb => {
+        const c = cb.dataset.c;
+        cb.checked = chosen[c].has(fname);
+        cb.onchange = () => { cb.checked ? chosen[c].add(fname) : chosen[c].delete(fname); updateChosen(); };
+      });
+      return card;
+    }
+
+    function updateView() {
+      const container = $('cards');
+      container.innerHTML = '';
+      let rows;
+      if (isSearchMode) {
+        const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const q = searchQuery.toLowerCase(), nq = norm(searchQuery);
+        rows = allData.filter(it => [it.target_name, it.obs_title, it.jpegURL, it.dataURL].some(s => (s || '').toLowerCase().includes(q))
+          || norm(it.target_name).includes(nq));
+        $('range').textContent = `${rows.length} matches`;
+      } else {
+        const start = new Date(currentEndDate.getTime() - 7 * 864e5);
+        rows = allData.filter(it => { const t = parseUTC(it.t_obs_release); return t > start && t <= currentEndDate; });
+        $('range').textContent = `${start.toISOString().slice(0, 10)} – ${currentEndDate.toISOString().slice(0, 10)}`;
+        $('next-btn').disabled = Date.now() - currentEndDate.getTime() < 36e5;
+      }
+      rows = rows.filter(it => it.jpegURL);
+      // group by object (newest release first), within an object long -> short wavelength (red -> blue)
+      const fileOf = (it) => (it.dataURL || it.jpegURL).split('/').pop();
+      const newest = {};
+      for (const it of rows) newest[it.target_name] = Math.max(newest[it.target_name] || 0, parseUTC(it.t_obs_release).getTime());
+      rows.sort((a, b) => (newest[b.target_name] - newest[a.target_name]) || (a.target_name || '').localeCompare(b.target_name || '')
+        || (waveOf(fileOf(b)) - waveOf(fileOf(a))) || fileOf(a).localeCompare(fileOf(b)));
+      if (!rows.length) { container.textContent = 'No images found.'; return; }
+      rows.slice(0, 300).forEach(it => container.appendChild(makeCard(it)));
+      if (rows.length > 300) container.appendChild(Object.assign(document.createElement('p'), { textContent: `…showing 300 of ${rows.length}, refine the search.` }));
+      updateChosen();
+    }
+
+    $('search-btn').onclick = () => {
+      searchQuery = $('search-input').value.trim();
+      isSearchMode = !!searchQuery;
+      updateView();
+    };
+    $('search-input').onkeypress = (e) => { if (e.key === 'Enter') $('search-btn').click(); };
+    $('prev-btn').onclick = () => { if (!isSearchMode) currentEndDate = new Date(currentEndDate.getTime() - 7 * 864e5); isSearchMode = false; updateView(); };
+    $('next-btn').onclick = () => {
+      isSearchMode = false;
+      currentEndDate = new Date(Math.min(Date.now(), currentEndDate.getTime() + 7 * 864e5));
+      updateView();
+    };
+
+    (async () => {
+      // like jwst_latest_release.html, read the bot's latest CSVs from GitHub (the local / Pages copy may lag)
+      const remote = 'https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/';
+      const get = (u) => fetch(u).then(r => r.ok ? r.text() : '').catch(() => '');
+      const [a, b] = await Promise.all(['latest.csv', 'older.csv'].map(async u => (await get(remote + u)) || get(u)));
+      allData = [...(a ? parseCSV(a) : []), ...(b ? parseCSV(b) : [])];
+      // optional ?q=target in URL
+      const q = new URLSearchParams(location.search).get('q');
+      if (q) { $('search-input').value = q; searchQuery = q; isSearchMode = true; }
+      updateView();
+    })();
+    updateChosen();
+  </script>
+</body>
+
+</html>
