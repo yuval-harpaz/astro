@@ -157,6 +157,25 @@
 
     canvas { max-width: 100%; max-height: 100%; }
 
+    #canvas-wrap { position: relative; }
+    #intro {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      max-width: 620px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    #intro h2 { margin: 0 0 8px; color: var(--accent); font-size: 18px; font-weight: 600; }
+    #intro ol { margin: 0 0 10px; padding-left: 22px; }
+    #intro li { margin-bottom: 4px; }
+    #intro b.r { color: var(--r); }
+    #intro b.g { color: var(--g); }
+    #intro b.b { color: var(--b); }
+    #intro p { margin: 0; font-size: 12px; color: #999; }
+
     #credit { font-size: 12px; line-height: 1.5; white-space: pre-line; min-height: 3em; }
     #about { font-size: 12px; color: #999; }
 
@@ -265,7 +284,23 @@
       </div>
 
       <div id="main">
-        <div id="canvas-wrap"><canvas id="canvas" width="0" height="0"></canvas></div>
+        <div id="canvas-wrap">
+          <div id="intro">
+            <h2>How to make a color image</h2>
+            <ol>
+              <li>Find an object in the list on the left: browse by week with <b>◀ 7 days</b>, or search by target, title or filter.
+                Each object's images are sorted from long to short wavelength.</li>
+              <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
+                One or more per color; without G, green is the average of R and B, like the bot.</li>
+              <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
+              <li>Tune on the right: stretch factor, limits, log, filt05 colors, reference grid, or nudge a misaligned layer.
+                These re-compose in about a second.</li>
+              <li><b>Save</b> as JPG or PNG, or download a <b>Local script</b> that does the same at full resolution on your computer.</li>
+            </ol>
+            <p>Everything runs in your browser (Python via Pyodide); nothing is uploaded. Progress is printed in the log at the bottom right.</p>
+          </div>
+          <canvas id="canvas" width="0" height="0"></canvas>
+        </div>
         <div id="credit"></div>
         <div id="about">
           JWST Color Lab by Yuval Harpaz ·
@@ -379,6 +414,7 @@
         c.getContext('2d').putImageData(new ImageData(d.rgba, d.w, d.h), 0, 0);
         showMem(d);
         hasImage = true;
+        $('intro').style.display = 'none';
         lastPixscale = d.pixscale;
         Object.assign(layerInfo, d.layers);
         updateRef();
