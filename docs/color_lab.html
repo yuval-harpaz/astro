@@ -994,6 +994,9 @@ if __name__ == '__main__':
     }
 
     function updateView() {
+      // keep the address bar in sync with the search (?q=NGC+1326), so the view can be shared or bookmarked
+      const want = isSearchMode && searchQuery ? '?' + new URLSearchParams({ q: searchQuery }) : '';
+      if (location.search !== want) history.replaceState(null, '', location.pathname + want + location.hash);
       const container = $('cards');
       container.innerHTML = '';
       let rows;
