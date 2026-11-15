@@ -22,6 +22,10 @@ function memInfo() {
 }
 
 function s3url(fname) {
+  if (!fname.startsWith('jw')) {  // HST pipeline product, e.g. jfq8jq010_drc.fits
+    const obs = fname.split('_')[0];
+    return `https://stpubdata.s3.amazonaws.com/hst/public/${obs.slice(0, 4)}/${obs}/${fname}`;
+  }
   const m = fname.match(/^(jw\d{5})-([oc]\d+)_/);
   if (!m) throw new Error('cannot derive S3 path for ' + fname);
   return `${S3}${m[1]}/L3/t/${m[2]}/${fname}`;
@@ -68,7 +72,8 @@ async function readHeader(url, offset) {
   }
 }
 
-const shortName = (f) => { const m = [...f.matchAll(/[-_](f\d{3,4}[a-z]*\d?)/gi)]; return m.length ? m[m.length - 1][1].toLowerCase() : f; };
+let FILTERS = {};  // fname -> [filter label, wavelength nm], from the page (HST names carry no filter)
+const shortName = (f) => { if (FILTERS[f]) return FILTERS[f][0]; const m = [...f.matchAll(/[-_](f\d{3,4}[a-z]*\d?)/gi)]; return m.length ? m[m.length - 1][1].toLowerCase() : f; };
 
 // Download SCI and block-average (nan-mean) by an integer factor so the image is <= maxMP megapixels.
 async function readSci(fname, maxMP) {
@@ -140,6 +145,8 @@ self.onmessage = async (ev) => {
       const ref = names.includes(opts.ref) ? opts.ref : names[0];  // reference grid (same rule as compose())
       names = [ref, ...names.filter(n => n !== ref)];
       cl = py.pyimport('color_lab');
+      FILTERS = { ...FILTERS, ...(opts.filters || {}) };
+      const pf = py.toPy(opts.filters || {}); cl.set_filters(pf); pf.destroy();
       t0 = performance.now(); cl.reset_clock();
       const key = JSON.stringify({ maxMP, fill });
       if (cacheKey !== key) {

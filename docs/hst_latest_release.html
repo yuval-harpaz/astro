@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Latest HST Images</title>
+  <link rel="stylesheet" href="styles2025.css">
+  <style>
+    #controls {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+      align-items: center;
+      background: rgba(31, 40, 51, 0.8);
+      padding: 15px;
+      border-radius: 8px;
+    }
+
+    #controls input {
+      background: #0b0c10;
+      border: 1px solid #45a29e;
+      color: white;
+      padding: 8px;
+      border-radius: 4px;
+      width: 250px;
+      min-width: 150px;
+    }
+
+    #controls button {
+      background: #66fcf1;
+      color: #0b0c10;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background 0.3s;
+    }
+
+    #controls button:hover {
+      background: #45a29e;
+    }
+
+    #nav-controls {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* the thumbnail (128 px) links to the full preview */
+    .image-card a.thumb { flex: 0 0 25%; max-width: 25%; }
+    .image-card a.thumb img { width: 100%; max-width: 100%; max-height: 25vh; object-fit: contain; }
+
+    #current-range {
+      margin-left: auto;
+      font-style: italic;
+      color: #66fcf1;
+    }
+  </style>
+</head>
+<link rel="icon" type="image/x-icon"
+  href="https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/camelfav.ico">
+
+<body>
+  <h1 id="main-title">Latest HST Image Releases</h1>
+
+  <div id="controls">
+    <div id="nav-controls">
+      <button id="prev-btn">Prev 7 Days</button>
+      <button id="next-btn">Next 7 Days</button>
+    </div>
+    <input type="text" id="search-input" placeholder="Search target or title...">
+    <button id="search-btn">Search</button>
+    <span id="current-range"></span>
+    <div id="donate-button-container">
+    <div id="donate-button"></div>
+    <script src="https://www.paypalobjects.com/donate/sdk/donate-sdk.js" charset="UTF-8"></script>
+    <script>
+    PayPal.Donation.Button({
+    env:'production',
+    hosted_button_id:'X7NWK2SA9WZM2',
+    image: {
+    src:'https://www.paypalobjects.com/en_US/IL/i/btn/btn_donateCC_LG.gif',
+    alt:'Donate with PayPal button',
+    title:'PayPal - The safer, easier way to pay online!',
+    }
+    }).render('#donate-button');
+    </script>
+    </div>
+
+</a>
+  </div>
+  <div class="container">
+    <div class="social-links">
+      <h2>By Yuval Harpaz
+        <a href="https://nerdculture.de/@yuvharpaz"><img src="mastodona.png" alt="nerdculture.de/@yuvharpaz" /></a>
+        <a href="https://bsky.app/profile/yuvharpaz.bsky.social"><img
+            src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/7a/Bluesky_Logo.svg/960px-Bluesky_Logo.svg.png?_=20240211144739"
+            alt="yuvharpaz.bsky.social" /></a>
+        <a href="https://github.com/yuval-harpaz/astro/blob/main/README.md"><img src="github-mark.png"
+            alt="github.com/yuval-harpaz" /></a>
+        <a href="https://github.com/yuval-harpaz/astro/tree/main/docs/hst" target="_blank"> <img src="csv1.png"
+            alt="csv logo" /></a>
+        · <a href="jwst_latest_release.html" style="color:#66fcf1;">JWST releases</a>
+        · Create color images with: <a href="color_lab.html?src=hst" style="color:#66fcf1;" title="Compose your own color images from HST data, in the browser (PC)">Color Lab</a>
+      </h2>
+    </div>
+    Preview images and data are from <a
+      href="https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html" target="_blank" style="color:#66fcf1;"> STScI
+      | MAST</a> (public S3 mirror), image information from <a href="https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/hst/" target="_blank"
+      style="color:#66fcf1;">CADC</a>. Credit also to NASA and ESA (<a href="https://hubblesite.org/copyright" target="_blank"
+      style="color:#66fcf1;">ref</a>). Drizzled (drc / drz) pipeline images of ACS, WFC3, WFPC2 and NICMOS.
+    <div id="earliest-release-info" style="font-size: 0.8em; color: #45a29e; margin-top: 10px;"></div>
+    <div id="image-container">Loading...</div>
+
+    <script>
+      let allData = [];
+      let currentEndDate = new Date();
+      let isSearchMode = false;
+      let searchQuery = "";
+
+      // CSV times are UTC without a zone ("2026-10-15 21:17:26.995"); force UTC parsing
+      function parseUTC(str) {
+        return new Date((str || '').trim().replace(' ', 'T') + 'Z');
+      }
+
+      async function loadCSV(url) {
+        const response = await fetch(url);
+        const text = await response.text();
+        return parseCSV(text);
+      }
+
+      function parseCSV(csv) {
+        const lines = csv.trim().split('\n');
+        const headers = lines[0].split(',').map(h => h.trim());
+
+        return lines.slice(1).map(line => {
+          const values = [];
+          let current = '';
+          let inQuotes = false;
+
+          for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"' && line[i + 1] === '"') {
+              current += '"'; // escaped quote
+              i++;
+            } else if (char === '"') {
+              inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+              values.push(current);
+              current = '';
+            } else {
+              current += char;
+            }
+          }
+          values.push(current); // last value
+
+          const obj = {};
+          headers.forEach((header, i) => {
+            let value = values[i]?.trim() || '';
+
+            // Special case: convert mast: to full URL in jpegURL and dataURL
+            if ((header === 'jpegURL' || header === 'dataURL') && value.startsWith('mast:')) {
+              value = value.replace(
+                'mast:',
+                'https://mast.stsci.edu/portal/Download/file/'
+              );
+            }
+
+            obj[header] = value;
+          });
+
+          return obj;
+        });
+      }
+
+      // docs/hst (hst_news_csv.py): latest.csv = last LATEST_DAYS days, <year>.csv per release year, targets.csv index
+      const LATEST_DAYS = 30;
+      const REMOTE = 'https://raw.githubusercontent.com/yuval-harpaz/astro/refs/heads/main/docs/hst/';
+      const getText = (u) => fetch(u).then(r => r.ok ? r.text() : '').catch(() => '');
+      const getCSV = async (name) => (await getText(REMOTE + name)) || getText('hst/' + name);
+      const loaded = new Set(), seen = new Set();
+      let indexPromise = null, viewSeq = 0;
+      async function loadParts(parts) {
+        parts = parts.filter(p => !loaded.has(p));
+        const texts = await Promise.all(parts.map(p => getCSV(p + '.csv')));
+        parts.forEach((p, k) => {
+          loaded.add(p);
+          for (const it of texts[k] ? parseCSV(texts[k]) : []) if (!seen.has(it.obsid)) { seen.add(it.obsid); allData.push(it); }
+        });
+      }
+      function targetIndex() {
+        if (!indexPromise) indexPromise = getCSV('targets.csv').then(t => t ? parseCSV(t) : []);
+        return indexPromise;
+      }
+      const normalize = (str) => (str || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+      async function updateView() {
+        const container = document.getElementById('image-container');
+        const title = document.getElementById('main-title');
+        const rangeSpan = document.getElementById('current-range');
+        const seq = ++viewSeq;
+        // load the release-year files this view needs
+        const need = new Set();
+        if (isSearchMode) {
+          const nq = normalize(searchQuery);
+          for (const r of await targetIndex()) if (normalize(r.target_name).includes(nq)) (r.years || '').split(';').filter(Boolean).forEach(y => need.add(y));
+        } else if (currentEndDate.getTime() - 7 * 864e5 < Date.now() - LATEST_DAYS * 864e5) {
+          for (let y = new Date(currentEndDate.getTime() - 7 * 864e5).getUTCFullYear(); y <= currentEndDate.getUTCFullYear(); y++) need.add(String(y));
+        }
+        if ([...need].some(y => !loaded.has(y))) {
+          container.innerHTML = '<p>Loading...</p>';
+          await loadParts([...need]);
+          if (seq !== viewSeq) return;
+        }
+
+        container.innerHTML = '';
+
+        let filteredData = [];
+        if (isSearchMode) {
+          const query = searchQuery.toLowerCase();
+          const normalizedQuery = normalize(searchQuery);
+
+          filteredData = allData.filter(item => {
+            const targetName = (item.target_name || "").toLowerCase();
+            const obsTitle = (item.obs_title || "").toLowerCase();
+            const jpegURL = (item.jpegURL || "").toLowerCase();
+            const dataURL = (item.dataURL || "").toLowerCase();
+            const filt = (item.filters || "").toLowerCase();
+
+            return targetName.includes(query) || filt === query ||
+              normalize(targetName).includes(normalizedQuery) ||
+              obsTitle.includes(query) ||
+              jpegURL.includes(query) ||
+              dataURL.includes(query);
+          });
+          title.innerText = `Search Results: "${searchQuery}"`;
+          rangeSpan.innerText = `${filteredData.length} matches found`;
+        } else {
+          const startDate = new Date(currentEndDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+          filteredData = allData.filter(item => {
+            const date = parseUTC(item.t_obs_release);
+            return date.getTime() > startDate.getTime() && date.getTime() <= currentEndDate.getTime();
+          });
+
+          const endStr = currentEndDate.toISOString().split('T')[0];
+          const startStr = startDate.toISOString().split('T')[0];
+
+          const now = new Date();
+          const isLatest = (now.getTime() - currentEndDate.getTime() < 3600000); // within 1 hour
+
+          if (isLatest) {
+            title.innerText = "Latest HST Image Releases (Past 7 Days)";
+          } else {
+            title.innerText = `HST Releases: ${startStr} to ${endStr}`;
+          }
+
+          rangeSpan.innerText = "";
+          document.getElementById('next-btn').disabled = isLatest;
+        }
+
+        if (filteredData.length === 0) {
+          container.innerHTML = '<p>No images found for this criteria.</p>';
+          return;
+        }
+
+        filteredData.sort((a, b) => parseUTC(b.t_obs_release) - parseUTC(a.t_obs_release));
+
+        filteredData.forEach(item => {
+          const card = document.createElement('div');
+          // the data and previews are on the public STScI S3 mirror; the full preview is ~5 MB, so cards show the thumbnail
+          const fitsUrl = item.jpegURL ? item.jpegURL.replace(/\.jpg$/, '.fits') : '#';
+          const thumb = item.jpegURL ? item.jpegURL.replace(/\.jpg$/, '_thumb.jpg') : '';
+          const filter = (item.filters || 'unknown filter').toLowerCase();
+          const releaseDate = parseUTC(item.t_obs_release);
+          const utcDateOnly = releaseDate.toISOString().split('T')[0];
+          const obsDate = parseUTC(item.t_max);
+          const utcMax = obsDate.toISOString().split('T')[0];
+          const instrument = item.instrument_name
+          const titleText = item.obs_title
+          const fits = fitsUrl.split('/').pop() || 'File';
+
+          card.className = 'image-card';
+          card.innerHTML = `
+          <a class="thumb" href="${item.jpegURL || '#'}" target="_blank" title="${fits}: full preview (about 5 MB)"><img src="${thumb}" alt="${item.target_name || ''}" loading="lazy"></a>
+          <div class="image-info">
+              <h2>${item.target_name}</h2>
+              <p>Instrument: ${instrument}. Filter: ${filter}.</p>
+              <p>Proposal ID: ${item.proposal_id}, PI: ${item.proposal_pi}.</p>
+              <p>Observed: ${utcMax}. Released: ${utcDateOnly}</p>
+              <p>Title: ${titleText}</p>
+              <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a> ·
+                <a href="color_lab.html?${new URLSearchParams({ q: item.target_name || '', src: 'hst' })}" target="_blank" style="color:#66fcf1;" title="Make a color image of this target in Color Lab (PC)">Color Lab</a></p>
+          </div>
+        `;
+          container.appendChild(card);
+        });
+      }
+
+      // Event Listeners
+      document.getElementById('search-btn').onclick = () => {
+        searchQuery = document.getElementById('search-input').value.trim();
+        if (searchQuery) {
+          isSearchMode = true;
+          updateView();
+        }
+      };
+
+      document.getElementById('search-input').onkeypress = (e) => {
+        if (e.key === 'Enter') document.getElementById('search-btn').click();
+      };
+
+      document.getElementById('prev-btn').onclick = () => {
+        if (isSearchMode) {
+          isSearchMode = false;
+          currentEndDate = new Date(); // Reset to latest
+        } else {
+          currentEndDate = new Date(currentEndDate.getTime() - 7 * 24 * 60 * 60 * 1000);
+        }
+        updateView();
+      };
+
+      document.getElementById('next-btn').onclick = () => {
+        if (isSearchMode) {
+          isSearchMode = false;
+          currentEndDate = new Date(); // Reset to latest
+        } else {
+          const nextDate = new Date(currentEndDate.getTime() + 7 * 24 * 60 * 60 * 1000);
+          const now = new Date();
+          currentEndDate = nextDate > now ? now : nextDate;
+        }
+        updateView();
+      };
+
+      // Initial Load: the last LATEST_DAYS days; older years load when browsing back or searching
+      (async () => {
+        await loadParts(['latest']);
+        const idx = await targetIndex();
+        const years = [...new Set(idx.flatMap(r => (r.years || '').split(';').filter(Boolean)))].sort();
+        document.getElementById('earliest-release-info').innerText =
+          `HST images released ${years.length ? 'from ' + years[0] : ''} to today (${idx.length} targets). Level 3 drizzled science images; older years load when you go back or search.`;
+        updateView();
+      })().catch(err => {
+        document.getElementById('image-container').innerHTML = '<p>Error loading data.</p>';
+        console.error(err);
+      });
+    </script>
+</body>
+
+</html>

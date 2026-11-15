@@ -25,6 +25,7 @@ from scipy.ndimage import map_coordinates, maximum_filter, label
 warnings.simplefilter('ignore', FITSFixedWarning)
 
 S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/'
+S3_HST = 'https://stpubdata.s3.amazonaws.com/hst/public/'
 RAW = {}     # name -> (data float32 2D, WCS, block factor, (full nx, full ny)), downsampled and hole-filled
 REPROJ = {}  # (name, ref) -> float32 2D on ref grid
 _T0 = [time.time()]
@@ -38,14 +39,34 @@ def step(msg):
     print(f'[{time.time() - _T0[0]:6.1f}s] {msg}', flush=True)
 
 
+# {file name: [filter label, wavelength in nm]}, given by the page (or the local script) for files whose name has no
+# filter, e.g. HST jfq8jq010_drc.fits. JWST names carry the filter, F444W -> 444 x 10 nm.
+FILTERS = {}
+
+
+def set_filters(filters):
+    if hasattr(filters, 'to_py'):
+        filters = filters.to_py()
+    FILTERS.update({k: [str(v[0]), float(v[1])] for k, v in (filters or {}).items()})
+
+
 def filt_num(name):
     """Filter number like astro_utils.filt_num: the last [-_]fNNN in the name (f444w -> 444, f2550w -> 2550)."""
     m = re.findall(r'[-_]f(\d{3,4})', name.lower())
     return int(m[-1]) if m else 0
 
 
+def wavelength(name):
+    """Pivot-ish wavelength in nm for sorting and filt05 colors (JWST filter numbers are in units of 10 nm)."""
+    if name in FILTERS:
+        return FILTERS[name][1]
+    return filt_num(name) * 10.0
+
+
 def short(name):
     """jw07321-o004_t002_nircam_clear-f444w_i2d.fits -> f444w"""
+    if name in FILTERS:
+        return FILTERS[name][0]
     m = re.findall(r'[-_](f\d{3,4}[a-z]*\d?)', name.lower())
     return m[-1] if m else name
 
@@ -238,6 +259,9 @@ def fill_holes(img, size=5, n_iter=100):
 
 # ---------- reading FITS SCI with HTTP range requests (used by the local script; the browser does it in JS) ----------
 def s3url(fname):
+    if not fname.startswith('jw'):  # HST pipeline product, e.g. jfq8jq010_drc.fits
+        obs = fname.split('_')[0]
+        return f'{S3_HST}{obs[:4]}/{obs}/{fname}'
     prop, obs = fname.split('_')[0].split('-')[:2]
     return f'{S3}{prop}/L3/t/{obs}/{fname}'
 
@@ -434,6 +458,7 @@ def compose_rgb(red, green, blue, **opts):
     area: [x0, x1, y0, y1] fractions of the reference image (y up): limits and histogram are sampled there only."""
     o = dict(DEFAULTS)
     o.update({k: v for k, v in opts.items() if v is not None or k == 'factor'})
+    set_filters(o.get('filters'))
     red, green, blue = list(red), list(green), list(blue)
     allnames = list(dict.fromkeys(red + green + blue))
     if not allnames:
@@ -456,8 +481,8 @@ def compose_rgb(red, green, blue, **opts):
         return stretch(lay, name, o['func'], o['factor'], o['lims'], sample)
 
     if o['method'] == 'filt05':
-        names = sorted(allnames, key=filt_num)
-        cols = colors_by_filt([filt_num(n) for n in names])
+        names = sorted(allnames, key=wavelength)
+        cols = colors_by_filt([wavelength(n) for n in names])
         rgb = np.zeros((ny, nx, 3), np.float64)
         for name, col in zip(names, cols):
             lay = layer(name)
@@ -559,6 +584,7 @@ def compose(red, green, blue, opts=None):
 def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='', **opts):
     """Stand-alone: download, process and save a jpg. max_mp=0 means full resolution. opts: see compose_rgb."""
     reset_clock()
+    set_filters(opts.get('filters'))
     for name in dict.fromkeys(list(red) + list(green) + list(blue)):
         data, text, f = read_sci(name, max_mp)
         _add(name, data, text, f, fill)
