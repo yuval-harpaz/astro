@@ -103,6 +103,7 @@
     #sources label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap; }
     #sources label.tel { font-weight: bold; color: var(--accent); min-width: 52px; }
     #sources input { margin: 0; }
+    #sources .tel-row.off label:not(.tel) { display: none; }  /* instruments show once their telescope is selected */
     .group-head .tel { font-size: 11px; color: var(--bg); background: var(--accent2); border-radius: 3px; padding: 0 4px; }
     .group-head { display: flex; align-items: center; gap: 8px; margin: 14px 2px 6px; }
     .group-head:first-child { margin-top: 0; }
@@ -431,7 +432,10 @@
 
     // ---------- worker ----------
     // ?v= so a cached old worker (GitHub Pages: 10 min browser cache) never runs with a newer page
-    const worker = new Worker('color_lab_worker.js?v=' + Date.now());
+    // browsers do not run workers from file:// pages; say so instead of failing with a console error
+    const FILE_PAGE = location.protocol === 'file:';
+    const worker = FILE_PAGE ? { postMessage() { }, onmessage: null, onerror: null }
+      : new Worker('color_lab_worker.js?v=' + Date.now());
     let busy = true, pending = false, hasImage = false;
     let area = null, areaRef = null;  // area: [x0, y0, x1, y1] fractions of the shown image (y down); areaRef: its reference layer
     let lastName = 'jwst_color';
@@ -1243,6 +1247,7 @@ if __name__ == '__main__':
         const box = document.querySelector(`#sources input[data-tel="${tel}"]`);
         box.checked = on === list.length; box.indeterminate = on > 0 && on < list.length;
         list.forEach(i => { document.querySelector(`#sources input[data-inst="${i}"]`).checked = enabled.has(i); });
+        document.querySelector(`#sources .tel-row[data-tel="${tel}"]`).classList.toggle('off', on === 0);
       }
     }
     function updateBrand() {
@@ -1307,6 +1312,11 @@ if __name__ == '__main__':
       updateView();
     })();
     updateChosen();
+    if (FILE_PAGE) {
+      $('status').textContent = 'Open through a web server (see log)';
+      logLine('This page was opened as a file, and browsers do not run its Python worker from file:// pages.\n' +
+        'Serve the folder instead:  cd docs && python3 -m http.server   then open http://localhost:8000/color_lab.html');
+    }
   </script>
   <div id="ask" role="dialog" aria-modal="true" aria-labelledby="ask-msg">
     <div class="box">
