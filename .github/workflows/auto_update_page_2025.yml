@@ -25,6 +25,9 @@ jobs:
           Bluehandle: ${{ secrets.BNDL }}
       run: |
         python astro_jwst_news_2025.py
+    - name: coordinates
+      run: |
+        python coords_csv.py docs/latest.csv docs/older.csv
     - name: check news
       env:
           MOAuth: ${{ secrets.MASTO }}

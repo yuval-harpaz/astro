@@ -7,7 +7,10 @@ pipeline drizzled products, <obs_id>_drc.fits (CTE corrected) or else <obs_id>_d
 Files (docs/hst/):
     YYYY.csv      all images released in that year
     latest.csv    images released in the last LATEST_DAYS days (what the pages load first)
-    targets.csv   target_name, years  (index for searching the year files)
+    targets.csv   target_name, years, ra, dec, rad  (index for searching the year files by name or position)
+
+Coordinates (degrees): s_ra, s_dec = center of the footprint polygon from CADC, s_rad = center to farthest vertex,
+as in coords_csv.py for the JWST CSVs.
 
 Usage:
     python hst_news_csv.py --days 10        # daily update (GitHub Action): last 10 days -> year file(s), latest, targets
@@ -19,6 +22,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
+import numpy as np
 import pandas as pd
 import requests
 from astropy.time import Time
@@ -28,14 +32,14 @@ S3 = 'https://stpubdata.s3.amazonaws.com/hst/public/'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'docs', 'hst')
 LATEST_DAYS = 30
 COLUMNS = ['obsid', 'proposal_id', 'proposal_pi', 'target_name', 'instrument_name', 'obs_title', 'jpegURL',
-           't_max', 't_obs_release', 'dataURL', 'filters']
+           't_max', 't_obs_release', 'dataURL', 'filters', 's_ra', 's_dec', 's_rad']
 INSTRUMENTS = ('ACS/WFC', 'ACS/HRC', 'ACS/SBC', 'WFC3/UVIS', 'WFC3/IR', 'WFPC2', 'WFPC2/WFC', 'WFPC2/PC', 'NICMOS')
 
 
 def query(start, end, retries=3):
     """Science images (calibration level 3) released in [start, end) from CADC, as a DataFrame."""
     adql = f"""SELECT O.observationID, O.target_name, O.proposal_id, O.proposal_pi, O.proposal_title, O.instrument_name,
-        P.energy_bandpassName, P.dataRelease, P.time_bounds_upper
+        P.energy_bandpassName, P.dataRelease, P.time_bounds_upper, P.position_bounds
         FROM caom2.Observation O JOIN caom2.Plane P ON O.obsID = P.obsID
         WHERE O.collection = 'HST' AND O.intent = 'science' AND P.calibrationLevel = 3 AND P.dataProductType = 'image'
         AND P.dataRelease >= '{start:%Y-%m-%dT%H:%M:%S}' AND P.dataRelease < '{end:%Y-%m-%dT%H:%M:%S}'"""
@@ -49,6 +53,37 @@ def query(start, end, retries=3):
             print(f'  CADC query {start:%Y-%m-%d}..{end:%Y-%m-%d} failed ({e}), attempt {attempt + 1}')
             time.sleep(10)
     raise RuntimeError('CADC query failed')
+
+
+def _unit(ra, dec):
+    ra, dec = np.radians(ra), np.radians(dec)
+    return np.stack([np.cos(dec) * np.cos(ra), np.cos(dec) * np.sin(ra), np.sin(dec)], -1)
+
+
+def sky_center(ra, dec):
+    """Mean direction of points (degrees) -> ra, dec, and the largest distance from it to a point."""
+    v = _unit(np.asarray(ra, float), np.asarray(dec, float))
+    c = v.mean(0)
+    c /= np.linalg.norm(c)
+    cra, cdec = np.degrees(np.arctan2(c[1], c[0])) % 360, np.degrees(np.arcsin(c[2]))
+    return cra, cdec, float(np.degrees(np.arccos(np.clip(v @ c, -1, 1))).max())
+
+
+def polygon_center(bounds):
+    """CADC position_bounds ('polygon ra1 dec1 ra2 dec2 ...', possibly several) -> (ra, dec, radius) or blanks."""
+    nums = [float(x) for x in str(bounds).replace('polygon', ' ').replace('circle', ' ').split() if _isnum(x)]
+    if len(nums) < 6:
+        return '', '', ''
+    ra, dec, rad = sky_center(nums[0::2], nums[1::2])
+    return f'{ra:.6f}', f'{dec:.6f}', f'{rad:.5f}'
+
+
+def _isnum(x):
+    try:
+        float(x)
+        return True
+    except ValueError:
+        return False
 
 
 def s3_file(obs_id, instrument):
@@ -95,12 +130,13 @@ def to_rows(df):
         'dataURL': ['mast:HST/product/' + f for f in df['file']],
         'filters': df['energy_bandpassName'].str.split(';').str[0].values,
     })
+    out[['s_ra', 's_dec', 's_rad']] = [polygon_center(b) for b in df['position_bounds']]
     return out.sort_values('t_obs_release', ascending=False, ignore_index=True)
 
 
 def merge_into(path, new):
-    old = pd.read_csv(path, dtype=str) if os.path.exists(path) else pd.DataFrame(columns=COLUMNS)
-    both = pd.concat([new.astype(str), old], ignore_index=True).drop_duplicates('obsid', keep='first')
+    old = pd.read_csv(path, dtype=str, keep_default_na=False) if os.path.exists(path) else pd.DataFrame(columns=COLUMNS)
+    both = pd.concat([new.fillna("").astype(str), old], ignore_index=True).drop_duplicates('obsid', keep='first')
     both = both.sort_values('t_obs_release', ascending=False, ignore_index=True)
     both.to_csv(path, index=False)
     return both
@@ -111,6 +147,7 @@ def write_latest():
     years = sorted({now.year, (now - timedelta(days=LATEST_DAYS)).year})
     frames = [pd.read_csv(os.path.join(OUT, f'{y}.csv'), dtype=str) for y in years if os.path.exists(os.path.join(OUT, f'{y}.csv'))]
     df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=COLUMNS)
+    df = df[[c for c in COLUMNS if c in df.columns]]
     cutoff = (now - timedelta(days=LATEST_DAYS)).strftime('%Y-%m-%d')
     df = df[df['t_obs_release'] >= cutoff].sort_values('t_obs_release', ascending=False)
     df.to_csv(os.path.join(OUT, 'latest.csv'), index=False)
@@ -118,14 +155,27 @@ def write_latest():
 
 
 def write_targets():
-    years = {}
+    """target_name, years, and a circle (ra, dec, rad) covering all its images, for name and position searches."""
+    years, pts = {}, {}
     for f in sorted(os.listdir(OUT)):
         if f[:4].isdigit() and f.endswith('.csv'):
-            for t in pd.read_csv(os.path.join(OUT, f), dtype=str, usecols=['target_name'])['target_name'].dropna().unique():
+            df = pd.read_csv(os.path.join(OUT, f), dtype=str, keep_default_na=False)
+            for t, g in df.groupby('target_name'):
                 years.setdefault(t, []).append(f[:4])
-    pd.DataFrame({'target_name': list(years), 'years': [';'.join(v) for v in years.values()]}).to_csv(
-        os.path.join(OUT, 'targets.csv'), index=False)
-    print(f'targets.csv: {len(years)} targets')
+                if 's_ra' in g:
+                    g = g[g['s_ra'] != '']
+                    pts.setdefault(t, []).extend(zip(g['s_ra'].astype(float), g['s_dec'].astype(float), g['s_rad'].astype(float)))
+    rows = []
+    for t, ys in years.items():
+        ra = dec = rad = ''
+        if pts.get(t):
+            p = np.array(pts[t])
+            cra, cdec, _ = sky_center(p[:, 0], p[:, 1])
+            sep = np.degrees(np.arccos(np.clip(_unit(p[:, 0], p[:, 1]) @ _unit(cra, cdec), -1, 1)))
+            ra, dec, rad = f'{cra:.5f}', f'{cdec:.5f}', f'{float((sep + p[:, 2]).max()):.4f}'
+        rows.append((t, ';'.join(ys), ra, dec, rad))
+    pd.DataFrame(rows, columns=['target_name', 'years', 'ra', 'dec', 'rad']).to_csv(os.path.join(OUT, 'targets.csv'), index=False)
+    print(f'targets.csv: {len(rows)} targets')
 
 
 def update(start, end, step_days):

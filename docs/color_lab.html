@@ -98,6 +98,14 @@
     }
 
     .card.sel { border-color: var(--accent); }
+    .card .coords a { color: var(--accent); text-decoration: none; }
+    .card .coords a:hover { text-decoration: underline; }
+    .card .nearby { display: none; padding: 2px 8px; font-size: 11px; margin-left: 6px; }
+    .card.first .nearby { display: inline-block; }
+    #near-bar { display: none; align-items: center; gap: 8px; font-size: 12px; color: var(--accent); }
+    #near-bar.on { display: flex; }
+    #near-bar span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #near-bar button { padding: 2px 10px; font-size: 12px; }
     #sources { display: flex; flex-direction: column; gap: 3px; font-size: 12px; }
     #sources .tel-row { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
     #sources label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; white-space: nowrap; }
@@ -275,9 +283,11 @@
           <div class="tel-row" data-tel="HST"><label class="tel"><input type="checkbox" data-tel="HST">HST</label></div>
         </div>
         <div class="row">
-          <input type="text" id="search-input" placeholder="Search target, title, filter...">
+          <input type="text" id="search-input" placeholder="Target, title, filter, or RA, Dec..." title="A name or words in the title, a filter, or a position: RA, Dec in degrees (13.6477, -37.6539) or RA in hours (00:54:35.4 -37:39:14). Names not in the list are looked up in SIMBAD.">
+          <label title="Radius (arcmin) for position searches and Show nearby, from the edge of each image" style="white-space:nowrap;font-size:12px;color:#aaa">r <input type="number" id="radius" value="3" min="0.1" step="any" style="width:46px">′</label>
           <button id="search-btn">Search</button>
         </div>
+        <div id="near-bar"><span id="near-label"></span><button class="ghost" id="near-exit" title="Back to the previous list">✕ Exit</button></div>
       </div>
       <div id="cards">Loading…</div>
     </div>
@@ -332,7 +342,7 @@
           <div id="intro">
             <h2>How to make a color image</h2>
             <ol>
-              <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title or filter.
+              <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). <b>Show nearby</b> on the first chosen image lists other images of the same sky area.
                 Each object's images are sorted from long to short wavelength.</li>
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
                 One or more per color; without G, green is the average of R and B, like the bot. <b>Auto RGB</b> next to an object name selects what the bot would choose.</li>
@@ -430,6 +440,7 @@
     </div>
   </div>
 
+  <script src="sky.js"></script>
   <script>
     const $ = (id) => document.getElementById(id);
     const MAST = 'https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html';
@@ -544,6 +555,7 @@
       document.querySelectorAll('.card').forEach(card => {
         const f = card.dataset.fname;
         card.classList.toggle('sel', names.includes(f));
+        card.classList.toggle('first', f === names[0]);
       });
       // nudge layer list
       const sel = $('nudge-layer'), prev = sel.value;
@@ -970,6 +982,19 @@ if __name__ == '__main__':
     let currentEndDate = new Date();
     let isSearchMode = false;
     let searchQuery = '';
+    let searchPos = null;  // {ra, dec, label}: list images near a position instead of the search text / dates
+    let beforeNear = null;  // the view to return to from Show nearby
+    const radiusDeg = () => Math.max(0.1, parseFloat($('radius').value) || 3) / 60;
+
+    async function showNearby(item, fname) {
+      let ra = parseFloat(item.s_ra), dec = parseFloat(item.s_dec);
+      if (!isFinite(ra)) { const c = await readCrval(fname).catch(() => null); if (c) [ra, dec] = c; }  // rows not back-filled yet
+      if (!isFinite(ra)) { $('status').textContent = 'No coordinates for this image'; return; }
+      if (!beforeNear) beforeNear = { isSearchMode, searchQuery, searchPos, input: $('search-input').value };
+      $('search-input').value = Sky.fmt(ra, dec);
+      setPos({ ra, dec, label: `${item.target_name} (${Sky.fmt(ra, dec)})` });
+    }
+    function setPos(p) { searchPos = p; isSearchMode = true; updateView(); }
 
     function parseUTC(str) { return new Date((str || '').trim().replace(' ', 'T') + 'Z'); }
 
@@ -1019,7 +1044,12 @@ if __name__ == '__main__':
           <p>Proposal ${esc(item.proposal_id)}, PI ${esc(item.proposal_pi)}</p>
           <p>Observed ${parseUTC(item.t_max).toISOString().slice(0, 10)}, released ${parseUTC(item.t_obs_release).toISOString().slice(0, 10)}</p>
           <p title="${esc(fname)}">${esc(item.obs_title)}</p>
+          <p class="coords">${item.s_ra ? `RA, Dec <a href="#" title="Show images near this position">${Sky.fmt(item.s_ra, item.s_dec)}</a>`
+            + (isSearchMode && searchPos && item._sep != null ? ` · ${(item._sep * 60).toFixed(1)}′ away` : '') : ''}<button class="ghost nearby" title="List images near this one (radius r), regardless of the search and the dates">Show nearby</button></p>
         </div>`;
+      const nearThis = async (e) => { e.preventDefault(); showNearby(item, fname); };
+      card.querySelector('.nearby').onclick = nearThis;
+      card.querySelector('.coords a')?.addEventListener('click', nearThis);
       card.querySelectorAll('input').forEach(cb => {
         const c = cb.dataset.c;
         cb.checked = chosen[c].has(fname);
@@ -1136,7 +1166,9 @@ if __name__ == '__main__':
     async function updateView() {
       // keep the address bar in sync with the search (?q=NGC+1326) and the sources (&src=hst), so the view can be shared
       const params = new URLSearchParams();
-      if (isSearchMode && searchQuery) params.set('q', searchQuery);
+      if (isSearchMode && searchPos) params.set('q', searchPos.q || Sky.fmt(searchPos.ra, searchPos.dec));
+      else if (isSearchMode && searchQuery) params.set('q', searchQuery);
+      if ($('radius').value !== '3') params.set('r', $('radius').value);
       const src = sourcesParam();
       if (src) params.set('src', src);
       const want = params.toString() ? '?' + params : '';
@@ -1148,7 +1180,11 @@ if __name__ == '__main__':
       // HST rows are loaded on demand: latest.csv first, then the release-year files this view needs
       if (telOn('HST')) {
         const need = new Set();
-        if (isSearchMode) {
+        if (isSearchMode && searchPos) {
+          await hstIndex();
+          for (const r of hstTargets) if (r.ra && Sky.sep(+r.ra, +r.dec, searchPos.ra, searchPos.dec) <= radiusDeg() + (+r.rad || 0))
+            (r.years || '').split(';').filter(Boolean).forEach(y => need.add(y));
+        } else if (isSearchMode) {
           const nq = norm(searchQuery);
           for (const [t, ys] of Object.entries(await hstIndex())) if (norm(t).includes(nq)) ys.forEach(y => need.add(y));
         } else if (currentEndDate.getTime() - 7 * 864e5 < Date.now() - HST_LATEST_DAYS * 864e5) {
@@ -1163,11 +1199,24 @@ if __name__ == '__main__':
       }
       container.innerHTML = '';
       let rows = allData.filter(sourceOn);
-      if (isSearchMode) {
+      $('near-bar').classList.toggle('on', !!(isSearchMode && searchPos));
+      if (isSearchMode && searchPos) {
+        const r = radiusDeg();
+        rows = Sky.cone(rows, searchPos, r);
+        $('near-label').textContent = `Near ${searchPos.label}, r = ${+(r * 60).toFixed(2)}′`;
+        $('near-label').title = $('near-label').textContent;
+        $('range').textContent = `${rows.length} images near`;
+      } else if (isSearchMode) {
         const q = searchQuery.toLowerCase(), nq = norm(searchQuery);
         rows = rows.filter(it => [it.target_name, it.obs_title, it.jpegURL, it.dataURL, it.filt, it.instrument_name].some(s => (s || '').toLowerCase().includes(q))
           || norm(it.target_name).includes(nq));
         $('range').textContent = `${rows.length} matches`;
+        if (!rows.length && !Sky.parse(searchQuery)) {  // not in the list: a name SIMBAD knows?
+          container.textContent = `Looking up "${searchQuery}" in SIMBAD…`;
+          const o = await Sky.resolve(searchQuery).catch(() => null);
+          if (seq !== viewSeq) return;
+          if (o) return setPos({ q: searchQuery, ra: o.ra, dec: o.dec, label: `${o.name} (${Sky.fmt(o.ra, o.dec)})` });
+        }
       } else {
         const start = new Date(currentEndDate.getTime() - 7 * 864e5);
         rows = rows.filter(it => { const t = parseUTC(it.t_obs_release); return t > start && t <= currentEndDate; });
@@ -1178,7 +1227,8 @@ if __name__ == '__main__':
       // group by object (newest release first), within an object long -> short wavelength (red -> blue)
       const gkey = (it) => it.tel + '|' + it.target_name;
       const newest = {}, count = {};
-      for (const it of rows) { const k = gkey(it); newest[k] = Math.max(newest[k] || 0, parseUTC(it.t_obs_release).getTime()); count[k] = (count[k] || 0) + 1; }
+      const near = isSearchMode && searchPos;  // groups nearest first, else newest release first
+      for (const it of rows) { const k = gkey(it); newest[k] = Math.max(newest[k] ?? -Infinity, near ? -it._sep : parseUTC(it.t_obs_release).getTime()); count[k] = (count[k] || 0) + 1; }
       rows.sort((a, b) => (newest[gkey(b)] - newest[gkey(a)]) || gkey(a).localeCompare(gkey(b))
         || (b.wave - a.wave) || fileOf(a).localeCompare(fileOf(b)));
       if (!rows.length) { container.textContent = telOn('JWST') || telOn('HST') ? 'No images found.' : 'Check JWST and/or HST above.'; return; }
@@ -1194,15 +1244,28 @@ if __name__ == '__main__':
       updateChosen();
     }
 
-    $('search-btn').onclick = () => {
-      searchQuery = $('search-input').value.trim();
-      isSearchMode = !!searchQuery;
+    Sky.searchBox({
+      input: $('search-input'), button: $('search-btn'),
+      localNames: async (t) => {
+        const n = (t || '').toLowerCase().replace(/[^a-z0-9]/g, ''), out = new Set();
+        for (const it of allData) if (sourceOn(it) && (it.target_name || '').toLowerCase().replace(/[^a-z0-9]/g, '').includes(n)) out.add(it.target_name);
+        if (telOn('HST')) for (const name of Object.keys(await hstIndex())) if (name.toLowerCase().replace(/[^a-z0-9]/g, '').includes(n)) out.add(name);
+        return [...out];
+      },
+      onText: (t) => { searchQuery = t; searchPos = null; beforeNear = null; isSearchMode = true; updateView(); },
+      onPos: (p) => { beforeNear = null; setPos(p); },
+    });
+    $('search-input').addEventListener('input', () => { if (!$('search-input').value.trim() && isSearchMode) { isSearchMode = false; searchPos = null; beforeNear = null; updateView(); } });
+    $('radius').onchange = () => { if (isSearchMode && searchPos) updateView(); };
+    $('near-exit').onclick = () => {
+      const b = beforeNear || { isSearchMode: false, searchQuery: '', searchPos: null, input: '' };
+      ({ isSearchMode, searchQuery, searchPos } = b);
+      $('search-input').value = b.input; beforeNear = null;
       updateView();
     };
-    $('search-input').onkeypress = (e) => { if (e.key === 'Enter') $('search-btn').click(); };
-    $('prev-btn').onclick = () => { if (!isSearchMode) currentEndDate = new Date(currentEndDate.getTime() - 7 * 864e5); isSearchMode = false; updateView(); };
+    $('prev-btn').onclick = () => { if (!isSearchMode) currentEndDate = new Date(currentEndDate.getTime() - 7 * 864e5); isSearchMode = false; searchPos = null; beforeNear = null; updateView(); };
     $('next-btn').onclick = () => {
-      isSearchMode = false;
+      isSearchMode = false; searchPos = null; beforeNear = null;
       currentEndDate = new Date(Math.min(Date.now(), currentEndDate.getTime() + 7 * 864e5));
       updateView();
     };
@@ -1283,7 +1346,7 @@ if __name__ == '__main__':
     const getText = (u) => fetch(u).then(r => r.ok ? r.text() : '').catch(() => '');
     const getCSV = async (path) => (await getText(REMOTE + path)) || getText(path);
     const hstLoaded = new Set(), seenFiles = new Set();
-    let hstIndexPromise = null;
+    let hstIndexPromise = null, hstTargets = [];  // targets.csv rows: target_name, years, ra, dec, rad
     function addRows(rows, tel) {
       for (const it of rows) {
         const f = fileOf(it);
@@ -1298,8 +1361,8 @@ if __name__ == '__main__':
       parts.forEach((p, k) => { hstLoaded.add(p); if (texts[k]) addRows(parseCSV(texts[k]), 'HST'); });
     }
     function hstIndex() {  // {target_name: [years]} from hst/targets.csv, to load only the years a search needs
-      if (!hstIndexPromise) hstIndexPromise = getCSV('hst/targets.csv').then(t => Object.fromEntries((t ? parseCSV(t) : [])
-        .map(r => [r.target_name, (r.years || '').split(';').filter(Boolean)])));
+      if (!hstIndexPromise) hstIndexPromise = getCSV('hst/targets.csv').then(t => { hstTargets = t ? parseCSV(t) : []; return Object.fromEntries(hstTargets
+        .map(r => [r.target_name, (r.years || '').split(';').filter(Boolean)])); });
       return hstIndexPromise;
     }
 
@@ -1314,7 +1377,12 @@ if __name__ == '__main__':
       let q = params.get('q');
       if (q === null && location.search.length > 1 && !location.search.includes('=')) { try { q = decodeURIComponent(location.search.slice(1).replace(/\+/g, ' ')); } catch (e) { q = location.search.slice(1); } }
       if (q) q = q.trim().replace(/^["']+|["']+$/g, '').trim();
-      if (q) { $('search-input').value = q; searchQuery = q; isSearchMode = true; }
+      if (params.get('r')) $('radius').value = params.get('r');
+      if (q) {
+        $('search-input').value = q; searchQuery = q; isSearchMode = true;
+        const p = Sky.parse(q);
+        if (p) searchPos = { ...p, label: Sky.fmt(p.ra, p.dec) };
+      }
       updateView();
     })();
     updateChosen();

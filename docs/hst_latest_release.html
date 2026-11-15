@@ -72,7 +72,8 @@
       <button id="prev-btn">Prev 7 Days</button>
       <button id="next-btn">Next 7 Days</button>
     </div>
-    <input type="text" id="search-input" placeholder="Search target or title...">
+    <input type="text" id="search-input" placeholder="Target, title, or RA, Dec..." title="A name or words in the title, or a position: RA, Dec in degrees (13.6477, -37.6539) or RA in hours (00:54:35.4 -37:39:14). Names not in the list are looked up in SIMBAD.">
+    <label title="Search radius around a position (from the edge of each image)">r <input type="number" id="radius" value="3" min="0.1" step="any" style="width:60px;min-width:0"> arcmin</label>
     <button id="search-btn">Search</button>
     <span id="current-range"></span>
     <div id="donate-button-container">
@@ -116,11 +117,14 @@
     <div id="earliest-release-info" style="font-size: 0.8em; color: #a9a9a9; margin-top: 10px;"></div>
     <div id="image-container">Loading...</div>
 
+    <script src="sky.js"></script>
     <script>
       let allData = [];
       let currentEndDate = new Date();
       let isSearchMode = false;
       let searchQuery = "";
+      let searchPos = null;  // {ra, dec, label} for a position search
+      const radiusDeg = () => Math.max(0.1, parseFloat(document.getElementById('radius').value) || 3) / 60;
 
       // CSV times are UTC without a zone ("2026-10-15 21:17:26.995"); force UTC parsing
       function parseUTC(str) {
@@ -205,7 +209,10 @@
         const seq = ++viewSeq;
         // load the release-year files this view needs
         const need = new Set();
-        if (isSearchMode) {
+        if (isSearchMode && searchPos) {
+          for (const r of await targetIndex()) if (r.ra !== '' && r.ra != null && Sky.sep(+r.ra, +r.dec, searchPos.ra, searchPos.dec) <= radiusDeg() + (+r.rad || 0))
+            (r.years || '').split(';').filter(Boolean).forEach(y => need.add(y));
+        } else if (isSearchMode) {
           const nq = normalize(searchQuery);
           for (const r of await targetIndex()) if (normalize(r.target_name).includes(nq)) (r.years || '').split(';').filter(Boolean).forEach(y => need.add(y));
         } else if (currentEndDate.getTime() - 7 * 864e5 < Date.now() - LATEST_DAYS * 864e5) {
@@ -220,7 +227,12 @@
         container.innerHTML = '';
 
         let filteredData = [];
-        if (isSearchMode) {
+        if (isSearchMode && searchPos) {
+          const r = radiusDeg();
+          filteredData = Sky.cone(allData, searchPos, r);
+          title.innerText = `Near ${searchPos.label}, within ${+(r * 60).toFixed(2)}′`;
+          rangeSpan.innerText = `${filteredData.length} images, nearest first`;
+        } else if (isSearchMode) {
           const query = searchQuery.toLowerCase();
           const normalizedQuery = normalize(searchQuery);
 
@@ -239,6 +251,12 @@
           });
           title.innerText = `Search Results: "${searchQuery}"`;
           rangeSpan.innerText = `${filteredData.length} matches found`;
+          if (!filteredData.length) {
+            container.innerHTML = `<p>No match in the list; looking up "${searchQuery.replace(/</g, '&lt;')}" in SIMBAD...</p>`;
+            const s = await Sky.resolve(searchQuery).catch(() => null);
+            if (seq !== viewSeq) return;
+            if (s) { searchPos = { ra: s.ra, dec: s.dec, label: `${s.name} (${Sky.fmt(s.ra, s.dec)})` }; return updateView(); }
+          }
         } else {
           const startDate = new Date(currentEndDate.getTime() - 7 * 24 * 60 * 60 * 1000);
           filteredData = allData.filter(item => {
@@ -267,7 +285,7 @@
           return;
         }
 
-        filteredData.sort((a, b) => parseUTC(b.t_obs_release) - parseUTC(a.t_obs_release));
+        if (!searchPos || !isSearchMode) filteredData.sort((a, b) => parseUTC(b.t_obs_release) - parseUTC(a.t_obs_release));
 
         filteredData.forEach(item => {
           const card = document.createElement('div');
@@ -292,6 +310,8 @@
               <p>Proposal ID: ${item.proposal_id}, PI: ${item.proposal_pi}.</p>
               <p>Observed: ${utcMax}. Released: ${utcDateOnly}</p>
               <p>Title: ${titleText}</p>
+              ${item.s_ra ? `<p>RA, Dec: <a href="#" class="near" data-ra="${item.s_ra}" data-dec="${item.s_dec}" style="color:#66fcf1;" title="Show images near this position">${Sky.fmt(item.s_ra, item.s_dec)}</a>`
+                + (isSearchMode && searchPos ? ` (${(item._sep * 60).toFixed(1)}′ away)` : ` (image radius ${(item.s_rad * 60).toFixed(1)}′)`) + '</p>' : ''}
               <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a> ·
                 <a href="color_lab.html?${new URLSearchParams({ q: item.target_name || '', src: 'hst' })}" target="_blank" style="color:#66fcf1;" title="Make a color image of this target in Color Lab (PC)">Color Lab</a></p>
           </div>
@@ -301,17 +321,24 @@
       }
 
       // Event Listeners
-      document.getElementById('search-btn').onclick = () => {
-        searchQuery = document.getElementById('search-input').value.trim();
-        if (searchQuery) {
-          isSearchMode = true;
-          updateView();
-        }
-      };
-
-      document.getElementById('search-input').onkeypress = (e) => {
-        if (e.key === 'Enter') document.getElementById('search-btn').click();
-      };
+      const searchInput = document.getElementById('search-input');
+      const searchPosition = (p) => { searchPos = p; isSearchMode = true; updateView(); };
+      Sky.searchBox({
+        input: searchInput, button: document.getElementById('search-btn'),
+        localNames: async (t) => { const n = normalize(t); return (await targetIndex()).filter(r => normalize(r.target_name).includes(n)).map(r => r.target_name); },
+        onText: (t) => { searchQuery = t; searchPos = null; isSearchMode = true; updateView(); },
+        onPos: searchPosition,
+      });
+      document.getElementById('radius').onchange = () => { if (isSearchMode && searchPos) updateView(); };
+      document.getElementById('image-container').addEventListener('click', (e) => {
+        const a = e.target.closest('a.near');
+        if (!a) return;
+        e.preventDefault();
+        const p = { ra: +a.dataset.ra, dec: +a.dataset.dec };
+        searchInput.value = Sky.fmt(p.ra, p.dec);
+        window.scrollTo(0, 0);
+        searchPosition({ ...p, label: searchInput.value });
+      });
 
       document.getElementById('prev-btn').onclick = () => {
         if (isSearchMode) {
