@@ -101,6 +101,7 @@
             alt="botsin.space/@astrobot_jwst" /></a>
         bluesky<a href="https://bsky.app/profile/astrobotjwst.bsky.social"><img src="camelfav.ico"
             alt="botsin.space/@astrobot_jwst" /></a>
+        · Create color images with: <a href="color_lab.html" style="color:#66fcf1;" title="Compose your own color images from JWST data, in the browser (PC)">JWST Color Lab</a>
       </h2>
     </div>
     Preview images and image information are from <a
@@ -251,7 +252,8 @@
               <p>Proposal ID: ${item.proposal_id}, PI: ${item.proposal_pi}.</p>
               <p>Observed: ${utcMax}. Released: ${utcDateOnly}</p>
               <p>Title: ${titleText}</p>
-              <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a></p>
+              <p><a href="${fitsUrl}" target="_blank" style="color:#66fcf1;">&dArr; FITS</a> ·
+                <a href="color_lab.html?${new URLSearchParams({ q: item.target_name || '' })}" target="_blank" style="color:#66fcf1;" title="Make a color image of this target in JWST Color Lab (PC)">Color Lab</a></p>
           </div>
         `;
           container.appendChild(card);
