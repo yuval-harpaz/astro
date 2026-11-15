@@ -19,7 +19,7 @@
 
     #controls input {
       background: #0b0c10;
-      border: 1px solid #45a29e;
+      border: 1px solid #c0c0c0;
       color: white;
       padding: 8px;
       border-radius: 4px;
@@ -28,7 +28,7 @@
     }
 
     #controls button {
-      background: #66fcf1;
+      background: #c0c0c0;
       color: #0b0c10;
       border: none;
       padding: 8px 16px;
@@ -39,13 +39,16 @@
     }
 
     #controls button:hover {
-      background: #45a29e;
+      background: #8f8f8f;
     }
 
     #nav-controls {
       display: flex;
       gap: 10px;
     }
+
+    /* HST cards: silver frame (glow) instead of the JWST cyan */
+    .image-card { box-shadow: 0 0 10px #c0c0c0; }
 
     /* the thumbnail (128 px) links to the full preview */
     .image-card a.thumb { flex: 0 0 25%; max-width: 25%; }
@@ -54,7 +57,7 @@
     #current-range {
       margin-left: auto;
       font-style: italic;
-      color: #66fcf1;
+      color: #c0c0c0;
     }
   </style>
 </head>
@@ -110,7 +113,7 @@
       | MAST</a> (public S3 mirror), image information from <a href="https://www.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/en/hst/" target="_blank"
       style="color:#66fcf1;">CADC</a>. Credit also to NASA and ESA (<a href="https://hubblesite.org/copyright" target="_blank"
       style="color:#66fcf1;">ref</a>). Drizzled (drc / drz) pipeline images of ACS, WFC3, WFPC2 and NICMOS.
-    <div id="earliest-release-info" style="font-size: 0.8em; color: #45a29e; margin-top: 10px;"></div>
+    <div id="earliest-release-info" style="font-size: 0.8em; color: #a9a9a9; margin-top: 10px;"></div>
     <div id="image-container">Loading...</div>
 
     <script>
