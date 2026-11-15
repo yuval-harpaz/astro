@@ -404,7 +404,7 @@
             <input type="number" id="lim-hi" value="98" min="50" max="100" step="0.1" title="upper percentile">
           </div>
           <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours, like the bot"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
-          <label title="Pixels missing in one channel get the max of the other two (grey_zeros), like the bot"><input type="checkbox" id="grey" checked> grey missing</label>
+          <label title="Pixels outside one channel's footprint get the max of the other two (like the bot's grey_zeros, but noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
 
           <h4>Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
           <div class="row">

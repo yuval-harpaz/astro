@@ -506,10 +506,20 @@ def compose_rgb(red, green, blue, **opts):
         if not green and red and blue:  # like the bot with 2 files
             rgb[..., 1] = (rgb[..., 0] + rgb[..., 2]) / 2
             step('G = (R + B) / 2')
-    rgb[np.isnan(rgb)] = 0
-    if o['grey']:
+    missing = np.isnan(rgb)  # outside a channel's footprint (rgb method); filt05 already set those to 0
+    rgb[missing] = 0
+    if o['grey'] and o['method'] == 'filt05':
         rgb = grey_zeros(rgb, replace=np.max)
         step('grey_zeros: fill zero pixels of each channel with max of the other two')
+    elif o['grey']:
+        # color_lab change: like grey_zeros(replace=np.max), but only where a channel has no data. The bot's grey_zeros
+        # also fills pixels that are 0 because of noise (e.g. sky-subtracted MIRI after log, which sets negatives to 0),
+        # painting faint areas with the other channels' values (purple / magenta speckle with a NIRCam blue).
+        for ich in range(3):
+            others = np.max(rgb[..., [k for k in range(3) if k != ich]], -1)
+            rgb[..., ich][missing[..., ich]] = others[missing[..., ich]]
+        step(f'grey missing: fill pixels outside a channel\'s footprint with max of the other two '
+             f'({", ".join(f"{c} {missing[..., i].mean() * 100:.0f}%" for i, c in enumerate("RGB"))})')
     out = np.clip(rgb * 255, 0, 255).astype(np.uint8)
     del rgb
     gc.collect()
