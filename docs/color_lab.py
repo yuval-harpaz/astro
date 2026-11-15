@@ -503,6 +503,33 @@ def ref_info(name):
     return f, float(wcs.wcs.crval[0]), float(wcs.wcs.crval[1]), pixscale(name)
 
 
+def footprint(name):
+    """[RA, Dec, radius] in degrees: a circle around the center of a loaded layer that covers its corners (for SIMBAD)."""
+    data, w, _, _ = RAW[name]
+    ny, nx = data.shape
+    ra, dec = (float(v) for v in w.pixel_to_world_values((nx - 1) / 2, (ny - 1) / 2))
+    cra, cdec = w.pixel_to_world_values(np.array([-0.5, nx - 0.5, -0.5, nx - 0.5]), np.array([-0.5, -0.5, ny - 0.5, ny - 0.5]))
+    r0, d0, r1, d1 = np.radians(ra), np.radians(dec), np.radians(cra), np.radians(cdec)
+    sep = np.degrees(np.arccos(np.clip(np.sin(d0) * np.sin(d1) + np.cos(d0) * np.cos(d1) * np.cos(r1 - r0), -1, 1)))
+    return [ra, dec, float(np.max(sep))]
+
+
+def sky_to_pix(name, ra, dec):
+    """Pixel x, y (0-based, FITS orientation) on the grid of a loaded layer; NaN outside the image or its data."""
+    if hasattr(ra, 'to_py'):
+        ra, dec = ra.to_py(), dec.to_py()
+    data, w, _, _ = RAW[name]
+    ny, nx = data.shape
+    x, y = w.world_to_pixel_values(np.asarray(ra, float), np.asarray(dec, float))
+    x, y = np.atleast_1d(x).astype(float), np.atleast_1d(y).astype(float)
+    ix, iy = np.round(x), np.round(y)
+    inside = np.isfinite(x) & np.isfinite(y) & (ix >= 0) & (ix < nx) & (iy >= 0) & (iy < ny)
+    ok = np.zeros(len(x), bool)
+    ok[inside] = np.isfinite(data[iy[inside].astype(int), ix[inside].astype(int)])
+    x[~ok], y[~ok] = np.nan, np.nan
+    return [x.tolist(), y.tolist()]
+
+
 def layer_info():
     """{name: [full nx, full ny, block factor, full-resolution pixel scale arcsec]} for all loaded layers."""
     return {k: [v[3][0], v[3][1], v[2], pixscale(k) / v[2]] for k, v in RAW.items()}

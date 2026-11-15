@@ -8,6 +8,11 @@ from astropy.nddata import Cutout2D
 import astropy.units as u
 from astroquery.simbad import Simbad
 from astroquery.simbad import conf as simbad_conf
+# CDS (simbad.cds.unistra.fr) was unavailable in Nov 2026 (attack), so the Harvard mirror is tried first,
+# also for code that uses astroquery's shared Simbad instance after importing this module
+SIMBAD_SERVERS = ['simbad.harvard.edu', 'simbad.cds.unistra.fr']
+simbad_conf.server = SIMBAD_SERVERS[0]
+Simbad.server = SIMBAD_SERVERS[0]
 from astroquery.mast import Observations
 from reproject import reproject_interp
 from glob import glob
@@ -803,7 +808,7 @@ def blc_image(img):
 
 def query_simbad(coord, radius):
     """Query SIMBAD around coord with object types, fall back to a mirror when a server is down"""
-    for server in simbad_conf.servers_list:
+    for server in SIMBAD_SERVERS + [s for s in simbad_conf.servers_list if s not in SIMBAD_SERVERS]:
         try:
             my_simbad = Simbad()
             my_simbad.server = server

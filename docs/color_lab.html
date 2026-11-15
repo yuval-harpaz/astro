@@ -179,6 +179,13 @@
     #viewbar button.on { background: var(--accent); color: var(--bg); }
     #zoom-pct { min-width: 46px; text-align: center; font-size: 12px; }
     #area-info { font-size: 12px; color: #ffd166; padding: 0 2px 0 6px; }
+    #viewbar { flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 16px); }
+    #viewbar label.simbad { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--accent); padding: 0 4px 0 8px; cursor: pointer; }
+    #simbad-filter { width: 150px; padding: 3px 6px; font-size: 12px; }
+    #simbad-info { font-size: 12px; color: #aaa; }
+    #annot { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: hidden; }
+    #annot text { font: 12px sans-serif; paint-order: stroke; stroke: rgba(0, 0, 0, 0.85); stroke-width: 3px; pointer-events: auto; }
+    #annot circle { fill: none; stroke-width: 1.2; }
     #area-box, #drag-box { position: absolute; display: none; pointer-events: none; border: 1.5px dashed #ffd166; z-index: 4; }
     #drag-box { border-style: solid; background: rgba(255, 209, 102, 0.08); }
     #intro {
@@ -320,18 +327,23 @@
                 One or more per color; without G, green is the average of R and B, like the bot. <b>Auto RGB</b> next to an object name selects what the bot would choose.</li>
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
               <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer.
-                These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus.</li>
+                These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus. <b>SIMBAD</b> labels known objects; type a filter such as NGC or G (galaxies).</li>
               <li><b>Save</b> as JPG or PNG, or download a <b>Local script</b> that does the same at full resolution on your computer.</li>
             </ol>
             <p>Everything runs in your browser (Python via Pyodide); nothing is uploaded. Progress is printed in the log at the bottom right.</p>
           </div>
           <canvas id="canvas" width="0" height="0"></canvas>
+          <svg id="annot"></svg>
           <div id="area-box"></div><div id="drag-box"></div>
           <div id="viewbar">
             <button id="zoom-out" class="ghost" title="Zoom out">−</button><span id="zoom-pct"></span><button id="zoom-in" class="ghost" title="Zoom in (or mouse wheel)">+</button>
             <button id="zoom-fit" class="ghost" title="Fit the image to the window (or double-click)">Fit</button>
             <button id="area-btn" class="ghost" title="Drag a rectangle (or Shift+drag at any time) to compute the limits from that area only, e.g. a galaxy nucleus. They are applied to the whole image.">▭ Limits from area</button>
             <span id="area-info"></span><button id="area-clear" class="ghost" title="Back to limits from the whole image" style="display:none">×</button>
+            <label class="simbad" title="Label objects from the SIMBAD database (Harvard mirror). Labels are included in Save."><input type="checkbox" id="simbad"> SIMBAD</label>
+            <input type="text" id="simbad-filter" placeholder="filter: NGC, PN, G…" style="display:none"
+              title="Comma-separated. A SIMBAD object type shows that type (G = any galaxy, PN, HII, SNR, *, V*, X…); any other term matches names (NGC, IC, 2MASS…)">
+            <span id="simbad-info"></span>
           </div>
         </div>
         <div id="credit"></div>
@@ -442,6 +454,16 @@
       else if (d.type === 'ready') { showMem(d); setBusy(false, 'Ready'); }
       else if (d.type === 'mem') showMem(d);
       else if (d.type === 'progress') $('status').textContent = `Downloading ${filterOf(d.fname)} ${Math.round(d.frac * 100)}%`;
+      else if (d.type === 'simbad') {
+        if (d.id !== simbad.req) return;  // an older request
+        Object.assign(simbad, { key: simbad.reqKey, objects: d.objects, truncated: d.truncated, loading: false });
+        drawAnnot();
+      }
+      else if (d.type === 'simbad-error') {
+        if (d.id !== simbad.req) return;
+        simbad.loading = false; simbad.key = null;
+        logLine('SIMBAD: ' + d.msg); $('simbad-info').textContent = 'SIMBAD failed (see log)';
+      }
       else if (d.type === 'error') { logLine('ERROR: ' + d.msg); setBusy(false, 'Error (see log)'); }
       else if (d.type === 'image') {
         const c = $('canvas');
@@ -454,6 +476,8 @@
         hasImage = true;
         $('intro').style.display = 'none';
         lastPixscale = d.pixscale;
+        lastRef = d.ref;
+        if ($('simbad').checked) ensureSimbad(); else drawAnnot();
         Object.assign(layerInfo, d.layers);
         updateRef();
         $('save-btn').disabled = false;
@@ -587,6 +611,7 @@
       c.style.imageRendering = view.s >= 2 ? 'pixelated' : 'auto';
       $('zoom-pct').textContent = Math.round(view.s * 100) + '%';
       placeBox($('area-box'), area);
+      drawAnnot();
     }
     function fitView() {
       const c = $('canvas'), s = fitScale();
@@ -666,6 +691,81 @@
     wrap.addEventListener('pointercancel', () => { drag = null; wrap.classList.remove('panning'); $('drag-box').style.display = 'none'; });
     // refit when the black area changes size (window resize, credit line appearing) unless the user zoomed or panned
     new ResizeObserver(() => { if (hasImage) { if (view.fitted) fitView(); else applyView(); } }).observe(wrap);
+
+    // ---------- SIMBAD annotation (like annotate.py): objects queried once per reference grid, filtered and drawn here ----------
+    let lastRef = null;
+    const simbad = { key: null, objects: [], truncated: false, loading: false, req: 0, reqKey: null };
+    const SIMBAD_SHOW = 400;
+    // common SIMBAD object type codes, so e.g. "G" means galaxies even when the field has none
+    const GALAXY = new Set(['G', 'GiG', 'GiC', 'GiP', 'BiC', 'IG', 'PaG', 'AGN', 'QSO', 'Sy1', 'Sy2', 'SyG', 'LIN', 'BLL', 'Bla', 'EmG', 'SBG',
+      'H2G', 'bCG', 'LSB', 'rG', 'AG?', 'G?', 'Q?', 'SyG?'].map(t => t.toLowerCase()));
+    const SIMBAD_TYPES = ['G', 'GiG', 'GiC', 'GiP', 'BiC', 'ClG', 'GrG', 'CGG', 'PaG', 'IG', 'SCG', 'AGN', 'QSO', 'Sy1', 'Sy2', 'SyG', 'LIN', 'BLL',
+      'EmG', 'SBG', 'H2G', 'bCG', 'LSB', 'rG', 'GNe', 'PN', 'HII', 'SNR', 'RNe', 'DNe', 'MoC', 'ISM', 'Cld', 'cor', 'SFR', 'bub', 'EmO', 'HH',
+      'Cl*', 'GlC', 'OpC', 'As*', '*', '**', 'V*', 'Ce*', 'C*', 'WR*', 'Be*', 'YSO', 'Or*', 'TT*', 'Y*O', 'pr*', 'WD*', 'SN*', 'No*', 'Psr', 'X', 'IR', 'Rad', 'UV', 'gam', 'grv', 'Lev', 'LeI'];
+    const ISM = /^(PN|HII|SNR|RNe|MoC|ISM|Cld|GNe|DNe|bub|EmO|cor|SFR|glb|out|HVC|PoC)$/i;
+    const annotColor = (o) => o.otype.includes('*') ? '#ffffff' : ISM.test(o.otype) ? '#ff6464' : '#64ffff';
+    function ensureSimbad() {
+      const c = $('canvas'), key = `${lastRef}|${c.width}x${c.height}`;
+      if (simbad.key === key || (simbad.loading && simbad.reqKey === key)) { drawAnnot(); return; }
+      Object.assign(simbad, { loading: true, req: simbad.req + 1, reqKey: key, objects: [] });
+      drawAnnot();
+      $('simbad-info').textContent = 'querying SIMBAD…';
+      worker.postMessage({ cmd: 'simbad', id: simbad.req, ref: lastRef });
+    }
+    function shownObjects() {
+      // a term that is an object type present in the field (G, PN, HII, *, ...) matches the type; any other term matches names
+      const terms = $('simbad-filter').value.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+      const types = new Set([...SIMBAD_TYPES, ...simbad.objects.map(o => o.otype)].map(t => t.toLowerCase()));
+      const isType = (o, t) => t === 'g' ? GALAXY.has(o.otype.toLowerCase()) : o.otype.toLowerCase() === t;  // G = any galaxy type
+      const match = simbad.objects.filter(o => !terms.length || terms.some(t => types.has(t) ? isType(o, t) : o.id.toLowerCase().includes(t)));
+      // when there are too many, prefer non-stellar objects (galaxies, nebulae...) over stars
+      const sorted = match.length > SIMBAD_SHOW ? [...match.filter(o => !o.otype.includes('*')), ...match.filter(o => o.otype.includes('*'))] : match;
+      return { all: match.length, list: sorted.slice(0, SIMBAD_SHOW) };
+    }
+    function drawAnnot() {
+      const svg = $('annot');
+      svg.innerHTML = '';
+      if (!$('simbad').checked || !hasImage || simbad.loading || !simbad.key) return;
+      const c = $('canvas'), { all, list } = shownObjects();
+      $('simbad-info').textContent = `${list.length}${all > list.length ? ' of ' + all : ''} object${all === 1 ? '' : 's'}` +
+        (all > list.length ? ' — add a filter' : '') + (simbad.truncated ? ' (SIMBAD list truncated)' : '');
+      const W = wrap.clientWidth, H = wrap.clientHeight, ns = 'http://www.w3.org/2000/svg';
+      for (const o of list) {
+        const sx = view.tx + (o.x + 0.5) * view.s, sy = view.ty + (c.height - 0.5 - o.y) * view.s;
+        if (sx < -50 || sy < -20 || sx > W + 10 || sy > H + 20) continue;
+        const col = annotColor(o);
+        const ci = document.createElementNS(ns, 'circle');
+        ci.setAttribute('cx', sx); ci.setAttribute('cy', sy); ci.setAttribute('r', 5); ci.setAttribute('stroke', col);
+        const t = document.createElementNS(ns, 'text'), left = sx > W - 8 * o.id.length - 20;  // near the right edge: label on the left
+        t.setAttribute('x', left ? sx - 7 : sx + 7); t.setAttribute('y', sy - 6); t.setAttribute('fill', col); t.textContent = o.id;
+        if (left) t.setAttribute('text-anchor', 'end');
+        const tip = document.createElementNS(ns, 'title'); tip.textContent = `${o.id} (${o.otype})`; t.appendChild(tip);
+        svg.append(ci, t);
+      }
+    }
+    function annotatedCanvas() {  // a copy of the image with the labels drawn at image resolution, for Save
+      const c = $('canvas');
+      if (!$('simbad').checked || !simbad.key || simbad.loading) return c;
+      const out = document.createElement('canvas'); out.width = c.width; out.height = c.height;
+      const g = out.getContext('2d'); g.drawImage(c, 0, 0);
+      const fs = Math.max(11, Math.round(Math.max(c.width, c.height) / 110)), r = Math.max(4, fs * 0.4);
+      g.font = `${fs}px sans-serif`; g.lineJoin = 'round';
+      for (const o of shownObjects().list) {
+        const x = o.x + 0.5, y = c.height - 0.5 - o.y, col = annotColor(o);
+        const left = x + r + 2 + g.measureText(o.id).width > c.width;
+        g.textAlign = left ? 'right' : 'left';
+        const tx = left ? x - r - 2 : x + r + 2;
+        g.strokeStyle = col; g.lineWidth = Math.max(1, fs / 10); g.beginPath(); g.arc(x, y, r, 0, 2 * Math.PI); g.stroke();
+        g.lineWidth = Math.max(2, fs / 5); g.strokeStyle = 'rgba(0,0,0,0.85)'; g.strokeText(o.id, tx, y - r - 1);
+        g.fillStyle = col; g.fillText(o.id, tx, y - r - 1);
+      }
+      return out;
+    }
+    $('simbad').onchange = () => {
+      $('simbad-filter').style.display = $('simbad').checked ? '' : 'none';
+      if ($('simbad').checked) { if (hasImage) ensureSimbad(); } else { $('simbad-info').textContent = ''; drawAnnot(); }
+    };
+    $('simbad-filter').addEventListener('input', drawAnnot);
 
     // Reset: processing controls back to their defaults (as written in the HTML) and nudges cleared
     $('reset-btn').onclick = () => {
@@ -765,7 +865,7 @@
     }
     $('save-btn').onclick = () => {
       const fmt = $('save-fmt').value;
-      $('canvas').toBlob((b) => download(b, `${lastName}.${fmt}`), fmt === 'png' ? 'image/png' : 'image/jpeg', 0.95);
+      annotatedCanvas().toBlob((b) => download(b, `${lastName}.${fmt}`), fmt === 'png' ? 'image/png' : 'image/jpeg', 0.95);
     };
 
     // ---------- local script ----------

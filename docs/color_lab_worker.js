@@ -5,6 +5,8 @@ importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js');
 
 const S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/';
 const BLOCK = 2880;
+const SIMBAD_HOSTS = ['simbad.harvard.edu', 'simbad.cds.unistra.fr'];  // Harvard mirror first (CDS was down, Nov 2026)
+const SIMBAD_MAX = 5000;
 let py = null;
 let cacheKey = null;  // settings that require re-reading layers from scratch
 let t0 = performance.now();  // clock shared with color_lab.step(), reset per compose
@@ -164,8 +166,36 @@ self.onmessage = async (ev) => {
       res.destroy();
       self.postMessage({ type: 'image', id, w, h, rgba, ref, refFactor, pixscale, layers, crval: [crval1, crval2], ...memInfo() }, [rgba.buffer]);
     }
+    else if (cmd === 'simbad') {
+      // objects from SIMBAD (Harvard mirror; the CDS main site was down in Nov 2026) on the grid of the reference layer
+      const { ref } = ev.data;
+      cl = py.pyimport('color_lab');
+      if (!cl.has_layer(ref)) throw new Error('reference layer not loaded');
+      const fp = cl.footprint(ref); const [ra, dec, rad] = fp.toJs(); fp.destroy();
+      const adql = `SELECT TOP ${SIMBAD_MAX} main_id, ra, dec, otype FROM basic ` +
+        `WHERE CONTAINS(POINT('ICRS', ra, dec), CIRCLE('ICRS', ${ra}, ${dec}, ${rad})) = 1 AND ra IS NOT NULL`;
+      let json = null, lastErr = null;
+      for (const host of SIMBAD_HOSTS) {
+        try {
+          const url = `https://${host}/simbad/sim-tap/sync?` + new URLSearchParams({ request: 'doQuery', lang: 'adql', format: 'json', query: adql });
+          const r = await fetch(url);
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          json = await r.json();
+          log(`SIMBAD (${host}): ${json.data.length} objects within ${(rad * 60).toFixed(1)}′ of ${ra.toFixed(4)}, ${dec.toFixed(4)}`);
+          break;
+        } catch (e) { lastErr = e; log(`SIMBAD ${host} failed: ${e.message}`); }
+      }
+      if (!json) throw new Error('SIMBAD unavailable: ' + (lastErr && lastErr.message));
+      const rows = json.data;
+      const pr = cl.sky_to_pix(ref, py.toPy(rows.map(r => r[1])), py.toPy(rows.map(r => r[2])));
+      const [xs, ys] = pr.toJs(); pr.destroy();
+      const objects = [];
+      rows.forEach((r, i) => { if (xs[i] === xs[i]) objects.push({ id: String(r[0]).trim(), otype: String(r[3] || '').trim(), x: xs[i], y: ys[i] }); });
+      post('simbad', { id, ref, objects, truncated: rows.length >= SIMBAD_MAX });
+    }
   } catch (e) {
-    post('error', { id, msg: e.message });
+    if (cmd === 'simbad') post('simbad-error', { id, msg: e.message });
+    else post('error', { id, msg: e.message });
   } finally {
     if (cl) cl.destroy();
   }
