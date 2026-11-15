@@ -413,7 +413,8 @@ def forget(keep, max_raw=8):
     gc.collect()
 
 
-DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, ref=None, area=None)
+DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, ref=None, area=None,
+                subtract_blue=0.5)
 
 
 def area_mask(area, shape):
@@ -482,7 +483,8 @@ def compose_rgb(red, green, blue, **opts):
 
     if o['method'] == 'filt05':
         names = sorted(allnames, key=wavelength)
-        cols = colors_by_filt([wavelength(n) for n in names])
+        cols = colors_by_filt([wavelength(n) for n in names], float(o['subtract_blue']))
+        step(f'filt05: subtract_blue {float(o["subtract_blue"]):g}')
         rgb = np.zeros((ny, nx, 3), np.float64)
         for name, col in zip(names, cols):
             lay = layer(name)

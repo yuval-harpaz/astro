@@ -378,6 +378,10 @@
               <option value="filt05">filt05: color by wavelength</option>
             </select>
           </div>
+          <div class="row" id="blue-row" style="display:none"><label class="lbl" for="blue-shift">Blue %</label>
+            <input type="number" id="blue-shift" value="50" min="0" max="100" step="5"
+              title="filt05 subtract_blue: how far the shortest filter is pushed to the blue end of the color wheel. 100 = shortest filter is pure blue / violet; 0 = hue proportional to wavelength (the shortest filter turns cyan / green when all filters are close in wavelength). 50 = bot / auto_plot default.">
+          </div>
           <div class="row"><label class="lbl" for="ref" title="Layer whose grid all others are reprojected to (auto_plot's reproject_to)">Reference</label>
             <select id="ref"></select>
           </div>
@@ -590,6 +594,7 @@
         func: $('func').value,
         factor: $('factor').value === 'linear' ? null : parseFloat($('factor').value),
         lims: [(isNaN(lo) ? 3 : lo) / 100, (isNaN(hi) ? 98 : hi) / 100],
+        subtract_blue: (isNaN(parseFloat($('blue-shift').value)) ? 50 : Math.min(100, Math.max(0, parseFloat($('blue-shift').value)))) / 100,
         grey: $('grey').checked,
         shifts: shiftsOut,
         ref: $('ref').value || null,
@@ -610,7 +615,9 @@
     $('compose-btn').onclick = compose;
 
     // processing controls re-compose right away when an image is shown (layers are cached, so it is fast)
-    for (const id of ['method', 'ref', 'func', 'factor', 'lim-lo', 'lim-hi', 'fill', 'grey', 'maxmp']) {
+    const showBlue = () => { $('blue-row').style.display = $('method').value === 'filt05' ? '' : 'none'; };
+    $('method').addEventListener('change', showBlue);
+    for (const id of ['method', 'ref', 'func', 'factor', 'lim-lo', 'lim-hi', 'blue-shift', 'fill', 'grey', 'maxmp']) {
       $(id).addEventListener('change', () => { updateChosen(); if (hasImage) compose(); });
     }
 
@@ -627,7 +634,6 @@
       c.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`;
       c.style.imageRendering = view.s >= 2 ? 'pixelated' : 'auto';
       $('zoom-pct').textContent = Math.round(view.s * 100) + '%';
-      placeBox($('area-box'), area);
       drawAnnot();
     }
     function fitView() {
@@ -663,7 +669,6 @@
       const c = $('canvas');
       $('area-info').textContent = area ? `limits from ${Math.round(Math.abs(area[2] - area[0]) * c.width)}×${Math.round(Math.abs(area[3] - area[1]) * c.height)} px area` : '';
       $('area-clear').style.display = area ? '' : 'none';
-      placeBox($('area-box'), area);
     }
     function clearArea() { area = null; areaRef = null; showArea(); }
 
@@ -801,10 +806,10 @@
         const sel = $(id), def = [...sel.options].find(o => o.defaultSelected) || sel.options[0];
         if (sel.value !== def.value) { sel.value = def.value; changed = true; }
       }
-      for (const id of ['lim-lo', 'lim-hi']) if ($(id).value !== $(id).defaultValue) { $(id).value = $(id).defaultValue; changed = true; }
+      for (const id of ['lim-lo', 'lim-hi', 'blue-shift']) if ($(id).value !== $(id).defaultValue) { $(id).value = $(id).defaultValue; changed = true; }
       for (const id of ['fill', 'grey']) if ($(id).checked !== $(id).defaultChecked) { $(id).checked = $(id).defaultChecked; changed = true; }
       $('nudge-n').value = $('nudge-n').defaultValue;
-      showShifts(); updateChosen();
+      showShifts(); showBlue(); updateChosen();
       if (changed && hasImage) compose();
     };
 
@@ -945,6 +950,7 @@ OPTIONS = dict(
     func=${pyStr(o.func)},  # 'none', 'log' or 'asinh'
     factor=${o.factor === null ? 'None' : o.factor},  # level_adjust factor, None = linear
     lims=[${o.lims[0]}, ${o.lims[1]}],  # level_adjust limits (quantiles)
+    subtract_blue=${o.subtract_blue},  # filt05: 1 = shortest filter pure blue, 0 = hue proportional to wavelength
     grey=${o.grey ? 'True' : 'False'},  # grey_zeros
     ref=${o.ref ? pyStr(o.ref) : 'None'},  # reference grid (reproject_to); None = first listed. A short-wavelength reference makes a bigger image
     shifts=${shiftsPy},  # nudges [right, up] in arcsec
