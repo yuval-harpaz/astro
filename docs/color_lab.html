@@ -420,7 +420,8 @@
     const MAST = 'https://mast.stsci.edu/portal/Mashup/Clients/Mast/Portal.html';
 
     // ---------- worker ----------
-    const worker = new Worker('color_lab_worker.js');
+    // ?v= so a cached old worker (GitHub Pages: 10 min browser cache) never runs with a newer page
+    const worker = new Worker('color_lab_worker.js?v=' + Date.now());
     let busy = true, pending = false, hasImage = false;
     let area = null, areaRef = null;  // area: [x0, y0, x1, y1] fractions of the shown image (y down); areaRef: its reference layer
     let lastName = 'jwst_color';
@@ -711,6 +712,14 @@
       drawAnnot();
       $('simbad-info').textContent = 'querying SIMBAD…';
       worker.postMessage({ cmd: 'simbad', id: simbad.req, ref: lastRef });
+      const req = simbad.req;
+      setTimeout(() => {
+        if (simbad.loading && simbad.req === req) {
+          simbad.loading = false; simbad.reqKey = null;
+          $('simbad-info').textContent = 'SIMBAD: no answer (see log)';
+          logLine('SIMBAD: no answer after 60 s. Reload the page (Ctrl+Shift+R) or try again.');
+        }
+      }, 60000);
     }
     function shownObjects() {
       // a term that is an object type present in the field (G, PN, HII, *, ...) matches the type; any other term matches names

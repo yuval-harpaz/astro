@@ -193,6 +193,7 @@ self.onmessage = async (ev) => {
       rows.forEach((r, i) => { if (xs[i] === xs[i]) objects.push({ id: String(r[0]).trim(), otype: String(r[3] || '').trim(), x: xs[i], y: ys[i] }); });
       post('simbad', { id, ref, objects, truncated: rows.length >= SIMBAD_MAX });
     }
+    else throw new Error('unknown command ' + cmd);
   } catch (e) {
     if (cmd === 'simbad') post('simbad-error', { id, msg: e.message });
     else post('error', { id, msg: e.message });
