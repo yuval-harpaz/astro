@@ -98,6 +98,11 @@
     }
 
     .card.sel { border-color: var(--accent); }
+    .group-head { display: flex; align-items: center; gap: 8px; margin: 14px 2px 6px; }
+    .group-head:first-child { margin-top: 0; }
+    .group-head h3 { margin: 0; font-size: 15px; color: var(--accent); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .group-head .n { font-size: 12px; color: #aaa; }
+    .group-head button { padding: 3px 10px; font-size: 12px; }
     .card img { width: 100%; display: block; background: #000; min-height: 80px; }
     .card .info { padding: 6px 8px; font-size: 12px; line-height: 1.35; }
     .card h3 { margin: 0 0 3px; color: var(--accent); font-size: 14px; }
@@ -312,7 +317,7 @@
               <li>Find an object in the list on the left: browse by week with <b>◀ 7 days</b>, or search by target, title or filter.
                 Each object's images are sorted from long to short wavelength.</li>
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
-                One or more per color; without G, green is the average of R and B, like the bot.</li>
+                One or more per color; without G, green is the average of R and B, like the bot. <b>Auto RGB</b> next to an object name selects what the bot would choose.</li>
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
               <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer.
                 These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus.</li>
@@ -899,6 +904,95 @@ if __name__ == '__main__':
       return card;
     }
 
+    // ---------- Auto RGB: the bot's choice for one target (astro_jwst_news_color.py) ----------
+    // i2d files of the target without NIRISS, grouped by pointing (CRVAL within 0.001 deg, astro_utils.cluster_coordinates),
+    // groups of >= 2 files; R = reddest, B = bluest, G = closest to the middle wavelength (none for 2 files).
+    // Only selects; Compose is up to the user. Pressing again cycles through the pointings.
+    const crvalCache = {};
+    async function readCrval(fname) {  // CRVAL1/2 of extension 1 (SCI), read with Range requests from the S3 mirror
+      if (fname in crvalCache) return crvalCache[fname];
+      const m = fname.match(/^(jw\d{5})-([oc]\d+)_/);
+      const url = `https://stpubdata.s3.amazonaws.com/jwst/public/${m[1]}/L3/t/${m[2]}/${fname}`;
+      let text = '', pos = 0, ext1 = -1;
+      const chunk = 2880 * 16;
+      for (let k = 0; k < 20; k++) {
+        const r = await fetch(url, { headers: { Range: `bytes=${pos}-${pos + chunk - 1}` } });
+        if (r.status !== 206) throw new Error(`HTTP ${r.status}`);
+        const t = new TextDecoder('ascii').decode(await r.arrayBuffer());
+        text += t; pos += t.length;
+        for (let i = 0; i + 80 <= text.length; i += 80) {
+          const key = text.slice(i, i + 8).trim();
+          if (ext1 < 0) { if (key === 'END') ext1 = Math.ceil((i + 80) / 2880) * 2880; continue; }  // primary has no data
+          if (i < ext1) continue;
+          if (key === 'END') throw new Error('no CRVAL in SCI header');
+          const c1 = text.slice(ext1).match(/CRVAL1  =\s*([-\d.Ee+]+)/), c2 = text.slice(ext1).match(/CRVAL2  =\s*([-\d.Ee+]+)/);
+          if (c1 && c2) return (crvalCache[fname] = [parseFloat(c1[1]), parseFloat(c2[1])]);
+          break;
+        }
+        if (t.length < chunk) break;
+      }
+      throw new Error('CRVAL not found');
+    }
+    function clusterCoordinates(coords, thr = 0.001) {  // astro_utils.cluster_coordinates
+      const labels = new Array(coords.length).fill(-1);
+      const close = (a, b) => a && b && Math.abs(a[0] - b[0]) <= thr && Math.abs(a[1] - b[1]) <= thr;
+      let id = 0;
+      for (let i = 0; i < coords.length; i++) {
+        if (labels[i] >= 0) continue;
+        labels[i] = id;
+        const queue = [i];
+        while (queue.length) {
+          const cur = queue.pop();
+          for (let j = 0; j < coords.length; j++) if (labels[j] < 0 && close(coords[cur], coords[j])) { labels[j] = id; queue.push(j); }
+        }
+        id++;
+      }
+      return labels;
+    }
+    const autoCycle = {};  // target -> index of the pointing chosen last
+    async function autoRGB(target, btn) {
+      const files = [...new Set(allData.filter(it => it.target_name === target).map(fileOf))]
+        .filter(f => /_i2d\.fits$/.test(f) && !/niriss/.test(f) && /^jw\d{5}-[oc]\d+_/.test(f));
+      if (files.length < 2) { logLine(`Auto RGB ${target}: fewer than 2 NIRCam/MIRI images`); return; }
+      btn.disabled = true; const label = btn.textContent; btn.textContent = 'reading…';
+      const coords = await Promise.all(files.map(f => readCrval(f).catch(e => { logLine(`Auto RGB: ${filterOf(f)} ${f.split('_')[0]}: ${e.message}`); return null; })));
+      btn.disabled = false; btn.textContent = label;
+      const labels = clusterCoordinates(coords);
+      let groups = [];
+      for (let g = 0; g <= Math.max(...labels); g++) groups.push(files.filter((f, i) => labels[i] === g));
+      groups = groups.filter(g => g.length >= 2).sort((a, b) => b.length - a.length);
+      if (!groups.length) { logLine(`Auto RGB ${target}: no pointing has 2 or more images`); return; }
+      const k = autoCycle[target] = ((autoCycle[target] ?? -1) + 1) % groups.length;
+      const g = groups[k].sort((a, b) => waveOf(b) - waveOf(a));  // red -> blue
+      const w = g.map(waveOf);
+      let red = [g[0]], green = [], blue = [g[g.length - 1]];
+      if (g.length > 2) {
+        let im = 0;
+        w.forEach((v, i) => { if (Math.abs(v - (w[0] + w[w.length - 1]) / 2) < Math.abs(w[im] - (w[0] + w[w.length - 1]) / 2)) im = i; });
+        green = [g[im]];
+      }
+      $('clear-btn').onclick();
+      red.forEach(f => chosen.r.add(f)); green.forEach(f => chosen.g.add(f)); blue.forEach(f => chosen.b.add(f));
+      document.querySelectorAll('.card').forEach(card => card.querySelectorAll('input[data-c]').forEach(cb => cb.checked = chosen[cb.dataset.c].has(card.dataset.fname)));
+      updateChosen();
+      const crv = coords[files.indexOf(g[0])];
+      logLine(`Auto RGB ${target}: R ${filterOf(red[0])}, G ${green.length ? filterOf(green[0]) : '(R+B)/2'}, B ${filterOf(blue[0])}` +
+        ` from ${g.length} images at CRVAL ${crv[0].toFixed(4)}, ${crv[1].toFixed(4)}` +
+        (groups.length > 1 ? ` (pointing ${k + 1} of ${groups.length}; press again for the next)` : '') + '. Press Compose when ready.');
+      if (!busy) $('status').textContent = groups.length > 1 ? `Auto RGB: pointing ${k + 1} of ${groups.length}` : 'Auto RGB selected';
+    }
+    function makeGroupHead(target, n) {
+      const head = document.createElement('div');
+      head.className = 'group-head';
+      head.innerHTML = `<h3 title="${esc(target)}">${esc(target)}</h3><span class="n">${n} image${n > 1 ? 's' : ''}</span>`;
+      const btn = document.createElement('button');
+      btn.className = 'ghost'; btn.textContent = 'Auto RGB';
+      btn.title = "Select the bot's choice: reddest as R, bluest as B and the closest to the middle wavelength as G, from images sharing a pointing (CRVAL). Press again for another pointing. Does not compose.";
+      btn.onclick = () => autoRGB(target, btn).catch(e => { btn.disabled = false; btn.textContent = 'Auto RGB'; logLine('Auto RGB error: ' + e.message); });
+      head.appendChild(btn);
+      return head;
+    }
+
     function updateView() {
       const container = $('cards');
       container.innerHTML = '';
@@ -922,7 +1016,14 @@ if __name__ == '__main__':
       rows.sort((a, b) => (newest[b.target_name] - newest[a.target_name]) || (a.target_name || '').localeCompare(b.target_name || '')
         || (waveOf(fileOf(b)) - waveOf(fileOf(a))) || fileOf(a).localeCompare(fileOf(b)));
       if (!rows.length) { container.textContent = 'No images found.'; return; }
-      rows.slice(0, 300).forEach(it => container.appendChild(makeCard(it)));
+      let lastTarget = null;
+      rows.slice(0, 300).forEach(it => {
+        if (it.target_name !== lastTarget) {
+          lastTarget = it.target_name;
+          container.appendChild(makeGroupHead(it.target_name, rows.filter(r => r.target_name === lastTarget).length));
+        }
+        container.appendChild(makeCard(it));
+      });
       if (rows.length > 300) container.appendChild(Object.assign(document.createElement('p'), { textContent: `…showing 300 of ${rows.length}, refine the search.` }));
       updateChosen();
     }
@@ -946,7 +1047,11 @@ if __name__ == '__main__':
       const get = (u) => fetch(u).then(r => r.ok ? r.text() : '').catch(() => '');
       const [a, b] = await Promise.all(['latest.csv', 'older.csv'].map(async u => (await get(remote + u)) || get(u)));
       allData = [...(a ? parseCSV(a) : []), ...(b ? parseCSV(b) : [])];
-      const q = new URLSearchParams(location.search).get('q');  // optional ?q=target
+      // optional ?q=NGC 1326, or bare ?NGC 1326 / ?"NGC 1326" (spaces may be typed as such, %20 or +)
+      const params = new URLSearchParams(location.search);
+      let q = params.get('q');
+      if (q === null && location.search.length > 1 && !location.search.includes('=')) { try { q = decodeURIComponent(location.search.slice(1).replace(/\+/g, ' ')); } catch (e) { q = location.search.slice(1); } }
+      if (q) q = q.trim().replace(/^["']+|["']+$/g, '').trim();
       if (q) { $('search-input').value = q; searchQuery = q; isSearchMode = true; }
       updateView();
     })();
