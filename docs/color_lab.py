@@ -96,15 +96,11 @@ def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, i
     else:
         minval = np.quantile(hist_dat, lims[0])
         maxval = np.quantile(hist_dat, lims[1])
-    if lims == [0.03, 0.98]:  # for backward compatibility
-        rescaled = (fits_arr - minval) / (maxval - minval)
-        rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
-        rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
-    else:
-        no_outliers = np.maximum(fits_arr, minval)
-        no_outliers = np.minimum(no_outliers, maxval)
-        rescaled_no_outliers = (no_outliers - minval) / (maxval - minval)
-        rescaled = rescaled_no_outliers
+    # color_lab change: the original's other branch (lims != [0.03, 0.98]) hard-clipped to [0, 1] before to1(),
+    # capping highlights at expand_highs(0.75) = 0.667 (170/255). All lims now take the bot's default path.
+    rescaled = (fits_arr - minval) / (maxval - minval)
+    rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
+    rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
     if factor is None:
         adjusted = rescaled
     else:
