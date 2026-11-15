@@ -45,9 +45,9 @@ def filt_num(name):
 
 
 def short(name):
-    """jw07321-o004_t002_nircam_clear-f444w_i2d.fits -> F444W"""
+    """jw07321-o004_t002_nircam_clear-f444w_i2d.fits -> f444w"""
     m = re.findall(r'[-_](f\d{3,4}[a-z]*\d?)', name.lower())
-    return m[-1].upper() if m else name
+    return m[-1] if m else name
 
 
 # ---------- stretch, copied from bot_grabber.py ----------
@@ -60,14 +60,16 @@ def expand_highs(x):
                         [lambda x: x * 0.8 / 0.9, lambda x: 100.0 / 9.0 * (x - 0.9) ** 2 + 0.8 * x / 0.9])
 
 
-def image_histogram_equalization(image, number_bins=10000, ignore0=False):
+def image_histogram_equalization(image, number_bins=10000, ignore0=False, sample=None):
+    # color_lab addition: sample (bool mask) = build the histogram from these pixels only, apply it to all
     shape = image.shape
     image = image.flatten()
     if ignore0:
         include = image > 0
     else:
         include = np.ones(len(image), bool)
-    image_histogram, bins = np.histogram(image[include], number_bins, density=True)
+    hist_from = include if sample is None else include & sample.flatten()
+    image_histogram, bins = np.histogram(image[hist_from], number_bins, density=True)
     cdf = image_histogram.cumsum()
     cdf = cdf / cdf[-1]
     image[include] = np.interp(image[include], bins[:-1], cdf)
@@ -83,9 +85,11 @@ def nanmask(arr):
     return arr, mask
 
 
-def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, ignore0=False):
+def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, ignore0=False, sample=None):
+    # color_lab addition: sample (bool mask, e.g. a galaxy nucleus) = take the limits and the histogram
+    # equalization from these pixels only, and apply them to the whole image
     fits_arr, mask = nanmask(fits_arr)
-    hist_dat = fits_arr.flatten()
+    hist_dat = fits_arr.flatten() if sample is None else fits_arr[sample]
     if negative == 'consider':
         hist_dat = hist_dat[np.nonzero(hist_dat)]
     else:
@@ -99,12 +103,15 @@ def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, i
     # color_lab change: the original's other branch (lims != [0.03, 0.98]) hard-clipped to [0, 1] before to1(),
     # capping highlights at expand_highs(0.75) = 0.667 (170/255). All lims now take the bot's default path.
     rescaled = (fits_arr - minval) / (maxval - minval)
-    rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
-    rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
+    if sample is None:
+        rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
+        rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
+    else:  # outside the sampled range saturates (to1 below still uses the unclipped values)
+        rescaled_no_outliers = np.clip(rescaled, 0.0, 1.0)
     if factor is None:
         adjusted = rescaled
     else:
-        img_eqd = image_histogram_equalization(rescaled_no_outliers, ignore0=ignore0)
+        img_eqd = image_histogram_equalization(rescaled_no_outliers, ignore0=ignore0, sample=sample)
         img_eqd = (pow(img_eqd, factor) + pow(img_eqd, factor * 2) + pow(img_eqd, factor * 4)) / 3.0
         adjusted = expand_highs((img_eqd + to1(rescaled)) * 0.5)
     if mask is not None:
@@ -129,6 +136,12 @@ def log1(arr):
     arr[arr < 0] = 0
     arr += 1
     arr = np.log10(arr)
+    return arr
+
+
+def asinh(arr):
+    # copied from astro_utils.py
+    arr = np.arcsinh(arr)
     return arr
 
 
@@ -376,19 +389,38 @@ def forget(keep, max_raw=8):
     gc.collect()
 
 
-DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, ref=None)
+DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, ref=None, area=None)
 
 
-def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98)):
+def area_mask(area, shape):
+    """area = [x0, x1, y0, y1] as fractions of the reference image (FITS orientation, y up) -> bool mask."""
+    ny, nx = shape
+    x0, x1 = sorted(float(v) for v in area[:2])
+    y0, y1 = sorted(float(v) for v in area[2:])
+    ix0, ix1 = int(np.floor(x0 * nx)), max(int(np.ceil(x1 * nx)), int(np.floor(x0 * nx)) + 1)
+    iy0, iy1 = int(np.floor(y0 * ny)), max(int(np.ceil(y1 * ny)), int(np.floor(y0 * ny)) + 1)
+    m = np.zeros(shape, bool)
+    m[max(iy0, 0):min(iy1, ny), max(ix0, 0):min(ix1, nx)] = True
+    return m
+
+
+def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98), sample=None):
     t = time.time()
     lims = [float(lims[0]), float(lims[1])]
     if lims == [0.03, 0.98]:
         lims = [0.03, 0.98]  # exact bot values select level_adjust's backward-compatible path
     if func == 'log':
         lay = log1(lay)
+    elif func == 'asinh':
+        lay = asinh(lay)
     factor = None if factor in (None, 0, 'linear') else float(factor)
-    out = level_adjust(lay, lims=lims, factor=factor)
-    desc = ('log -> ' if func == 'log' else '') + f'level_adjust(factor={"None (linear)" if factor is None else f"{factor:g}"}, lims={lims[0] * 100:g}%-{lims[1] * 100:g}%)'
+    if sample is not None:
+        v = lay[sample]
+        if np.count_nonzero(v[np.isfinite(v)]) < 10:
+            step(f'{short(name)}: selected area is empty in this layer, using the whole image')
+            sample = None
+    out = level_adjust(lay, lims=lims, factor=factor, sample=sample)
+    desc = (f'{func} -> ' if func in ('log', 'asinh') else '') + f'level_adjust(factor={"None (linear)" if factor is None else f"{factor:g}"}, lims={lims[0] * 100:g}%-{lims[1] * 100:g}%{" of selected area" if sample is not None else ""})'
     step(f'{short(name)}: {desc}, {time.time() - t:.1f}s')
     return out
 
@@ -396,9 +428,10 @@ def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98)):
 def compose_rgb(red, green, blue, **opts):
     """Returns uint8 (ny, nx, 3) with FITS orientation (origin lower-left). Reference = first layer listed.
     opts: method 'rgb' (layers per channel, like the bot) | 'filt05' (all layers colored by wavelength, like auto_plot),
-    func 'none' | 'log', factor 1-4 | None (linear), lims [low, high] quantiles, grey (grey_zeros),
+    func 'none' | 'log' | 'asinh', factor 1-4 | None (linear), lims [low, high] quantiles, grey (grey_zeros),
     shifts {name: [dx, dy]} in arcsec (right, up), so nudges keep their size on the sky at any resolution or reference,
-    ref: name of the layer whose grid all others are reprojected to (like auto_plot's reproject_to); None = first listed."""
+    ref: name of the layer whose grid all others are reprojected to (like auto_plot's reproject_to); None = first listed,
+    area: [x0, x1, y0, y1] fractions of the reference image (y up): limits and histogram are sampled there only."""
     o = dict(DEFAULTS)
     o.update({k: v for k, v in opts.items() if v is not None or k == 'factor'})
     red, green, blue = list(red), list(green), list(blue)
@@ -408,6 +441,9 @@ def compose_rgb(red, green, blue, **opts):
     ref = o['ref'] if o['ref'] in allnames else allnames[0]
     ny, nx = RAW[ref][0].shape
     shifts = o['shifts'] or {}
+    sample = area_mask(o['area'], (ny, nx)) if o['area'] else None
+    if sample is not None:
+        step(f'limits sampled from a {int(sample.any(1).sum())}x{int(sample.any(0).sum())} px area')
     scale = 1.0 / pixscale(ref)  # arcsec -> pixels of the reference grid
 
     def layer(name):
@@ -417,7 +453,7 @@ def compose_rgb(red, green, blue, **opts):
         if dx or dy:
             lay = shift_layer(lay, dx, dy)
             step(f'{short(name)}: nudged {dx:+d} px right, {dy:+d} px up')
-        return stretch(lay, name, o['func'], o['factor'], o['lims'])
+        return stretch(lay, name, o['func'], o['factor'], o['lims'], sample)
 
     if o['method'] == 'filt05':
         names = sorted(allnames, key=filt_num)

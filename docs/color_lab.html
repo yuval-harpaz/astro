@@ -3,6 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>JWST Color Lab</title>
   <link rel="icon" type="image/x-icon" href="camelfav.ico">
   <style>
@@ -138,6 +139,12 @@
     #brand { margin-left: auto; display: flex; align-items: center; gap: 12px; }
     #brand h1 { margin: 0; font-size: 20px; color: var(--accent); font-weight: 600; letter-spacing: .5px; white-space: nowrap; }
     #brand .bsky img { width: 26px; height: 26px; display: block; }
+    /* ---------- different-dataset prompt ---------- */
+    #ask { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6); display: none; align-items: center; justify-content: center; z-index: 50; }
+    #ask.show { display: flex; }
+    #ask .box { background: var(--panel); border: 1px solid var(--accent2); border-radius: 8px; padding: 18px 20px; max-width: 460px; }
+    #ask p { margin: 0 0 14px; line-height: 1.45; }
+    #ask .btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
     #donate-button img { height: 30px; display: block; }
     #ref-hint { font-size: 11px; color: #aaa; }
     #ref-hint.warn { color: #ffb347; }
@@ -155,9 +162,20 @@
       background: #000;
     }
 
-    canvas { max-width: 100%; max-height: 100%; }
-
-    #canvas-wrap { position: relative; }
+    #canvas-wrap { position: relative; overflow: hidden; touch-action: none; }
+    #canvas-wrap.has-image { cursor: grab; }
+    #canvas-wrap.panning { cursor: grabbing; }
+    #canvas-wrap.selecting { cursor: crosshair; }
+    #canvas { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+    #viewbar { position: absolute; top: 8px; right: 8px; display: none; align-items: center; gap: 4px; z-index: 5;
+      background: rgba(11, 12, 16, 0.75); border-radius: 6px; padding: 4px; }
+    #canvas-wrap.has-image #viewbar { display: flex; }
+    #viewbar button { padding: 3px 9px; font-size: 13px; }
+    #viewbar button.on { background: var(--accent); color: var(--bg); }
+    #zoom-pct { min-width: 46px; text-align: center; font-size: 12px; }
+    #area-info { font-size: 12px; color: #ffd166; padding: 0 2px 0 6px; }
+    #area-box, #drag-box { position: absolute; display: none; pointer-events: none; border: 1.5px dashed #ffd166; z-index: 4; }
+    #drag-box { border-style: solid; background: rgba(255, 209, 102, 0.08); }
     #intro {
       position: absolute;
       top: 16px;
@@ -189,6 +207,8 @@
     }
 
     #panel { background: var(--panel); padding: 10px; border-radius: 6px; display: flex; flex-direction: column; gap: 7px; }
+    #panel .panel-head { display: flex; align-items: center; justify-content: space-between; }
+    button.small { padding: 2px 10px; font-size: 12px; }
     #panel h4 { margin: 4px 0 0; color: var(--accent); font-size: 13px; }
     #panel .row label.lbl { width: 70px; color: #aaa; }
     #panel select { flex: 1; min-width: 0; width: 100%; text-overflow: ellipsis; }
@@ -211,7 +231,8 @@
       border-radius: 6px;
     }
 
-    #narrow { display: none; padding: 40px; text-align: center; font-size: 18px; }
+    #narrow { display: none; padding: 48px 24px; text-align: center; font-size: 28px; line-height: 1.4; }
+    #narrow h1 { color: var(--accent); font-size: 36px; margin: 0 0 24px; }
 
     @media (max-width: 1100px) {
       #app { display: none; }
@@ -221,7 +242,7 @@
 </head>
 
 <body>
-  <div id="narrow">JWST Color Lab is meant for a PC screen (at least 1100 px wide).</div>
+  <div id="narrow"><h1>JWST Color Lab</h1>This tool is meant for a PC screen (at least 1100 px wide).</div>
   <div id="app">
     <div id="left">
       <div id="left-controls">
@@ -293,13 +314,20 @@
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
                 One or more per color; without G, green is the average of R and B, like the bot.</li>
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
-              <li>Tune on the right: stretch factor, limits, log, filt05 colors, reference grid, or nudge a misaligned layer.
-                These re-compose in about a second.</li>
+              <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer.
+                These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus.</li>
               <li><b>Save</b> as JPG or PNG, or download a <b>Local script</b> that does the same at full resolution on your computer.</li>
             </ol>
             <p>Everything runs in your browser (Python via Pyodide); nothing is uploaded. Progress is printed in the log at the bottom right.</p>
           </div>
           <canvas id="canvas" width="0" height="0"></canvas>
+          <div id="area-box"></div><div id="drag-box"></div>
+          <div id="viewbar">
+            <button id="zoom-out" class="ghost" title="Zoom out">−</button><span id="zoom-pct"></span><button id="zoom-in" class="ghost" title="Zoom in (or mouse wheel)">+</button>
+            <button id="zoom-fit" class="ghost" title="Fit the image to the window (or double-click)">Fit</button>
+            <button id="area-btn" class="ghost" title="Drag a rectangle (or Shift+drag at any time) to compute the limits from that area only, e.g. a galaxy nucleus. They are applied to the whole image.">▭ Limits from area</button>
+            <span id="area-info"></span><button id="area-clear" class="ghost" title="Back to limits from the whole image" style="display:none">×</button>
+          </div>
         </div>
         <div id="credit"></div>
         <div id="about">
@@ -315,7 +343,7 @@
 
       <div id="side">
         <div id="panel">
-          <h4>Processing</h4>
+          <div class="panel-head"><h4>Processing</h4><button id="reset-btn" class="ghost small" title="Return all processing controls and nudges to the defaults">Reset</button></div>
           <div class="row"><label class="lbl" for="method">Colors</label>
             <select id="method">
               <option value="rgb" selected>R / G / B as checked (bot)</option>
@@ -330,15 +358,16 @@
             <select id="func">
               <option value="none" selected>none</option>
               <option value="log">log</option>
+              <option value="asinh">asinh</option>
             </select>
           </div>
           <div class="row"><label class="lbl" for="factor">Factor</label>
             <select id="factor" title="level_adjust factor (power). linear = normalize between the limits only">
+              <option value="linear">linear</option>
               <option value="1">1</option>
               <option value="2" selected>2 (bot)</option>
               <option value="3">3</option>
               <option value="4">4</option>
-              <option value="linear">linear</option>
             </select>
           </div>
           <div class="row"><label class="lbl">Limits %</label>
@@ -376,6 +405,7 @@
     // ---------- worker ----------
     const worker = new Worker('color_lab_worker.js');
     let busy = true, pending = false, hasImage = false;
+    let area = null, areaRef = null;  // area: [x0, y0, x1, y1] fractions of the shown image (y down); areaRef: its reference layer
     let lastName = 'jwst_color';
     let lastPixscale = null;   // arcsec per pixel of the shown image
     let layerInfo = {};        // fname -> [full nx, full ny, block factor, full-res arcsec/pixel]
@@ -410,8 +440,11 @@
       else if (d.type === 'error') { logLine('ERROR: ' + d.msg); setBusy(false, 'Error (see log)'); }
       else if (d.type === 'image') {
         const c = $('canvas');
+        const sameSize = c.width === d.w && c.height === d.h;
         c.width = d.w; c.height = d.h;
         c.getContext('2d').putImageData(new ImageData(d.rgba, d.w, d.h), 0, 0);
+        $('canvas-wrap').classList.add('has-image');
+        if (sameSize) applyView(); else fitView();
         showMem(d);
         hasImage = true;
         $('intro').style.display = 'none';
@@ -429,7 +462,7 @@
     const chosen = { r: new Set(), g: new Set(), b: new Set() };
     const lastMatch = (f, re) => { const m = [...f.matchAll(re)]; return m.length ? m[m.length - 1][1] : null; };
     // like astro_utils.filt_num: the last fNNN in the file name
-    const filterOf = (f) => (lastMatch(f, /[-_](f\d{3,4}[a-z]*\d?)/gi) || '?').toUpperCase();
+    const filterOf = (f) => (lastMatch(f, /[-_](f\d{3,4}[a-z]*\d?)/gi) || '?').toLowerCase();
     // F070W..F480M (NIRCam) and F560W..F2550W (MIRI) share units of 10 nm, so the number sorts by wavelength
     const waveOf = (f) => parseInt(lastMatch(f, /[-_]f(\d{3,4})/gi) || '0');
     const itemOf = {};  // fname -> CSV row
@@ -438,6 +471,7 @@
     const allChosen = (sel = selection()) => [...new Set([...sel.red, ...sel.green, ...sel.blue])];
 
     function updateChosen() {
+      if (area && areaRef !== effectiveRef()) clearArea();
       const el = $('chosen');
       el.innerHTML = '';
       const filt05 = $('method').value === 'filt05';
@@ -514,6 +548,7 @@
         grey: $('grey').checked,
         shifts: shiftsOut,
         ref: $('ref').value || null,
+        area: areaFits(),
       };
     }
 
@@ -533,7 +568,135 @@
       $(id).addEventListener('change', () => { updateChosen(); if (hasImage) compose(); });
     }
 
+    // ---------- view: zoom (buttons, wheel), pan (drag), limits from an area (▭ button or Shift+drag) ----------
+    const wrap = $('canvas-wrap');
+    const view = { s: 1, tx: 0, ty: 0, fitted: true };
+    let areaMode = false, drag = null;
+    const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+    // same reference rule as the worker: the chosen reference if it is in the selection, else the first listed
+    function effectiveRef() { const n = allChosen(); return n.includes($('ref').value) ? $('ref').value : n[0]; }
+    function fitScale() { const c = $('canvas'); return c.width ? Math.min(wrap.clientWidth / c.width, wrap.clientHeight / c.height) : 1; }
+    function applyView() {
+      const c = $('canvas');
+      c.style.transform = `translate(${view.tx}px, ${view.ty}px) scale(${view.s})`;
+      c.style.imageRendering = view.s >= 2 ? 'pixelated' : 'auto';
+      $('zoom-pct').textContent = Math.round(view.s * 100) + '%';
+      placeBox($('area-box'), area);
+    }
+    function fitView() {
+      const c = $('canvas'), s = fitScale();
+      Object.assign(view, { s, tx: (wrap.clientWidth - c.width * s) / 2, ty: (wrap.clientHeight - c.height * s) / 2, fitted: true });
+      applyView();
+    }
+    function zoomAt(f, px, py) {
+      const s = clamp(view.s * f, Math.min(0.05, fitScale() / 2), 32);
+      view.tx = px - (px - view.tx) * s / view.s;
+      view.ty = py - (py - view.ty) * s / view.s;
+      view.s = s; view.fitted = false;
+      applyView();
+    }
+    function placeBox(el, a) {  // a in image fractions (y down)
+      const c = $('canvas');
+      if (!a || !c.width) { el.style.display = 'none'; return; }
+      const x0 = view.tx + Math.min(a[0], a[2]) * c.width * view.s, x1 = view.tx + Math.max(a[0], a[2]) * c.width * view.s;
+      const y0 = view.ty + Math.min(a[1], a[3]) * c.height * view.s, y1 = view.ty + Math.max(a[1], a[3]) * c.height * view.s;
+      Object.assign(el.style, { display: 'block', left: x0 + 'px', top: y0 + 'px', width: (x1 - x0) + 'px', height: (y1 - y0) + 'px' });
+    }
+    function toImage(e) {  // pointer -> fractions of the image, clamped to it
+      const r = wrap.getBoundingClientRect(), c = $('canvas');
+      return [clamp((e.clientX - r.left - view.tx) / view.s / c.width, 0, 1), clamp((e.clientY - r.top - view.ty) / view.s / c.height, 0, 1)];
+    }
+    function areaFits() {  // -> [x0, x1, y0, y1] in FITS orientation (y up) for color_lab.py, or null
+      if (!area || areaRef !== effectiveRef()) return null;
+      const [x0, x1] = [area[0], area[2]].sort((a, b) => a - b), [y0, y1] = [area[1], area[3]].sort((a, b) => a - b);
+      return [x0, x1, 1 - y1, 1 - y0];
+    }
+    function setAreaMode(on) { areaMode = on; $('area-btn').classList.toggle('on', on); wrap.classList.toggle('selecting', on); }
+    function showArea() {
+      const c = $('canvas');
+      $('area-info').textContent = area ? `limits from ${Math.round(Math.abs(area[2] - area[0]) * c.width)}×${Math.round(Math.abs(area[3] - area[1]) * c.height)} px area` : '';
+      $('area-clear').style.display = area ? '' : 'none';
+      placeBox($('area-box'), area);
+    }
+    function clearArea() { area = null; areaRef = null; showArea(); }
+
+    $('zoom-in').onclick = () => zoomAt(1.25, wrap.clientWidth / 2, wrap.clientHeight / 2);
+    $('zoom-out').onclick = () => zoomAt(0.8, wrap.clientWidth / 2, wrap.clientHeight / 2);
+    $('zoom-fit').onclick = fitView;
+    $('area-btn').onclick = () => setAreaMode(!areaMode);
+    $('area-clear').onclick = () => { clearArea(); if (hasImage) compose(); };
+    wrap.addEventListener('wheel', (e) => {
+      if (!hasImage) return;
+      e.preventDefault();
+      const r = wrap.getBoundingClientRect();
+      zoomAt(Math.exp(-e.deltaY * (e.deltaMode === 1 ? 0.05 : 0.0015)), e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    wrap.addEventListener('dblclick', (e) => { if (hasImage && !e.target.closest('#viewbar')) fitView(); });
+    wrap.addEventListener('pointerdown', (e) => {
+      if (!hasImage || e.button !== 0 || e.target.closest('#viewbar')) return;
+      wrap.setPointerCapture(e.pointerId);
+      if (areaMode || e.shiftKey) drag = { kind: 'area', p0: toImage(e) };
+      else { drag = { kind: 'pan', x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty }; wrap.classList.add('panning'); }
+    });
+    wrap.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      if (drag.kind === 'pan') {
+        view.tx = drag.tx + e.clientX - drag.x; view.ty = drag.ty + e.clientY - drag.y; view.fitted = false;
+        applyView();
+      } else placeBox($('drag-box'), [...drag.p0, ...toImage(e)]);
+    });
+    const endDrag = (e) => {
+      if (!drag) return;
+      const d = drag; drag = null;
+      wrap.classList.remove('panning');
+      if (d.kind !== 'area') return;
+      $('drag-box').style.display = 'none';
+      const p1 = toImage(e), c = $('canvas');
+      if (Math.abs(p1[0] - d.p0[0]) * c.width < 3 || Math.abs(p1[1] - d.p0[1]) * c.height < 3) return;  // a click, not an area
+      area = [...d.p0, ...p1]; areaRef = effectiveRef();
+      setAreaMode(false); showArea();
+      compose();
+    };
+    wrap.addEventListener('pointerup', endDrag);
+    wrap.addEventListener('pointercancel', () => { drag = null; wrap.classList.remove('panning'); $('drag-box').style.display = 'none'; });
+    // refit when the black area changes size (window resize, credit line appearing) unless the user zoomed or panned
+    new ResizeObserver(() => { if (hasImage) { if (view.fitted) fitView(); else applyView(); } }).observe(wrap);
+
+    // Reset: processing controls back to their defaults (as written in the HTML) and nudges cleared
+    $('reset-btn').onclick = () => {
+      let changed = Object.keys(shifts).length > 0 || !!area;
+      clearArea();
+      for (const k of Object.keys(shifts)) delete shifts[k];
+      for (const id of ['method', 'ref', 'func', 'factor']) {
+        const sel = $(id), def = [...sel.options].find(o => o.defaultSelected) || sel.options[0];
+        if (sel.value !== def.value) { sel.value = def.value; changed = true; }
+      }
+      for (const id of ['lim-lo', 'lim-hi']) if ($(id).value !== $(id).defaultValue) { $(id).value = $(id).defaultValue; changed = true; }
+      for (const id of ['fill', 'grey']) if ($(id).checked !== $(id).defaultChecked) { $(id).checked = $(id).defaultChecked; changed = true; }
+      $('nudge-n').value = $('nudge-n').defaultValue;
+      showShifts(); updateChosen();
+      if (changed && hasImage) compose();
+    };
+
+    // a filter from another target than the chosen ones: add it, or start a new image with it?
+    const datasetOf = (f) => (itemOf[f] || {}).target_name || f.split('_')[0];
+    function askDataset(fname) {
+      const cur = [...new Set(allChosen().map(datasetOf))];
+      $('ask-msg').innerHTML = `<b>${esc(filterOf(fname))}</b> is from <b>${esc(datasetOf(fname))}</b>, ` +
+        `but the current selection is from <b>${esc(cur.join(', '))}</b>. Add it to the current image, or clear the selection and start a new image with it?`;
+      $('ask').classList.add('show');
+      return new Promise(resolve => {
+        const done = (a) => { $('ask').classList.remove('show'); document.removeEventListener('keydown', onKey); resolve(a); };
+        const onKey = (e) => { if (e.key === 'Escape') done('cancel'); };
+        document.addEventListener('keydown', onKey);
+        $('ask').querySelectorAll('button').forEach(b => b.onclick = () => done(b.dataset.a));
+        $('ask').onclick = (e) => { if (e.target === $('ask')) done('cancel'); };
+        $('ask').querySelector('[data-a=new]').focus();
+      });
+    }
+
     $('clear-btn').onclick = () => {
+      clearArea();
       for (const c of ['r', 'g', 'b']) chosen[c].clear();
       for (const k of Object.keys(shifts)) delete shifts[k];
       document.querySelectorAll('.card input[type=checkbox]').forEach(cb => cb.checked = false);
@@ -648,12 +811,13 @@ MAX_MP = 0
 FILL_HOLES = ${$('fill').checked ? 'True' : 'False'}
 OPTIONS = dict(
     method=${pyStr(o.method)},  # 'rgb' or 'filt05'
-    func=${pyStr(o.func)},  # 'none' or 'log'
+    func=${pyStr(o.func)},  # 'none', 'log' or 'asinh'
     factor=${o.factor === null ? 'None' : o.factor},  # level_adjust factor, None = linear
     lims=[${o.lims[0]}, ${o.lims[1]}],  # level_adjust limits (quantiles)
     grey=${o.grey ? 'True' : 'False'},  # grey_zeros
     ref=${o.ref ? pyStr(o.ref) : 'None'},  # reference grid (reproject_to); None = first listed. A short-wavelength reference makes a bigger image
     shifts=${shiftsPy},  # nudges [right, up] in arcsec
+    area=${o.area ? '[' + o.area.map(v => +v.toFixed(5)).join(', ') + ']' : 'None'},  # [x0, x1, y0, y1] fractions of the reference image (y up) to take the limits from; None = whole image
 )
 CREDIT = ${pyStr(credit)}
 
@@ -721,7 +885,16 @@ if __name__ == '__main__':
       card.querySelectorAll('input').forEach(cb => {
         const c = cb.dataset.c;
         cb.checked = chosen[c].has(fname);
-        cb.onchange = () => { cb.checked ? chosen[c].add(fname) : chosen[c].delete(fname); updateChosen(); };
+        cb.onchange = async () => {
+          if (!cb.checked) { chosen[c].delete(fname); updateChosen(); return; }
+          const names = allChosen();
+          if (names.length && !names.includes(fname) && !names.map(datasetOf).includes(datasetOf(fname))) {
+            const a = await askDataset(fname);
+            if (a === 'cancel') { cb.checked = false; return; }
+            if (a === 'new') { $('clear-btn').onclick(); cb.checked = true; }
+          }
+          chosen[c].add(fname); updateChosen();
+        };
       });
       return card;
     }
@@ -779,6 +952,16 @@ if __name__ == '__main__':
     })();
     updateChosen();
   </script>
+  <div id="ask" role="dialog" aria-modal="true" aria-labelledby="ask-msg">
+    <div class="box">
+      <p id="ask-msg"></p>
+      <div class="btns">
+        <button class="ghost" data-a="cancel">Cancel</button>
+        <button class="ghost" data-a="add">Add to current image</button>
+        <button data-a="new">Start a new image</button>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>

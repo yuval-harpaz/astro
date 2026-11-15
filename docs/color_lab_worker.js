@@ -66,7 +66,7 @@ async function readHeader(url, offset) {
   }
 }
 
-const shortName = (f) => { const m = [...f.matchAll(/[-_](f\d{3,4}[a-z]*\d?)/gi)]; return m.length ? m[m.length - 1][1].toUpperCase() : f; };
+const shortName = (f) => { const m = [...f.matchAll(/[-_](f\d{3,4}[a-z]*\d?)/gi)]; return m.length ? m[m.length - 1][1].toLowerCase() : f; };
 
 // Download SCI and block-average (nan-mean) by an integer factor so the image is <= maxMP megapixels.
 async function readSci(fname, maxMP) {
