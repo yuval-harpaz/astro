@@ -199,6 +199,8 @@
     /* spectrum bar: where the composed filters sit in wavelength, labelled in their colors */
     #spectrum { position: absolute; left: 8px; top: 8px; height: calc(100% - 16px); width: 170px; display: none; z-index: 4; pointer-events: none; overflow: visible; }
     #canvas-wrap.has-image #spectrum.on { display: block; }
+    #spec-scale { position: absolute; left: 14px; top: 12px; z-index: 5; display: none; padding: 2px 8px; font-size: 11px; }
+    #canvas-wrap.has-image #spectrum.on ~ #spec-scale { display: block; }
     /* hover help: any element with a title shows it at once, styled; "?" marks controls that have one */
     #tip { position: fixed; z-index: 100; display: none; max-width: 340px; background: #1f2833; color: #e8e8e8; border: 1px solid var(--accent2);
       border-radius: 5px; padding: 7px 9px; font-size: 12px; line-height: 1.4; box-shadow: 0 4px 14px #000c; pointer-events: none; white-space: pre-line; }
@@ -249,6 +251,16 @@
     #panel select { flex: 1; min-width: 0; width: 100%; text-overflow: ellipsis; }
     .hint { font-size: 11px; color: #888; }
 
+    .seg { display: inline-flex; }
+    .seg button { padding: 4px 9px; font-size: 12px; background: transparent; color: var(--accent); border: 1px solid var(--accent2); border-radius: 0; }
+    .seg button:first-child { border-radius: 4px 0 0 4px; }
+    .seg button:last-child { border-radius: 0 4px 4px 0; border-left: none; }
+    .seg button.on { background: var(--accent); color: var(--bg); }
+    #cards .hidden-sel { display: none; }
+    #auto-opts { font-size: 12px; color: #aaa; margin-left: 4px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
+    #auto-opts input { margin: 0 2px 0 0; }
+    #chan-show { gap: 10px; font-size: 13px; color: #aaa; }
+    #chan-show label.r { color: var(--r); } #chan-show label.g { color: var(--g); } #chan-show label.b { color: var(--b); }
     #nudge-pad { display: grid; grid-template-columns: repeat(3, 34px); gap: 3px; }
     #nudge-pad button { padding: 4px 0; }
     #shifts { font-size: 11px; color: #aaa; }
@@ -286,10 +298,13 @@
           <button id="next-btn">7 days ▶</button>
           <span id="range"></span>
         </div>
-        <div class="row" id="auto-opts" title="What Auto RGB chooses from in the weekly list. By default only the target's images released this week (any checked instrument).">
-          <span>Auto RGB adds:</span>
-          <label title="Also the target's images released before this week"><input type="checkbox" id="auto-prev"> previous</label>
-          <label title="Also images with other target names at the same pointing, e.g. another instrument's name for the same field"><input type="checkbox" id="auto-near"> nearby</label>
+        <div class="row">
+          <span class="seg" title="Show all cards of the list, or only the selected ones (checked R, G or B)"><button id="show-all" class="on">All</button><button id="show-sel">Selected</button></span>
+          <span id="auto-opts" title="What Auto RGB chooses from in the weekly list. By default only the target's images released this week (any checked instrument).">
+            <span>Auto RGB +</span>
+            <label title="Also the target's images released before this week"><input type="checkbox" id="auto-prev"> previous</label>
+            <label title="Also images with other target names at the same pointing, e.g. another instrument's name for the same field"><input type="checkbox" id="auto-near"> nearby</label>
+          </span>
         </div>
         <div id="sources" title="Which telescopes / instruments to list. A telescope box selects all of its instruments.">
           <div class="tel-row" data-tel="JWST"><label class="tel"><input type="checkbox" data-tel="JWST">JWST</label></div>
@@ -356,11 +371,11 @@
             <h2>How to make a color image</h2>
             <ol>
               <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). Once you choose the first image, the list switches to images of the same sky area from all telescopes, instruments and target names (<b>✕ Exit</b> returns to the previous list; <b>r</b> sets the radius).
-                Each object's images are sorted from long to short wavelength.</li>
+                Each object's images are sorted from long to short wavelength. <b>Selected</b> (next to <b>All</b>) shows only the checked images.</li>
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
                 One or more per color; without G, green is the average of R and B. <b>Auto RGB</b> next to an object name chooses for you: the reddest image as R, the bluest as B and the middle one as G, from images of the same pointing.</li>
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
-              <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer.
+              <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer or a whole color (<b>Show</b> R / G / B under the nudge buttons hides colors to check the alignment).
                 These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus. <b>SIMBAD</b> labels known objects; type a filter such as NGC or G (galaxies).</li>
               <li><b>Save</b> as JPG or PNG, or download a <b>Local script</b> that does the same at full resolution on your computer.</li>
             </ol>
@@ -369,6 +384,7 @@
           <canvas id="canvas" width="0" height="0"></canvas>
           <svg id="annot"></svg>
           <svg id="spectrum" class="on"></svg>
+          <button id="spec-scale" class="ghost" title="Wavelength scale of the spectrum bar: log spreads UV, visible and IR evenly; linear shows distances in µm as they are (e.g. why Auto RGB picked its G, the filter closest to the middle in µm)">log</button>
           <div id="area-box"></div><div id="drag-box"></div>
           <div id="viewbar">
             <button id="zoom-out" class="ghost" title="Zoom out">−</button><span id="zoom-pct"></span><button id="zoom-in" class="ghost" title="Zoom in (or mouse wheel)">+</button>
@@ -445,7 +461,7 @@ linear = only normalize between the limits.">Factor</label>
           <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
           <label title="Pixels outside one channel's footprint get the max of the other two, so areas covered by only some filters look grey instead of tinted (noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
 
-          <h4 title="Shift one layer relative to the others to fix a small misalignment (e.g. between telescopes or epochs). Steps are pixels of the shown image; the shift is kept in arcsec, so it survives size and reference changes, and it is written into the Local script.">Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
+          <h4 title="Shift one layer, or all layers of one color (R, G or B), relative to the others to fix a small misalignment (e.g. between telescopes or epochs). Steps are pixels of the shown image; the shift is kept in arcsec, so it survives size and reference changes, and it is written into the Local script.">Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
           <div class="row">
             <select id="nudge-layer"></select>
             <input type="number" id="nudge-n" value="1" min="1" max="200" step="1" title="pixels per click">
@@ -454,10 +470,16 @@ linear = only normalize between the limits.">Factor</label>
           <div class="row">
             <div id="nudge-pad">
               <span></span><button data-d="0,1" title="up">↑</button><span></span>
-              <button data-d="-1,0" title="left">←</button><button data-d="0,0" class="ghost" title="reset this layer">0</button><button data-d="1,0" title="right">→</button>
+              <button data-d="-1,0" title="left">←</button><button data-d="0,0" class="ghost" title="reset this layer (or color)">0</button><button data-d="1,0" title="right">→</button>
               <span></span><button data-d="0,-1" title="down">↓</button><span></span>
             </div>
             <div id="shifts"></div>
+          </div>
+          <div class="row" id="chan-show" title="Show or hide the red, green and blue channels of the composed image, e.g. to check the alignment of two colors. View only: Save keeps all channels.">
+            <span>Show</span>
+            <label class="r"><input type="checkbox" data-ch="0" checked>R</label>
+            <label class="g"><input type="checkbox" data-ch="1" checked>G</label>
+            <label class="b"><input type="checkbox" data-ch="2" checked>B</label>
           </div>
         </div>
         <div id="log"></div>
@@ -481,7 +503,43 @@ linear = only normalize between the limits.">Factor</label>
     let lastName = 'jwst_color';
     let lastPixscale = null;   // arcsec per pixel of the shown image
     let layerInfo = {};        // fname -> [full nx, full ny, block factor, full-res arcsec/pixel]
-    let lastSel = null, lastOpts = null;
+    let lastSel = null, lastOpts = null, lastImage = null;
+    // R / G / B shown (view only); Save uses fullCanvas(), with all channels
+    const chanOn = () => [...document.querySelectorAll('#chan-show input')].map(cb => cb.checked);
+    function showChannels() {
+      if (!lastImage) return;
+      const on = chanOn(), g = $('canvas').getContext('2d');
+      if (on.every(Boolean)) { g.putImageData(lastImage, 0, 0); return; }
+      const px = new Uint8ClampedArray(lastImage.data);
+      for (let i = 0; i < px.length; i += 4) for (let ch = 0; ch < 3; ch++) if (!on[ch]) px[i + ch] = 0;
+      g.putImageData(new ImageData(px, lastImage.width, lastImage.height), 0, 0);
+    }
+    function fullCanvas() {
+      if (!lastImage || chanOn().every(Boolean)) return $('canvas');
+      const out = document.createElement('canvas'); out.width = lastImage.width; out.height = lastImage.height;
+      out.getContext('2d').putImageData(lastImage, 0, 0);
+      return out;
+    }
+    // All / Selected cards
+    let showSelOnly = false;
+    function applyShowFilter() {
+      const cards = $('cards');
+      let head = null, headHas = false, any = false;
+      const closeHead = () => { if (head) head.classList.toggle('hidden-sel', showSelOnly && !headHas); };
+      for (const e of cards.children) {
+        if (e.classList.contains('group-head')) { closeHead(); head = e; headHas = false; continue; }
+        if (!e.classList.contains('card')) continue;
+        const on = e.classList.contains('sel');
+        e.classList.toggle('hidden-sel', showSelOnly && !on);
+        if (on) { headHas = true; any = true; }
+      }
+      closeHead();
+      let note = $('sel-note');
+      if (showSelOnly && !any) {
+        if (!note) { note = Object.assign(document.createElement('p'), { id: 'sel-note' }); cards.prepend(note); }
+        note.textContent = 'No selected images in this list. Check R, G or B on a card, or press Auto RGB (switch to All to see the list).';
+      } else if (note) note.remove();
+    }
 
     function logLine(msg) {
       const el = $('log');
@@ -524,7 +582,8 @@ linear = only normalize between the limits.">Factor</label>
         const c = $('canvas');
         const sameSize = c.width === d.w && c.height === d.h;
         c.width = d.w; c.height = d.h;
-        c.getContext('2d').putImageData(new ImageData(d.rgba, d.w, d.h), 0, 0);
+        lastImage = new ImageData(d.rgba, d.w, d.h);
+        showChannels();
         $('canvas-wrap').classList.add('has-image');
         if (sameSize) applyView(); else fitView();
         showMem(d);
@@ -583,11 +642,18 @@ linear = only normalize between the limits.">Factor</label>
         card.classList.toggle('sel', names.includes(f));
         card.classList.toggle('first', f === names[0]);
       });
+      applyShowFilter();
       // nudge layer list
       const sel = $('nudge-layer'), prev = sel.value;
       sel.innerHTML = names.length ? '' : '<option value="">(no layers)</option>';
+      if ($('method').value !== 'filt05' && names.length) {  // whole colors first, then single layers
+        for (const c of ['r', 'g', 'b']) if (chosen[c].size) {
+          const o = new Option(`${c.toUpperCase()}: all ${{ r: 'red', g: 'green', b: 'blue' }[c]} layers (${chosen[c].size})`, '@' + c);
+          o.style.color = `var(--${c})`; sel.add(o);
+        }
+      }
       for (const n of names) sel.add(new Option(`${filterOf(n)} ${n.split('_')[0]}`, n));
-      if (names.includes(prev)) sel.value = prev;
+      if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
       for (const k of Object.keys(shifts)) if (!names.includes(k)) delete shifts[k];
       showShifts();
       updateRef();
@@ -813,7 +879,7 @@ linear = only normalize between the limits.">Factor</label>
       }
     }
     function annotatedCanvas() {  // a copy of the image with the labels drawn at image resolution, for Save
-      const c = $('canvas');
+      const c = fullCanvas();
       if (!$('simbad').checked || !simbad.key || simbad.loading) return c;
       const out = document.createElement('canvas'); out.width = c.width; out.height = c.height;
       const g = out.getContext('2d'); g.drawImage(c, 0, 0);
@@ -875,17 +941,23 @@ linear = only normalize between the limits.">Factor</label>
       } else cols = Object.fromEntries(files.map(f => [f, [+lastSel.red.includes(f), +lastSel.green.includes(f), +lastSel.blue.includes(f)]]));
       const css = (c) => { const m = Math.max(...c) || 1; return `rgb(${c.map(v => Math.round(255 * (0.3 + 0.7 * v / m))).join(',')})`; };
       const waves = files.map(waveOf).filter(w => w > 0);
-      const lo = Math.min(380, ...waves) / 1.12, hi = Math.max(750, ...waves) * 1.12;
-      const H = svg.clientHeight || $('canvas-wrap').clientHeight - 16, top = 14, bot = H - 14, bx = 34, bw = 16;
-      const y = (nm) => top + (bot - top) * Math.log(nm / lo) / Math.log(hi / lo);  // short wavelength at the top
+      const lin = specScale === 'lin';
+      const wmin = Math.min(380, ...waves), wmax = Math.max(750, ...waves);
+      const lo = lin ? Math.max(wmin * 0.85, wmin - 0.04 * (wmax - wmin)) : wmin / 1.12, hi = lin ? wmax + 0.04 * (wmax - wmin) : wmax * 1.12;
+      const H = svg.clientHeight || $('canvas-wrap').clientHeight - 16, top = 40, bot = H - 14, bx = 34, bw = 16;
+      const frac = (nm) => lin ? (nm - lo) / (hi - lo) : Math.log(nm / lo) / Math.log(hi / lo);
+      const y = (nm) => top + (bot - top) * frac(nm);  // short wavelength at the top
       const NS = 'http://www.w3.org/2000/svg';
       const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; svg.appendChild(e); return e; };
       // background panel, gradient bar
       const defs = el('defs', {}), grad = document.createElementNS(NS, 'linearGradient');
       grad.setAttribute('id', 'spec-grad'); grad.setAttribute('x1', 0); grad.setAttribute('x2', 0); grad.setAttribute('y1', 0); grad.setAttribute('y2', 1);
-      for (let k = 0; k <= 60; k++) {
-        const nm = lo * Math.pow(hi / lo, k / 60), st = document.createElementNS(NS, 'stop');
-        st.setAttribute('offset', k / 60); st.setAttribute('stop-color', `rgb(${specColor(nm).join(',')})`); grad.appendChild(st);
+      const stopsNm = [];
+      for (let k = 0; k <= 80; k++) stopsNm.push(lin ? lo + (hi - lo) * k / 80 : lo * Math.pow(hi / lo, k / 80));
+      for (let nm = 380; nm <= 750; nm += 10) stopsNm.push(nm);
+      for (const nm of stopsNm.filter(v => v >= lo && v <= hi).sort((a, b) => a - b)) {
+        const st = document.createElementNS(NS, 'stop');
+        st.setAttribute('offset', frac(nm)); st.setAttribute('stop-color', `rgb(${specColor(nm).join(',')})`); grad.appendChild(st);
       }
       defs.appendChild(grad);
       // filter labels, spread so they do not overlap
@@ -904,7 +976,12 @@ linear = only normalize between the limits.">Factor</label>
       el('rect', { x: 0, y: Math.min(top, ...labs.map(l => l.y)) - 12, width: bx + bw + 22 + labW, height: Math.max(bot, ...labs.map(l => l.y)) - Math.min(top, ...labs.map(l => l.y)) + 24, rx: 6, fill: 'rgba(11,12,16,0.72)' });
       el('rect', { x: bx, y: top, width: bw, height: bot - top, fill: 'url(#spec-grad)', stroke: '#888', 'stroke-width': 0.5 });
       // ticks (µm) on the left, band names inside the bar
-      for (const t of [100, 150, 200, 300, 400, 500, 700, 1000, 1500, 2000, 3000, 5000, 7000, 10000, 15000, 20000, 30000]) {
+      let ticks = [100, 150, 200, 300, 400, 500, 700, 1000, 1500, 2000, 3000, 5000, 7000, 10000, 15000, 20000, 30000];
+      if (lin) {  // about 8 round steps
+        const step = [50, 100, 200, 500, 1000, 2000, 5000].find(st => (hi - lo) / st <= 9) || 10000;
+        ticks = []; for (let t = Math.ceil(lo / step) * step; t <= hi; t += step) ticks.push(t);
+      }
+      for (const t of ticks) {
         if (t < lo || t > hi) continue;
         el('line', { x1: bx - 4, x2: bx, y1: y(t), y2: y(t), stroke: '#999' });
         el('text', { x: bx - 6, y: y(t) + 3.5, 'text-anchor': 'end', fill: '#aaa', 'font-size': 10 }, fmtUm(t));
@@ -922,6 +999,19 @@ linear = only normalize between the limits.">Factor</label>
       }
     }
     $('spec-on').onchange = drawSpectrum;
+    let specScale = 'log';
+    try { if (localStorage.getItem('colorlab-spec-scale') === 'lin') specScale = 'lin'; } catch (e) { }
+    $('spec-scale').textContent = specScale === 'lin' ? 'linear' : 'log';
+    $('spec-scale').onclick = () => {
+      specScale = specScale === 'lin' ? 'log' : 'lin';
+      $('spec-scale').textContent = specScale === 'lin' ? 'linear' : 'log';
+      try { localStorage.setItem('colorlab-spec-scale', specScale); } catch (e) { }
+      drawSpectrum();
+    };
+    document.querySelectorAll('#chan-show input').forEach(cb => cb.onchange = showChannels);
+    const setShowSel = (v) => { showSelOnly = v; $('show-all').classList.toggle('on', !v); $('show-sel').classList.toggle('on', v); applyShowFilter(); };
+    $('show-all').onclick = () => setShowSel(false);
+    $('show-sel').onclick = () => setShowSel(true);
     window.addEventListener('resize', () => { if (hasImage) drawSpectrum(); });
 
     // ---------- hover help: titles shown at once in a styled box ----------
@@ -1013,8 +1103,10 @@ linear = only normalize between the limits.">Factor</label>
         if (!lastPixscale) { logLine('Compose first, then nudge.'); return; }
         const [dx, dy] = btn.dataset.d.split(',').map(Number);
         const n = Math.max(1, parseInt($('nudge-n').value) || 1);
-        const v = shifts[name] || [0, 0];
-        shifts[name] = (dx === 0 && dy === 0) ? [0, 0] : [v[0] + dx * n * lastPixscale, v[1] + dy * n * lastPixscale];
+        for (const f of name.startsWith('@') ? [...chosen[name[1]]] : [name]) {  // a whole color moves all its layers
+          const v = shifts[f] || [0, 0];
+          shifts[f] = (dx === 0 && dy === 0) ? [0, 0] : [v[0] + dx * n * lastPixscale, v[1] + dy * n * lastPixscale];
+        }
         showShifts();
         if (hasImage) compose();
       };
@@ -1423,6 +1515,16 @@ if __name__ == '__main__':
       rows.sort((a, b) => (newest[gkey(b)] - newest[gkey(a)]) || gkey(a).localeCompare(gkey(b))
         || (b.wave - a.wave) || fileOf(a).localeCompare(fileOf(b)));
       if (!rows.length) { container.textContent = telOn('JWST') || telOn('HST') ? 'No images found.' : 'Check JWST and/or HST above.'; return; }
+      if (near) {  // one sky area: a single list, long -> short wavelength across telescopes and target names (the 300 nearest)
+        const total = rows.length;
+        rows = [...rows].sort((a, b) => a._sep - b._sep).slice(0, 300).sort((a, b) => (b.wave - a.wave) || (a._sep - b._sep));
+        const tels = ['JWST', 'HST'].filter(t => rows.some(it => it.tel === t)).join('+');
+        container.appendChild(makeGroupHead(tels, `Near ${searchPos.label}`, total));
+        rows.forEach(it => container.appendChild(makeCard(it)));
+        if (total > 300) container.appendChild(Object.assign(document.createElement('p'), { textContent: `…showing the 300 nearest of ${total}, lower r.` }));
+        updateChosen();
+        return;
+      }
       let lastKey = null;
       rows.slice(0, 300).forEach(it => {
         if (gkey(it) !== lastKey) {
