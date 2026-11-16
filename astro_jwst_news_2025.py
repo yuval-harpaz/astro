@@ -16,6 +16,7 @@ from atproto import Client as Blient
 from atproto import client_utils
 from astro_utils import resize_to_under_2mb
 import pandas as pd
+import sys
 # n days to look back for new releases
 n = 7
 print(f'reading {n} days')
@@ -40,7 +41,8 @@ def query_df(**kwargs):
 df_release = query_df(t_obs_release=[start_time, end_time])
 df_min = query_df(t_min=[start_time, end_time])
 if len(df_min) == 0 and len(df_release) == 0:
-    raise Exception('no new images (or MAST queries failed)')
+    print('no new images (or MAST queries failed), nothing to update')
+    sys.exit(0)
 if len(df_min) == 0:
     table = df_release
 elif len(df_release) == 0:
@@ -53,7 +55,8 @@ table = table[inst_ok]
 # Rewrite the web page if there's any data from the last 14 days. Set titles to show description when
 # hover over images
 if len(table) == 0:
-    raise Exception('no new images')
+    print('no new NIRCam / MIRI / NIRISS images, nothing to update')
+    sys.exit(0)
 # table = table.to_pandas()
 table = table.sort_values('t_obs_release', ascending=False, ignore_index=True)
 calibration = np.asarray((table['obs_title'].str.contains("alibration")) | (table['intentType'] != 'science'))
