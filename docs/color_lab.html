@@ -196,6 +196,14 @@
     #area-info { font-size: 12px; color: #ffd166; padding: 0 2px 0 6px; }
     #viewbar { flex-wrap: wrap; justify-content: flex-end; max-width: calc(100% - 16px); }
     #viewbar label.simbad { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--accent); padding: 0 4px 0 8px; cursor: pointer; }
+    /* spectrum bar: where the composed filters sit in wavelength, labelled in their colors */
+    #spectrum { position: absolute; left: 8px; top: 8px; height: calc(100% - 16px); width: 170px; display: none; z-index: 4; pointer-events: none; overflow: visible; }
+    #canvas-wrap.has-image #spectrum.on { display: block; }
+    /* hover help: any element with a title shows it at once, styled; "?" marks controls that have one */
+    #tip { position: fixed; z-index: 100; display: none; max-width: 340px; background: #1f2833; color: #e8e8e8; border: 1px solid var(--accent2);
+      border-radius: 5px; padding: 7px 9px; font-size: 12px; line-height: 1.4; box-shadow: 0 4px 14px #000c; pointer-events: none; white-space: pre-line; }
+    .q { display: inline-block; width: 13px; height: 13px; line-height: 13px; border-radius: 50%; border: 1px solid #777; color: #aaa;
+      font-size: 9px; text-align: center; margin-left: 3px; cursor: help; vertical-align: 1px; font-weight: normal; }
     #simbad-filter { width: 150px; padding: 3px 6px; font-size: 12px; }
     #simbad-info { font-size: 12px; color: #aaa; }
     #annot { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: hidden; }
@@ -237,7 +245,7 @@
     #panel .panel-head { display: flex; align-items: center; justify-content: space-between; }
     button.small { padding: 2px 10px; font-size: 12px; }
     #panel h4 { margin: 4px 0 0; color: var(--accent); font-size: 13px; }
-    #panel .row label.lbl { width: 70px; color: #aaa; }
+    #panel .row label.lbl { width: 84px; flex: 0 0 auto; color: #aaa; white-space: nowrap; }
     #panel select { flex: 1; min-width: 0; width: 100%; text-overflow: ellipsis; }
     .hint { font-size: 11px; color: #888; }
 
@@ -355,12 +363,14 @@
           </div>
           <canvas id="canvas" width="0" height="0"></canvas>
           <svg id="annot"></svg>
+          <svg id="spectrum" class="on"></svg>
           <div id="area-box"></div><div id="drag-box"></div>
           <div id="viewbar">
             <button id="zoom-out" class="ghost" title="Zoom out">−</button><span id="zoom-pct"></span><button id="zoom-in" class="ghost" title="Zoom in (or mouse wheel)">+</button>
             <button id="zoom-fit" class="ghost" title="Fit the image to the window (or double-click)">Fit</button>
             <button id="area-btn" class="ghost" title="Drag a rectangle (or Shift+drag at any time) to compute the limits from that area only, e.g. a galaxy nucleus. They are applied to the whole image.">▭ Limits from area</button>
             <span id="area-info"></span><button id="area-clear" class="ghost" title="Back to limits from the whole image" style="display:none">×</button>
+            <label class="simbad" title="Show the spectrum bar: the wavelengths of the composed filters, labelled in the color each one got. UV and IR are shown in symbolic colors (violet, dark red)."><input type="checkbox" id="spec-on" checked> Spectrum</label>
             <label class="simbad" title="Label objects from the SIMBAD database (Harvard mirror). Labels are included in Save."><input type="checkbox" id="simbad"> SIMBAD</label>
             <input type="text" id="simbad-filter" placeholder="filter: NGC, PN, G…" style="display:none"
               title="Comma-separated. A SIMBAD object type shows that type (G = any galaxy, PN, HII, SNR, *, V*, X…); any other term matches names (NGC, IC, 2MASS…)">
@@ -382,28 +392,37 @@
       <div id="side">
         <div id="panel">
           <div class="panel-head"><h4>Processing</h4><button id="reset-btn" class="ghost small" title="Return all processing controls and nudges to the defaults">Reset</button></div>
-          <div class="row"><label class="lbl" for="method">Colors</label>
+          <div class="row"><label class="lbl" for="method" title="R / G / B: each checked image goes to its color channel (several per channel are averaged), like the bot. Without G, green is the mean of R and B.
+filt05: every chosen image gets a color from its wavelength on a color wheel (longest = red, shortest = blue / violet) and all are added, like auto_plot. The R / G / B checks then only mean &quot;use this image&quot;.">Colors</label>
             <select id="method">
               <option value="rgb" selected>R / G / B as checked (bot)</option>
               <option value="filt05">filt05: color by wavelength</option>
             </select>
           </div>
-          <div class="row" id="blue-row" style="display:none"><label class="lbl" for="blue-shift">Blue %</label>
+          <div class="row" id="blue-row" style="display:none"><label class="lbl" for="blue-shift" title="filt05 only (subtract_blue): how far the shortest filter is pushed to the blue end of the color wheel.
+100 = the shortest filter is pure blue / violet.
+0 = hue proportional to wavelength, so when all filters are close in wavelength the shortest turns cyan / green.
+50 = bot / auto_plot default.">Blue %</label>
             <input type="number" id="blue-shift" value="50" min="0" max="100" step="5"
               title="filt05 subtract_blue: how far the shortest filter is pushed to the blue end of the color wheel. 100 = shortest filter is pure blue / violet; 0 = hue proportional to wavelength (the shortest filter turns cyan / green when all filters are close in wavelength). 50 = bot / auto_plot default.">
           </div>
-          <div class="row"><label class="lbl" for="ref" title="Layer whose grid all others are reprojected to (auto_plot's reproject_to)">Reference</label>
+          <div class="row"><label class="lbl" for="ref" title="The layer whose pixel grid all others are reprojected to (auto_plot&apos;s reproject_to). It sets the field of view, orientation and resolution of the result.">Reference</label>
             <select id="ref"></select>
           </div>
           <div id="ref-hint"></div>
-          <div class="row"><label class="lbl" for="func">Function</label>
+          <div class="row"><label class="lbl" for="func" title="Applied to each layer before the stretch.
+none: the bot&apos;s default.
+log: log10(1 + data), negative values set to 0. Compresses bright parts, brings out faint structure.
+asinh: like log for bright parts but linear near zero and keeps negatives, so faint noise is less boosted.">Function</label>
             <select id="func">
               <option value="none" selected>none</option>
               <option value="log">log</option>
               <option value="asinh">asinh</option>
             </select>
           </div>
-          <div class="row"><label class="lbl" for="factor">Factor</label>
+          <div class="row"><label class="lbl" for="factor" title="level_adjust (the bot&apos;s stretch): half histogram equalization raised to this power, half the plain normalized data.
+Higher = darker faint parts and more contrast in bright ones; 2 = bot default.
+linear = only normalize between the limits.">Factor</label>
             <select id="factor" title="level_adjust factor (power). linear = normalize between the limits only">
               <option value="linear">linear</option>
               <option value="1">1</option>
@@ -412,7 +431,8 @@
               <option value="4">4</option>
             </select>
           </div>
-          <div class="row"><label class="lbl">Limits %</label>
+          <div class="row"><label class="lbl" title="Percentiles of each layer&apos;s non-zero pixels that become black (low) and white (high). Lower the high limit to brighten, raise the low limit to darken the background.
+▭ Limits from area (above the image) takes them from a selected area only.">Limits %</label>
             <input type="number" id="lim-lo" value="3" min="0" max="50" step="0.5" title="lower percentile">
             <span>–</span>
             <input type="number" id="lim-hi" value="98" min="50" max="100" step="0.1" title="upper percentile">
@@ -420,7 +440,7 @@
           <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours, like the bot"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
           <label title="Pixels outside one channel's footprint get the max of the other two (like the bot's grey_zeros, but noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
 
-          <h4>Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
+          <h4 title="Shift one layer relative to the others to fix a small misalignment (e.g. between telescopes or epochs). Steps are pixels of the shown image; the shift is kept in arcsec, so it survives size and reference changes, and it is written into the Local script.">Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
           <div class="row">
             <select id="nudge-layer"></select>
             <input type="number" id="nudge-n" value="1" min="1" max="200" step="1" title="pixels per click">
@@ -456,7 +476,7 @@
     let lastName = 'jwst_color';
     let lastPixscale = null;   // arcsec per pixel of the shown image
     let layerInfo = {};        // fname -> [full nx, full ny, block factor, full-res arcsec/pixel]
-    let lastSel = null;
+    let lastSel = null, lastOpts = null;
 
     function logLine(msg) {
       const el = $('log');
@@ -512,6 +532,7 @@
         updateRef();
         $('save-btn').disabled = false;
         $('credit').innerHTML = creditHTML(lastSel, d.crval);
+        drawSpectrum();
         setBusy(false, 'Done');
       }
     };
@@ -621,6 +642,7 @@
       if (busy) { pending = true; return; }
       lastName = outName(sel);
       lastSel = sel;
+      lastOpts = options();
       setBusy(true, 'Working…');
       worker.postMessage({ cmd: 'compose', ...sel, maxMP: parseFloat($('maxmp').value), fill: $('fill').checked, opts: options() });
     }
@@ -803,6 +825,124 @@
       }
       return out;
     }
+    // ---------- spectrum bar ----------
+    // Vertical, log wavelength, short (high frequency) at the top. Always shows the visible range (380-750 nm) and
+    // extends to the shortest / longest composed filter. UV and IR get symbolic colors. Filter names in their colors.
+    const HSV = {  // matplotlib hsv colormap, as color_lab.py _HSV
+      r: [[0, 1], [0.15873, 1], [0.174603, 0.96875], [0.333333, 0.03125], [0.349206, 0], [0.666667, 0], [0.68254, 0.03125], [0.84127, 0.96875], [0.857143, 1], [1, 1]],
+      g: [[0, 0], [0.15873, 0.9375], [0.174603, 1], [0.507937, 1], [0.666667, 0.0625], [0.68254, 0], [1, 0]],
+      b: [[0, 0], [0.333333, 0], [0.349206, 0.0625], [0.507937, 1], [0.84127, 1], [0.857143, 0.9375], [1, 0.09375]] };
+    const interp = (x, pts) => { for (let i = 1; i < pts.length; i++) if (x <= pts[i][0]) { const [x0, y0] = pts[i - 1], [x1, y1] = pts[i]; return y0 + (y1 - y0) * (x - x0) / (x1 - x0); } return pts[pts.length - 1][1]; };
+    function hsvCmap(x) {  // 256-entry lookup like matplotlib
+      const k = Math.min(255, Math.max(0, Math.floor(x * 256))) / 255;
+      return [interp(k, HSV.r), interp(k, HSV.g), interp(k, HSV.b)];
+    }
+    function colorsByFilt(waves, subtractBlue) {  // color_lab.py colors_by_filt
+      const lo = Math.min(...waves), norm = waves.map(w => w - lo * subtractBlue), mx = Math.max(...norm);
+      return norm.map(v => hsvCmap((1 - v / mx) * 0.68));
+    }
+    function specColor(nm) {  // bar color: visible spectrum (Bruton), symbolic violet for UV and dark reds for IR
+      const mix = (a, b, t) => a.map((v, i) => Math.round(v + (b[i] - v) * Math.min(1, Math.max(0, t))));
+      if (nm < 380) return mix([150, 60, 220], [70, 20, 110], Math.log(380 / nm) / Math.log(380 / 100));
+      if (nm > 750) return Math.log(nm) < Math.log(2500) ? mix([150, 0, 0], [110, 35, 25], Math.log(nm / 750) / Math.log(2500 / 750))
+        : mix([110, 35, 25], [70, 45, 45], Math.log(nm / 2500) / Math.log(28000 / 2500));
+      let r = 0, g = 0, b = 0;
+      if (nm < 440) { r = (440 - nm) / 60; b = 1; } else if (nm < 490) { g = (nm - 440) / 50; b = 1; } else if (nm < 510) { g = 1; b = (510 - nm) / 20; }
+      else if (nm < 580) { r = (nm - 510) / 70; g = 1; } else if (nm < 645) { r = 1; g = (645 - nm) / 65; } else r = 1;
+      const f = nm < 420 ? 0.45 + 0.55 * (nm - 380) / 40 : nm > 700 ? 0.45 + 0.55 * (750 - nm) / 50 : 1;  // dimmer at the eye's limits
+      return [r, g, b].map(v => Math.round(255 * v * f));
+    }
+    const fmtUm = (nm) => { const u = nm / 1000; return u >= 1 ? +u.toFixed(u >= 10 ? 0 : 1) + '' : +u.toFixed(2) + ''; };
+    function drawSpectrum() {
+      const svg = $('spectrum');
+      svg.classList.toggle('on', $('spec-on').checked);
+      svg.innerHTML = '';
+      if (!lastSel || !hasImage) return;
+      const files = [...new Set([...lastSel.red, ...lastSel.green, ...lastSel.blue])];
+      if (!files.length) return;
+      // label color: R / G / B channel(s) of the file, or its filt05 color; each divided by its largest component
+      // and lightened a little, so dark blues stay readable on the dark background
+      let cols;
+      if ((lastOpts || {}).method === 'filt05') {
+        const sorted = [...files].sort((a, b) => waveOf(a) - waveOf(b));
+        const c = colorsByFilt(sorted.map(waveOf), (lastOpts || {}).subtract_blue ?? 0.5);
+        cols = Object.fromEntries(sorted.map((f, i) => [f, c[i]]));
+      } else cols = Object.fromEntries(files.map(f => [f, [+lastSel.red.includes(f), +lastSel.green.includes(f), +lastSel.blue.includes(f)]]));
+      const css = (c) => { const m = Math.max(...c) || 1; return `rgb(${c.map(v => Math.round(255 * (0.3 + 0.7 * v / m))).join(',')})`; };
+      const waves = files.map(waveOf).filter(w => w > 0);
+      const lo = Math.min(380, ...waves) / 1.12, hi = Math.max(750, ...waves) * 1.12;
+      const H = svg.clientHeight || $('canvas-wrap').clientHeight - 16, top = 14, bot = H - 14, bx = 34, bw = 16;
+      const y = (nm) => top + (bot - top) * Math.log(nm / lo) / Math.log(hi / lo);  // short wavelength at the top
+      const NS = 'http://www.w3.org/2000/svg';
+      const el = (tag, attrs, text) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; svg.appendChild(e); return e; };
+      // background panel, gradient bar
+      const defs = el('defs', {}), grad = document.createElementNS(NS, 'linearGradient');
+      grad.setAttribute('id', 'spec-grad'); grad.setAttribute('x1', 0); grad.setAttribute('x2', 0); grad.setAttribute('y1', 0); grad.setAttribute('y2', 1);
+      for (let k = 0; k <= 60; k++) {
+        const nm = lo * Math.pow(hi / lo, k / 60), st = document.createElementNS(NS, 'stop');
+        st.setAttribute('offset', k / 60); st.setAttribute('stop-color', `rgb(${specColor(nm).join(',')})`); grad.appendChild(st);
+      }
+      defs.appendChild(grad);
+      // filter labels, spread so they do not overlap
+      const seen = new Map();
+      for (const f of files.sort((a, b) => waveOf(a) - waveOf(b))) {
+        const w = waveOf(f); if (!(w > 0)) continue;
+        const key = filterOf(f) + '|' + w + '|' + css(cols[f]);
+        if (seen.has(key)) seen.get(key).n++; else seen.set(key, { name: filterOf(f), w, col: css(cols[f]), n: 1 });
+      }
+      const labs = [...seen.values()].map(l => ({ ...l, y0: y(l.w), y: y(l.w) }));
+      const gap = 14;
+      for (let i = 1; i < labs.length; i++) labs[i].y = Math.max(labs[i].y, labs[i - 1].y + gap);
+      const over = labs.length ? labs[labs.length - 1].y - (bot + 4) : 0;
+      if (over > 0) { labs.forEach(l => l.y -= over); for (let i = labs.length - 2; i >= 0; i--) labs[i].y = Math.min(labs[i].y, labs[i + 1].y - gap); }
+      const labW = Math.max(40, ...labs.map(l => (l.name.length + (l.n > 1 ? 3 : 0)) * 7.2));
+      el('rect', { x: 0, y: Math.min(top, ...labs.map(l => l.y)) - 12, width: bx + bw + 22 + labW, height: Math.max(bot, ...labs.map(l => l.y)) - Math.min(top, ...labs.map(l => l.y)) + 24, rx: 6, fill: 'rgba(11,12,16,0.72)' });
+      el('rect', { x: bx, y: top, width: bw, height: bot - top, fill: 'url(#spec-grad)', stroke: '#888', 'stroke-width': 0.5 });
+      // ticks (µm) on the left, band names inside the bar
+      for (const t of [100, 150, 200, 300, 400, 500, 700, 1000, 1500, 2000, 3000, 5000, 7000, 10000, 15000, 20000, 30000]) {
+        if (t < lo || t > hi) continue;
+        el('line', { x1: bx - 4, x2: bx, y1: y(t), y2: y(t), stroke: '#999' });
+        el('text', { x: bx - 6, y: y(t) + 3.5, 'text-anchor': 'end', fill: '#aaa', 'font-size': 10 }, fmtUm(t));
+      }
+      el('text', { x: bx - 6, y: top - 3, 'text-anchor': 'end', fill: '#aaa', 'font-size': 10 }, 'µm');
+      for (const [a, b, name] of [[lo, 380, 'UV'], [380, 750, 'visible'], [750, hi, 'IR']]) {
+        if (y(b) - y(a) < (name === 'visible' ? 46 : 16)) continue;
+        const t = el('text', { x: 0, y: 0, fill: name === 'visible' ? '#000' : '#ddd', 'font-size': 9, 'text-anchor': 'middle', 'font-weight': 'bold',
+          transform: `translate(${bx + bw / 2 + 3},${(y(a) + y(b)) / 2}) rotate(-90)`, opacity: 0.85 }, name);
+      }
+      for (const l of labs) {
+        el('line', { x1: bx, x2: bx + bw, y1: l.y0, y2: l.y0, stroke: '#fff', 'stroke-width': 1.5 });
+        el('path', { d: `M${bx + bw},${l.y0} L${bx + bw + 8},${l.y0} L${bx + bw + 16},${l.y} L${bx + bw + 20},${l.y}`, stroke: l.col, fill: 'none', 'stroke-width': 1 });
+        el('text', { x: bx + bw + 22, y: l.y + 4, fill: l.col, 'font-size': 12, 'font-weight': 'bold' }, l.name + (l.n > 1 ? ` ×${l.n}` : ''));
+      }
+    }
+    $('spec-on').onchange = drawSpectrum;
+    window.addEventListener('resize', () => { if (hasImage) drawSpectrum(); });
+
+    // ---------- hover help: titles shown at once in a styled box ----------
+    const tip = Object.assign(document.createElement('div'), { id: 'tip' });
+    document.body.appendChild(tip);
+    let tipEl = null, tipTimer = null;
+    document.addEventListener('mouseover', (e) => {
+      const t = e.target.closest('[title], [data-tip]');
+      if (t === tipEl) return;
+      tipEl = t; clearTimeout(tipTimer); tip.style.display = 'none';
+      if (!t) return;
+      if (t.title) { t.dataset.tip = t.title; t.removeAttribute('title'); }  // no second, native tooltip
+      tipTimer = setTimeout(() => {
+        tip.textContent = t.dataset.tip; tip.style.display = 'block';
+        const r = t.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+        tip.style.left = Math.max(4, Math.min(innerWidth - w - 4, r.left)) + 'px';
+        tip.style.top = (r.bottom + 6 + h < innerHeight ? r.bottom + 6 : Math.max(4, r.top - h - 6)) + 'px';
+      }, 250);
+    });
+    document.addEventListener('mousedown', () => { clearTimeout(tipTimer); tip.style.display = 'none'; });
+    // "?" after the labels of the processing controls (and Size), which carry the explanations
+    document.querySelectorAll('#panel label.lbl[title], #panel h4[title], #panel > label[title], #top > label[title]').forEach(l => {
+      const q = Object.assign(document.createElement('span'), { className: 'q', textContent: '?' });
+      if (l.matches('#top > label')) l.insertBefore(q, l.querySelector('select')); else l.appendChild(q);
+    });
+
     $('simbad').onchange = () => {
       $('simbad-filter').style.display = $('simbad').checked ? '' : 'none';
       if ($('simbad').checked) { if (hasImage) ensureSimbad(); } else { $('simbad-info').textContent = ''; drawAnnot(); }
