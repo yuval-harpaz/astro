@@ -1042,7 +1042,7 @@ if __name__ == '__main__':
           <label class="r"><input type="checkbox" data-c="r">R</label>
           <label class="g"><input type="checkbox" data-c="g">G</label>
           <label class="b"><input type="checkbox" data-c="b">B</label>
-          <span class="filt">${esc(instrument)} ${filterOf(fname)}</span>
+          <span class="filt">${esc(instrument)} ${filterOf(fname)}${item.wave ? ` (${+(item.wave / 1000).toFixed(3)} µm)` : ''}</span>
         </div>
         <div class="info">
           <h3>${esc(item.target_name)}</h3>
