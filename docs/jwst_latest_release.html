@@ -52,6 +52,21 @@
       font-style: italic;
       color: #66fcf1;
     }
+    #top-btn {
+      display: block;
+      margin: 20px auto 30px;
+      background: #66fcf1;
+      color: #0b0c10;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    #top-btn:hover {
+      background: #45a29e;
+    }
   </style>
 </head>
 <link rel="icon" type="image/x-icon"
@@ -113,6 +128,7 @@
       style="color:#66fcf1;">ref</a>).
     <div id="earliest-release-info" style="font-size: 0.8em; color: #45a29e; margin-top: 10px;"></div>
     <div id="image-container">Loading...</div>
+    <button id="top-btn" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" title="Back to the top of the page">↑ Top</button>
 
     <script src="sky.js"></script>
     <script>
