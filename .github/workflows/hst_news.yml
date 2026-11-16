@@ -34,7 +34,7 @@ jobs:
       run: |
         git add docs/hst
         git commit -m "auto update hst csv"
-        git pull --no-edit
+        git pull --no-rebase --no-edit
       if: ${{ env.IS_NEW == 'true' }}
     - name: push files
       uses: ad-m/github-push-action@master

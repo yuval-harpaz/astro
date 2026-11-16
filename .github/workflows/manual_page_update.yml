@@ -40,7 +40,7 @@ jobs:
       run: |
         git add -A
         git commit -m "ngc preview by bot"
-        git pull
+        git pull --no-rebase --no-edit
       if: ${{ env.IS_NEW == 'true' }}
     - name: push files
       uses: ad-m/github-push-action@master
