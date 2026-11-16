@@ -342,7 +342,7 @@
           <div id="intro">
             <h2>How to make a color image</h2>
             <ol>
-              <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). <b>Show nearby</b> on the first chosen image lists other images of the same sky area.
+              <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). Once you choose the first image, the list switches to images of the same sky area from all telescopes, instruments and target names (<b>✕ Exit</b> returns to the previous list; <b>r</b> sets the radius).
                 Each object's images are sorted from long to short wavelength.</li>
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
                 One or more per color; without G, green is the average of R and B, like the bot. <b>Auto RGB</b> next to an object name selects what the bot would choose.</li>
@@ -986,11 +986,16 @@ if __name__ == '__main__':
     let beforeNear = null;  // the view to return to from Show nearby
     const radiusDeg = () => Math.max(0.1, parseFloat($('radius').value) || 3) / 60;
 
+    // The list around one image: all telescopes and instruments, any target name, any date (Exit restores the previous list).
+    // Called by Show nearby, and automatically when the first image is chosen (or by Auto RGB) in a name / date list.
     async function showNearby(item, fname) {
       let ra = parseFloat(item.s_ra), dec = parseFloat(item.s_dec);
       if (!isFinite(ra)) { const c = await readCrval(fname).catch(() => null); if (c) [ra, dec] = c; }  // rows not back-filled yet
       if (!isFinite(ra)) { $('status').textContent = 'No coordinates for this image'; return; }
-      if (!beforeNear) beforeNear = { isSearchMode, searchQuery, searchPos, input: $('search-input').value };
+      if (!beforeNear) beforeNear = { isSearchMode, searchQuery, searchPos, input: $('search-input').value, enabled: new Set(enabled) };
+      Object.values(INSTRUMENTS).flat().forEach(i => enabled.add(i));
+      syncSourceBoxes();
+      $('cards').scrollTop = 0;
       $('search-input').value = Sky.fmt(ra, dec);
       setPos({ ra, dec, label: `${item.target_name} (${Sky.fmt(ra, dec)})` });
     }
@@ -1045,7 +1050,7 @@ if __name__ == '__main__':
           <p>Observed ${parseUTC(item.t_max).toISOString().slice(0, 10)}, released ${parseUTC(item.t_obs_release).toISOString().slice(0, 10)}</p>
           <p title="${esc(fname)}">${esc(item.obs_title)}</p>
           <p class="coords">${item.s_ra ? `RA, Dec <a href="#" title="Show images near this position">${Sky.fmt(item.s_ra, item.s_dec)}</a>`
-            + (isSearchMode && searchPos && item._sep != null ? ` · ${(item._sep * 60).toFixed(1)}′ away` : '') : ''}<button class="ghost nearby" title="List images near this one (radius r), regardless of the search and the dates">Show nearby</button></p>
+            + (isSearchMode && searchPos && item._sep != null ? ` · ${(item._sep * 60).toFixed(1)}′ away` : '') : ''}<button class="ghost nearby" title="List images near this one (radius r) from all telescopes and instruments, regardless of the search and the dates">Show nearby</button></p>
         </div>`;
       const nearThis = async (e) => { e.preventDefault(); showNearby(item, fname); };
       card.querySelector('.nearby').onclick = nearThis;
@@ -1062,6 +1067,7 @@ if __name__ == '__main__':
             if (a === 'new') { $('clear-btn').onclick(); cb.checked = true; }
           }
           chosen[c].add(fname); updateChosen();
+          if (allChosen().length === 1 && !(isSearchMode && searchPos)) showNearby(item, fname);  // first image: list its sky area
         };
       });
       return card;
@@ -1158,6 +1164,7 @@ if __name__ == '__main__':
         ` from ${g.length} images at CRVAL ${crv[0].toFixed(4)}, ${crv[1].toFixed(4)}` +
         (groups.length > 1 ? ` (pointing ${k + 1} of ${groups.length}; press again for the next)` : '') + '. Press Compose when ready.');
       if (!busy) $('status').textContent = groups.length > 1 ? `Auto RGB: pointing ${k + 1} of ${groups.length}` : 'Auto RGB selected';
+      if (!nearMode) showNearby(itemOf[red[0]], red[0]);
     }
     function makeGroupHead(tel, target, n) {
       const head = document.createElement('div');
@@ -1270,6 +1277,7 @@ if __name__ == '__main__':
       const b = beforeNear || { isSearchMode: false, searchQuery: '', searchPos: null, input: '' };
       ({ isSearchMode, searchQuery, searchPos } = b);
       $('search-input').value = b.input; beforeNear = null;
+      if (b.enabled) { enabled.clear(); b.enabled.forEach(i => enabled.add(i)); syncSourceBoxes(); }
       updateView();
     };
     $('prev-btn').onclick = () => { if (!isSearchMode) currentEndDate = new Date(currentEndDate.getTime() - 7 * 864e5); isSearchMode = false; searchPos = null; beforeNear = null; updateView(); };
