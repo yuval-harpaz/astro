@@ -286,6 +286,11 @@
           <button id="next-btn">7 days ▶</button>
           <span id="range"></span>
         </div>
+        <div class="row" id="auto-opts" title="What Auto RGB chooses from in the weekly list. By default only the target's images released this week (any checked instrument).">
+          <span>Auto RGB adds:</span>
+          <label title="Also the target's images released before this week"><input type="checkbox" id="auto-prev"> previous</label>
+          <label title="Also images with other target names at the same pointing, e.g. another instrument's name for the same field"><input type="checkbox" id="auto-near"> nearby</label>
+        </div>
         <div id="sources" title="Which telescopes / instruments to list. A telescope box selects all of its instruments.">
           <div class="tel-row" data-tel="JWST"><label class="tel"><input type="checkbox" data-tel="JWST">JWST</label></div>
           <div class="tel-row" data-tel="HST"><label class="tel"><input type="checkbox" data-tel="HST">HST</label></div>
@@ -1127,7 +1132,8 @@ if __name__ == '__main__':
     const radiusDeg = () => Math.max(0.1, parseFloat($('radius').value) || 3) / 60;
 
     // The list around one image: all telescopes and instruments, any target name, any date (Exit restores the previous list).
-    // Called by Show nearby, and automatically when the first image is chosen (or by Auto RGB) in a name / date list.
+    // Called by Show nearby, and automatically when the first image is checked by hand in a name / date list
+    // (Auto RGB keeps the list, so pressing it again cycles through the pointings of the same pool).
     async function showNearby(item, fname) {
       let ra = parseFloat(item.s_ra), dec = parseFloat(item.s_dec);
       if (!isFinite(ra)) { const c = await readCrval(fname).catch(() => null); if (c) [ra, dec] = c; }  // rows not back-filled yet
@@ -1213,8 +1219,8 @@ if __name__ == '__main__':
       return card;
     }
 
-    // ---------- Auto RGB: the bot's choice for one target (astro_jwst_news_color.py) ----------
-    // i2d files of the target without NIRISS, grouped by pointing (CRVAL within 0.001 deg, astro_utils.cluster_coordinates),
+    // ---------- Auto RGB: the bot's choice (astro_jwst_news_color.py) for one target ----------
+    // JWST i2d files without NIRISS and HST drizzled files, grouped by pointing (see autoPool),
     // groups of >= 2 files; R = reddest, B = bluest, G = closest to the middle wavelength (none for 2 files).
     // Only selects; Compose is up to the user. Pressing again cycles through the pointings.
     const crvalCache = {};
@@ -1262,49 +1268,77 @@ if __name__ == '__main__':
       }
       return labels;
     }
-    const autoCycle = {};  // telescope|target -> index of the pointing chosen last
-    // JWST: the bot's rule. HST: filters of one visit rarely share an exact CRVAL, so pointings within 0.01 deg (36") are grouped
-    // Near a position (search or Show nearby) the images of all target names in the list are used, and pointings are
-    // groups of images whose centers are closer than a quarter of the smaller image radius (programs differ in CRVAL)
-    async function autoRGB(tel, target, btn) {
-      const nearMode = isSearchMode && searchPos;
-      const pool = allData.filter(it => it.tel === tel && sourceOn(it) && (nearMode ? Sky.near(it, searchPos, radiusDeg()) : it.target_name === target));
-      const files = [...new Set(pool.map(fileOf))]
-        .filter(f => tel === 'HST' || (/_i2d\.fits$/.test(f) && !/niriss/.test(f) && /^jw\d{5}-[oc]\d+_/.test(f)));
-      if (files.length < 2) { logLine(`Auto RGB ${target}: fewer than 2 ${tel === 'HST' ? 'HST' : 'NIRCam/MIRI'} images`); return; }
-      btn.disabled = true; const label = btn.textContent; btn.textContent = 'reading…';
-      const coords = await Promise.all(files.map(f => readCrval(f).catch(e => { logLine(`Auto RGB: ${filterOf(f)} ${f.split('_')[0]}: ${e.message}`); return null; })));
-      btn.disabled = false; btn.textContent = label;
-      const centers = files.map((f, i) => { const it = itemOf[f]; return isFinite(parseFloat(it.s_ra)) ? [+it.s_ra, +it.s_dec, +it.s_rad || 0.01] : coords[i] && [...coords[i], 0.01]; });
-      const labels = nearMode
-        ? clusterCoordinates(centers, 0, (a, b) => a && b && Sky.sep(a[0], a[1], b[0], b[1]) <= 0.25 * Math.min(a[2], b[2]))
-        : clusterCoordinates(coords, tel === 'HST' ? 0.01 : 0.001);
-      let groups = [];
-      for (let g = 0; g <= Math.max(...labels); g++) groups.push(files.filter((f, i) => labels[i] === g));
-      const ofTarget = (g) => g.some(f => itemOf[f].target_name === target) ? 1 : 0;  // the pressed target's pointings first
-      groups = groups.filter(g => g.length >= 2).sort((a, b) => (ofTarget(b) - ofTarget(a)) || (b.length - a.length));
-      if (!groups.length) { logLine(`Auto RGB ${nearMode ? 'near ' + searchPos.label : target}: no pointing has 2 or more images`); return; }
-      const key = nearMode ? `near|${tel}|${Sky.fmt(searchPos.ra, searchPos.dec)}|${$('radius').value}` : tel + '|' + target;
-      const k = autoCycle[key] = ((autoCycle[key] ?? -1) + 1) % groups.length;
-      const g = groups[k].sort((a, b) => waveOf(b) - waveOf(a));  // red -> blue
-      const w = g.map(waveOf);
-      let red = [g[0]], green = [], blue = [g[g.length - 1]];
-      if (g.length > 2) {
-        let im = 0;
-        w.forEach((v, i) => { if (Math.abs(v - (w[0] + w[w.length - 1]) / 2) < Math.abs(w[im] - (w[0] + w[w.length - 1]) / 2)) im = i; });
-        green = [g[im]];
+    const autoCycle = {};  // pool key -> index of the pointing chosen last
+    // Which images Auto RGB chooses from, for the target whose button was pressed (any checked instrument or telescope):
+    //   week view: its images released in the shown week; "previous" adds its older releases, "nearby" adds other
+    //              target names at the same pointing (often another instrument's name for the same field)
+    //   name search: all its releases + other names at the same pointing; nearby list: everything listed
+    // Pointings: two images belong together when their centers are closer than half the larger image's radius
+    // (fields differ in size between instruments, so the bot's equal-CRVAL rule is too strict across them).
+    const jwstOk = (f) => /_i2d\.fits$/.test(f) && !/niriss/.test(f) && /^jw\d{5}-[oc]\d+_/.test(f);
+    const centerOf = (it) => { const ra = parseFloat(it.s_ra), dec = parseFloat(it.s_dec); return isFinite(ra) && isFinite(dec) ? [ra, dec, parseFloat(it.s_rad) || 0.01] : null; };
+    const samePointing = (a, b) => a && b && Sky.sep(a[0], a[1], b[0], b[1]) <= 0.5 * Math.max(a[2], b[2]);
+    async function autoPool(target) {
+      const usable = (it) => sourceOn(it) && it.jpegURL && (it.tel === 'HST' || jwstOk(fileOf(it)));
+      if (isSearchMode && searchPos) return { pool: allData.filter(it => usable(it) && Sky.near(it, searchPos, radiusDeg())), desc: 'nearby list' };
+      const week = !isSearchMode, prev = !week || $('auto-prev').checked, near = !week || $('auto-near').checked;
+      const start = new Date(currentEndDate.getTime() - 7 * 864e5);
+      const dateOk = (it) => { if (prev) return true; const t = parseUTC(it.t_obs_release); return t > start && t <= currentEndDate; };
+      let base = allData.filter(it => usable(it) && it.target_name === target && dateOk(it));
+      if (telOn('HST') && prev) {  // HST release years of this target (and, with nearby, of this area) that are not loaded yet
+        const idx = await hstIndex(), need = new Set(idx[target] || []);
+        const cs = base.map(centerOf).filter(Boolean);
+        if (near) for (const r of hstTargets) if (r.ra && cs.some(c => Sky.sep(+r.ra, +r.dec, c[0], c[1]) <= c[2] + (+r.rad || 0)))
+          (r.years || '').split(';').filter(Boolean).forEach(y => need.add(y));
+        const missing = [...need].filter(y => !hstLoaded.has(y));
+        if (missing.length) { await loadHst(missing); base = allData.filter(it => usable(it) && it.target_name === target && dateOk(it)); }
       }
-      $('clear-btn').onclick();
-      red.forEach(f => chosen.r.add(f)); green.forEach(f => chosen.g.add(f)); blue.forEach(f => chosen.b.add(f));
-      document.querySelectorAll('.card').forEach(card => card.querySelectorAll('input[data-c]').forEach(cb => cb.checked = chosen[cb.dataset.c].has(card.dataset.fname)));
-      updateChosen();
-      const crv = coords[files.indexOf(g[0])] || centers[files.indexOf(g[0])];
-      const names = [...new Set(g.map(f => itemOf[f].target_name))];
-      logLine(`Auto RGB ${nearMode ? names.join(' + ') : target}: R ${filterOf(red[0])}, G ${green.length ? filterOf(green[0]) : '(R+B)/2'}, B ${filterOf(blue[0])}` +
-        ` from ${g.length} images at CRVAL ${crv[0].toFixed(4)}, ${crv[1].toFixed(4)}` +
-        (groups.length > 1 ? ` (pointing ${k + 1} of ${groups.length}; press again for the next)` : '') + '. Press Compose when ready.');
-      if (!busy) $('status').textContent = groups.length > 1 ? `Auto RGB: pointing ${k + 1} of ${groups.length}` : 'Auto RGB selected';
-      if (!nearMode) showNearby(itemOf[red[0]], red[0]);
+      let pool = base;
+      if (near) {
+        const cs = base.map(centerOf).filter(Boolean);
+        pool = base.concat(allData.filter(it => usable(it) && it.target_name !== target && dateOk(it) && cs.some(c => samePointing(c, centerOf(it)))));
+      }
+      return { pool, desc: week ? `week${prev ? ' + previous' : ''}${near ? ' + nearby' : ''}` : 'search' };
+    }
+    async function autoRGB(tel, target, btn) {
+      btn.disabled = true; const label = btn.textContent; btn.textContent = 'reading…';
+      try {
+        const { pool, desc } = await autoPool(target);
+        const files = [...new Set(pool.map(fileOf))];
+        if (files.length < 2) {
+          logLine(`Auto RGB ${target}: fewer than 2 images (${desc})` + (!isSearchMode ? '; check "previous" or "nearby" to include more' : ''));
+          return;
+        }
+        // rows not back-filled with coordinates yet: CRVAL from the FITS header
+        const centers = await Promise.all(files.map(async f => centerOf(itemOf[f]) ||
+          readCrval(f).then(c => [...c, 0.01]).catch(e => { logLine(`Auto RGB: ${filterOf(f)} ${f.split('_')[0]}: ${e.message}`); return null; })));
+        const labels = clusterCoordinates(centers, 0, samePointing);
+        let groups = [];
+        for (let g = 0; g <= Math.max(...labels); g++) groups.push(files.filter((f, i) => labels[i] === g && centers[i]));
+        const ofTarget = (g) => g.some(f => itemOf[f].target_name === target) ? 1 : 0;  // the pressed target's pointings first
+        groups = groups.filter(g => g.length >= 2).sort((a, b) => (ofTarget(b) - ofTarget(a)) || (b.length - a.length));
+        if (!groups.length) { logLine(`Auto RGB ${target}: no pointing has 2 or more images (${desc})`); return; }
+        const key = [desc, target, isSearchMode && searchPos ? Sky.fmt(searchPos.ra, searchPos.dec) + '|' + $('radius').value : '', sourcesParam(), currentEndDate.toISOString().slice(0, 10)].join('|');
+        const k = autoCycle[key] = ((autoCycle[key] ?? -1) + 1) % groups.length;
+        const g = groups[k].sort((a, b) => waveOf(b) - waveOf(a));  // red -> blue
+        const w = g.map(waveOf);
+        let red = [g[0]], green = [], blue = [g[g.length - 1]];
+        if (g.length > 2) {
+          let im = 0;
+          w.forEach((v, i) => { if (Math.abs(v - (w[0] + w[w.length - 1]) / 2) < Math.abs(w[im] - (w[0] + w[w.length - 1]) / 2)) im = i; });
+          green = [g[im]];
+        }
+        $('clear-btn').onclick();
+        red.forEach(f => chosen.r.add(f)); green.forEach(f => chosen.g.add(f)); blue.forEach(f => chosen.b.add(f));
+        document.querySelectorAll('.card').forEach(card => card.querySelectorAll('input[data-c]').forEach(cb => cb.checked = chosen[cb.dataset.c].has(card.dataset.fname)));
+        updateChosen();
+        const c0 = centers[files.indexOf(g[0])];
+        const names = [...new Set(g.map(f => itemOf[f].target_name))], insts = [...new Set(g.map(f => itemOf[f].inst))];
+        logLine(`Auto RGB ${names.join(' + ')} (${desc}): R ${filterOf(red[0])}, G ${green.length ? filterOf(green[0]) : '(R+B)/2'}, B ${filterOf(blue[0])}` +
+          ` from ${g.length} images (${insts.join(', ')}) at ${c0[0].toFixed(4)}, ${c0[1].toFixed(4)}` +
+          (groups.length > 1 ? ` (pointing ${k + 1} of ${groups.length}; press again for the next)` : '') + '. Press Compose when ready.');
+        if (!busy) $('status').textContent = groups.length > 1 ? `Auto RGB: pointing ${k + 1} of ${groups.length}` : 'Auto RGB selected';
+      } finally { btn.disabled = false; btn.textContent = label; }
     }
     function makeGroupHead(tel, target, n) {
       const head = document.createElement('div');
@@ -1312,7 +1346,7 @@ if __name__ == '__main__':
       head.innerHTML = `<span class="tel">${tel}</span><h3 title="${esc(target)}">${esc(target)}</h3><span class="n">${n} image${n > 1 ? 's' : ''}</span>`;
       const btn = document.createElement('button');
       btn.className = 'ghost'; btn.textContent = 'Auto RGB';
-      btn.title = "Select the bot's choice: reddest as R, bluest as B and the closest to the middle wavelength as G, from images sharing a pointing (CRVAL). Press again for another pointing. In a nearby list, images of all target names there are used. Does not compose.";
+      btn.title = "Select the bot's choice: reddest as R, bluest as B and the closest to the middle wavelength as G, from images of this target that share a pointing, from any checked instrument.\nWeekly list: this week's releases (add previous / nearby above the list).\nSearch: all releases, plus other target names at the same pointing.\nNearby list: everything listed.\nPress again for another pointing. Does not compose.";
       btn.onclick = () => autoRGB(tel, target, btn).catch(e => { btn.disabled = false; btn.textContent = 'Auto RGB'; logLine('Auto RGB error: ' + e.message); });
       head.appendChild(btn);
       return head;
@@ -1356,6 +1390,7 @@ if __name__ == '__main__':
       container.innerHTML = '';
       let rows = allData.filter(sourceOn);
       $('near-bar').classList.toggle('on', !!(isSearchMode && searchPos));
+      $('auto-opts').style.display = isSearchMode ? 'none' : '';
       if (isSearchMode && searchPos) {
         const r = radiusDeg();
         rows = Sky.cone(rows, searchPos, r);
