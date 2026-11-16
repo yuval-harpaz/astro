@@ -309,9 +309,9 @@
       <div id="top">
         <button id="compose-btn" disabled>Compose</button>
         <button id="clear-btn" class="ghost" title="Uncheck all images and reset nudges">Clear</button>
-        <label title="Each layer is block-averaged to about this size before processing. The bot uses 1 MP.">Size
+        <label title="Each layer is block-averaged to about this size before processing. Larger sizes show more detail but take longer and use more memory; the Local script can process full resolution.">Size
           <select id="maxmp">
-            <option value="1" selected>1 MP (bot)</option>
+            <option value="1" selected>1 MP</option>
             <option value="4">4 MP</option>
             <option value="9">9 MP</option>
           </select>
@@ -358,7 +358,7 @@
               <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). Once you choose the first image, the list switches to images of the same sky area from all telescopes, instruments and target names (<b>✕ Exit</b> returns to the previous list; <b>r</b> sets the radius).
                 Each object's images are sorted from long to short wavelength.</li>
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
-                One or more per color; without G, green is the average of R and B, like the bot. <b>Auto RGB</b> next to an object name selects what the bot would choose.</li>
+                One or more per color; without G, green is the average of R and B. <b>Auto RGB</b> next to an object name chooses for you: the reddest image as R, the bluest as B and the middle one as G, from images of the same pointing.</li>
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
               <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer.
                 These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus. <b>SIMBAD</b> labels known objects; type a filter such as NGC or G (galaxies).</li>
@@ -397,26 +397,26 @@
       <div id="side">
         <div id="panel">
           <div class="panel-head"><h4>Processing</h4><button id="reset-btn" class="ghost small" title="Return all processing controls and nudges to the defaults">Reset</button></div>
-          <div class="row"><label class="lbl" for="method" title="R / G / B: each checked image goes to its color channel (several per channel are averaged), like the bot. Without G, green is the mean of R and B.
-filt05: every chosen image gets a color from its wavelength on a color wheel (longest = red, shortest = blue / violet) and all are added, like auto_plot. The R / G / B checks then only mean &quot;use this image&quot;.">Colors</label>
+          <div class="row"><label class="lbl" for="method" title="R / G / B: each checked image goes to its color channel (several per channel are averaged). Without G, green is the mean of R and B.
+filt05: every chosen image gets a color from its wavelength on a color wheel (longest = red, shortest = blue / violet) and all are added. The R / G / B checks then only mean &quot;use this image&quot;.">Colors</label>
             <select id="method">
-              <option value="rgb" selected>R / G / B as checked (bot)</option>
+              <option value="rgb" selected>R / G / B as checked</option>
               <option value="filt05">filt05: color by wavelength</option>
             </select>
           </div>
-          <div class="row" id="blue-row" style="display:none"><label class="lbl" for="blue-shift" title="filt05 only (subtract_blue): how far the shortest filter is pushed to the blue end of the color wheel.
+          <div class="row" id="blue-row" style="display:none"><label class="lbl" for="blue-shift" title="filt05 only: how far the shortest filter is pushed to the blue end of the color wheel.
 100 = the shortest filter is pure blue / violet.
 0 = hue proportional to wavelength, so when all filters are close in wavelength the shortest turns cyan / green.
-50 = bot / auto_plot default.">Blue %</label>
+50 = default.">Blue %</label>
             <input type="number" id="blue-shift" value="50" min="0" max="100" step="5"
-              title="filt05 subtract_blue: how far the shortest filter is pushed to the blue end of the color wheel. 100 = shortest filter is pure blue / violet; 0 = hue proportional to wavelength (the shortest filter turns cyan / green when all filters are close in wavelength). 50 = bot / auto_plot default.">
+              title="filt05 only: how far the shortest filter is pushed to the blue end of the color wheel. 100 = shortest filter is pure blue / violet; 0 = hue proportional to wavelength (the shortest filter turns cyan / green when all filters are close in wavelength). 50 = default.">
           </div>
-          <div class="row"><label class="lbl" for="ref" title="The layer whose pixel grid all others are reprojected to (auto_plot&apos;s reproject_to). It sets the field of view, orientation and resolution of the result.">Reference</label>
+          <div class="row"><label class="lbl" for="ref" title="The layer whose pixel grid all others are reprojected to. It sets the field of view, orientation and resolution of the result.">Reference</label>
             <select id="ref"></select>
           </div>
           <div id="ref-hint"></div>
           <div class="row"><label class="lbl" for="func" title="Applied to each layer before the stretch.
-none: the bot&apos;s default.
+none: the default.
 log: log10(1 + data), negative values set to 0. Compresses bright parts, brings out faint structure.
 asinh: like log for bright parts but linear near zero and keeps negatives, so faint noise is less boosted.">Function</label>
             <select id="func">
@@ -425,13 +425,13 @@ asinh: like log for bright parts but linear near zero and keeps negatives, so fa
               <option value="asinh">asinh</option>
             </select>
           </div>
-          <div class="row"><label class="lbl" for="factor" title="level_adjust (the bot&apos;s stretch): half histogram equalization raised to this power, half the plain normalized data.
-Higher = darker faint parts and more contrast in bright ones; 2 = bot default.
+          <div class="row"><label class="lbl" for="factor" title="level_adjust stretch: half histogram equalization raised to this power, half the plain normalized data.
+Higher = darker faint parts and more contrast in bright ones; 2 = default.
 linear = only normalize between the limits.">Factor</label>
             <select id="factor" title="level_adjust factor (power). linear = normalize between the limits only">
               <option value="linear">linear</option>
               <option value="1">1</option>
-              <option value="2" selected>2 (bot)</option>
+              <option value="2" selected>2</option>
               <option value="3">3</option>
               <option value="4">4</option>
             </select>
@@ -442,8 +442,8 @@ linear = only normalize between the limits.">Factor</label>
             <span>–</span>
             <input type="number" id="lim-hi" value="98" min="50" max="100" step="0.1" title="upper percentile">
           </div>
-          <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours, like the bot"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
-          <label title="Pixels outside one channel's footprint get the max of the other two (like the bot's grey_zeros, but noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
+          <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
+          <label title="Pixels outside one channel's footprint get the max of the other two, so areas covered by only some filters look grey instead of tinted (noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
 
           <h4 title="Shift one layer relative to the others to fix a small misalignment (e.g. between telescopes or epochs). Steps are pixels of the shown image; the shift is kept in arcsec, so it survives size and reference changes, and it is written into the Local script.">Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
           <div class="row">
@@ -1346,7 +1346,7 @@ if __name__ == '__main__':
       head.innerHTML = `<span class="tel">${tel}</span><h3 title="${esc(target)}">${esc(target)}</h3><span class="n">${n} image${n > 1 ? 's' : ''}</span>`;
       const btn = document.createElement('button');
       btn.className = 'ghost'; btn.textContent = 'Auto RGB';
-      btn.title = "Select the bot's choice: reddest as R, bluest as B and the closest to the middle wavelength as G, from images of this target that share a pointing, from any checked instrument.\nWeekly list: this week's releases (add previous / nearby above the list).\nSearch: all releases, plus other target names at the same pointing.\nNearby list: everything listed.\nPress again for another pointing. Does not compose.";
+      btn.title = "Choose automatically: reddest as R, bluest as B and the closest to the middle wavelength as G, from images of this target that share a pointing, from any checked instrument.\nWeekly list: this week's releases (add previous / nearby above the list).\nSearch: all releases, plus other target names at the same pointing.\nNearby list: everything listed.\nPress again for another pointing. Does not compose.";
       btn.onclick = () => autoRGB(tel, target, btn).catch(e => { btn.disabled = false; btn.textContent = 'Auto RGB'; logLine('Auto RGB error: ' + e.message); });
       head.appendChild(btn);
       return head;

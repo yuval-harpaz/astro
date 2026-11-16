@@ -484,7 +484,7 @@ def compose_rgb(red, green, blue, **opts):
     if o['method'] == 'filt05':
         names = sorted(allnames, key=wavelength)
         cols = colors_by_filt([wavelength(n) for n in names], float(o['subtract_blue']))
-        step(f'filt05: subtract_blue {float(o["subtract_blue"]):g}')
+        step(f'filt05: Blue % = {float(o["subtract_blue"]) * 100:g}')
         rgb = np.zeros((ny, nx, 3), np.float64)
         for name, col in zip(names, cols):
             lay = layer(name)
@@ -494,7 +494,7 @@ def compose_rgb(red, green, blue, **opts):
             step(f'{short(name)}: color by wavelength (filt05) = RGB({col[0]:.2f}, {col[1]:.2f}, {col[2]:.2f})')
         rgb /= np.max(rgb)
         rgb = blc_image(rgb)
-        step('filt05: normalize, then per-channel baseline correction (blc_image)')
+        step('filt05: normalize, then stretch each color channel between its lowest and highest value')
     else:
         rgb = np.zeros((ny, nx, 3), np.float32)
         for ich, names in enumerate([red, green, blue]):
@@ -512,7 +512,7 @@ def compose_rgb(red, green, blue, **opts):
     rgb[missing] = 0
     if o['grey'] and o['method'] == 'filt05':
         rgb = grey_zeros(rgb, replace=np.max)
-        step('grey_zeros: fill zero pixels of each channel with max of the other two')
+        step('grey missing: fill zero pixels of each channel with the max of the other two')
     elif o['grey']:
         # color_lab change: like grey_zeros(replace=np.max), but only where a channel has no data. The bot's grey_zeros
         # also fills pixels that are 0 because of noise (e.g. sky-subtracted MIRI after log, which sets negatives to 0),
