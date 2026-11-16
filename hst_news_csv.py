@@ -3,6 +3,7 @@
 Metadata comes from the CADC TAP service (fast; MAST was very slow in Nov 2026 and neither allows browser
 queries). Only products that exist on the public STScI S3 mirror (which the browser can read) are kept:
 pipeline drizzled products, <obs_id>_drc.fits (CTE corrected) or else <obs_id>_drz.fits, with a preview jpg.
+Products whose SCI extension is empty (NAXIS = 0, seen in some old drizzled files) are skipped.
 
 Files (docs/hst/):
     YYYY.csv      all images released in that year
@@ -26,6 +27,8 @@ import numpy as np
 import pandas as pd
 import requests
 from astropy.time import Time
+
+from coords_csv import sci_header
 
 TAP = 'https://ws.cadc-ccda.hia-iha.nrc-cnrc.gc.ca/argus/sync'
 S3 = 'https://stpubdata.s3.amazonaws.com/hst/public/'
@@ -86,14 +89,24 @@ def _isnum(x):
         return False
 
 
+_session = requests.Session()
+_session.mount('https://', requests.adapters.HTTPAdapter(pool_connections=32, pool_maxsize=32))
+
+
+def has_image(url):
+    """True if the SCI extension holds an image (some old drizzled products have an empty SCI, NAXIS = 0)."""
+    hdr = sci_header(_session, url)
+    return hdr is not None and hdr.get('NAXIS', 0) >= 2 and hdr.get('NAXIS1', 0) > 1 and hdr.get('NAXIS2', 0) > 1
+
+
 def s3_file(obs_id, instrument):
-    """Name of the drizzled product on S3 (drc preferred), or None."""
+    """Name of the drizzled product on S3 with an image in SCI (drc preferred for ACS/WFC and WFC3/UVIS), or None."""
     folder = f'{S3}{obs_id[:4]}/{obs_id}/'
     for kind in (['drc', 'drz'] if instrument.startswith(('ACS/WFC', 'WFC3/UVIS')) else ['drz', 'drc']):
         name = f'{obs_id}_{kind}.fits'
         for attempt in range(3):
             try:
-                if requests.head(folder + name, timeout=30).status_code == 200:
+                if requests.head(folder + name, timeout=30).status_code == 200 and has_image(folder + name):
                     return name
                 break
             except requests.RequestException:
