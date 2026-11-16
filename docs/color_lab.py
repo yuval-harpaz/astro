@@ -633,6 +633,14 @@ def compose(red, green, blue, opts=None):
     return rgba.tobytes(), ny, nx
 
 
+def brightness_contrast(rgb, brightness=0, contrast=0):
+    """Same as the page's Brightness / Contrast sliders (-100..100) on a uint8 image: contrast scales around
+    mid-grey by 3 ** (contrast / 100) (1/3 to 3), brightness adds up to +-128 levels."""
+    k = 3.0 ** (contrast / 100.0)
+    lut = np.clip(np.floor((np.arange(256) - 127.5) * k + 127.5 + brightness * 1.28 + 0.5), 0, 255).astype(np.uint8)
+    return lut[rgb]
+
+
 def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='', **opts):
     """Stand-alone: download, process and save a jpg. max_mp=0 means full resolution. opts: see compose_rgb."""
     reset_clock()
@@ -642,7 +650,11 @@ def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='',
         _add(name, data, text, f, fill)
     names = list(dict.fromkeys(list(red) + list(green) + list(blue)))
     size_report(names, opts.get('ref') if opts.get('ref') in names else names[0], max_mp)
+    brightness, contrast = float(opts.pop('brightness', 0) or 0), float(opts.pop('contrast', 0) or 0)
     rgb = compose_rgb(red, green, blue, **{**opts, 'fill_edges': True})  # nudges built into the reprojection
+    if brightness or contrast:
+        rgb = brightness_contrast(rgb, brightness, contrast)
+        step(f'brightness {brightness:+g}, contrast {contrast:+g}')
     from PIL import Image
     Image.fromarray(rgb[::-1]).save(out, quality=95)
     step(f'saved {out}')

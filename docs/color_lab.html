@@ -260,6 +260,8 @@
     #auto-opts { font-size: 12px; color: #aaa; margin-left: 4px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; }
     #auto-opts input { margin: 0 2px 0 0; }
     #chan-show { gap: 10px; font-size: 13px; color: #aaa; }
+    .bc-row input[type=range] { flex: 1; min-width: 80px; accent-color: var(--accent, #66fcf1); }
+    .bc-row .bc-val { width: 34px; text-align: right; font-size: 12px; color: #aaa; }
     #chan-show label.r { color: var(--r); } #chan-show label.g { color: var(--g); } #chan-show label.b { color: var(--b); }
     #fill-edges.due { background: var(--accent); color: var(--bg); }
     #nudge-pad { display: grid; grid-template-columns: repeat(3, 34px); gap: 3px; }
@@ -376,9 +378,9 @@ Chrome / Edge: choose a folder once and the files are written there directly. Ot
               <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). Once you choose the first image, the list switches to images of the same sky area from all telescopes, instruments and target names (<b>✕ Exit</b> returns to the previous list; <b>r</b> sets the radius).
                 Each object's images are sorted from long to short wavelength. <b>Selected</b> (next to <b>All</b>) shows only the checked images.</li>
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
-                One or more per color; without G, green is the average of R and B. <b>Auto RGB</b> next to an object name chooses for you: the reddest image as R, the bluest as B and the middle one as G, from images of the same pointing.</li>
+                One or more per color; without G, green is the average of R and B. <b>Auto RGB</b> next to an object name chooses for you: the reddest image as R, the bluest as B and the middle one as G, from images of the same pointing. In a list of images near a position, <b>Select all</b> checks every image, split into thirds by wavelength.</li>
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
-              <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer or a whole color (<b>Show</b> R / G / B under the nudge buttons hides colors to check the alignment).
+              <li>Tune on the right: colors (R / G / B as checked, rrgggbb or mnn splits by wavelength, filt05 colors by wavelength), stretch factor, limits, log or asinh, reference grid, brightness and contrast, or nudge a misaligned layer or a whole color (<b>Show</b> R / G / B under the nudge buttons hides colors to check the alignment).
                 These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus. <b>SIMBAD</b> labels known objects; type a filter such as NGC or G (galaxies).</li>
               <li><b>Save</b> as JPG or PNG, or download a <b>Local script</b> that does the same at full resolution on your computer. <b>Download FITS</b> saves the checked images themselves (header and science layer, full resolution, unprocessed).</li>
             </ol>
@@ -417,9 +419,13 @@ Chrome / Edge: choose a folder once and the files are written there directly. Ot
         <div id="panel">
           <div class="panel-head"><h4>Processing</h4><button id="reset-btn" class="ghost small" title="Return all processing controls and nudges to the defaults">Reset</button></div>
           <div class="row"><label class="lbl" for="method" title="R / G / B: each checked image goes to its color channel (several per channel are averaged). Without G, green is the mean of R and B.
-filt05: every chosen image gets a color from its wavelength on a color wheel (longest = red, shortest = blue / violet) and all are added. The R / G / B checks then only mean &quot;use this image&quot;.">Colors</label>
+filt05: every chosen image gets a color from its wavelength on a color wheel (longest = red, shortest = blue / violet) and all are added. The R / G / B checks then only mean &quot;use this image&quot;.
+rrgggbb: the chosen images are split by wavelength into three equal groups: the longest third is R, the shortest third is B, the rest is G (each group averaged). The checks only mean &quot;use this image&quot;.
+mnn: MIRI images are R; the NIRCam images are split, the shorter half is B and the longer half is G. Needs both MIRI and NIRCam images (otherwise rrgggbb is used).">Colors</label>
             <select id="method">
               <option value="rgb" selected>R / G / B as checked</option>
+              <option value="rrgggbb">rrgggbb: split into thirds by wavelength</option>
+              <option value="mnn">mnn: MIRI red, NIRCam green + blue</option>
               <option value="filt05">filt05: color by wavelength</option>
             </select>
           </div>
@@ -495,6 +501,15 @@ linear = only normalize between the limits.">Factor</label>
             <label class="g"><input type="checkbox" data-ch="1" checked>G</label>
             <label class="b"><input type="checkbox" data-ch="2" checked>B</label>
           </div>
+          <div class="row bc-row" title="Brightness of the composed image: adds or subtracts the same amount on all colors. Instant (no re-processing); included in Save and the Local script.">
+            <label class="lbl" for="bright">Brightness</label>
+            <input type="range" id="bright" min="-100" max="100" step="1" value="0"><span class="bc-val" id="bright-v">0</span>
+          </div>
+          <div class="row bc-row" title="Contrast of the composed image: spreads (or squeezes) the levels around mid-grey, up to 3x. Instant (no re-processing); included in Save and the Local script.">
+            <label class="lbl" for="contrast">Contrast</label>
+            <input type="range" id="contrast" min="-100" max="100" step="1" value="0"><span class="bc-val" id="contrast-v">0</span>
+            <button id="bc-reset" class="ghost small" title="Brightness and contrast back to 0">0</button>
+          </div>
         </div>
         <div id="log"></div>
       </div>
@@ -522,20 +537,33 @@ linear = only normalize between the limits.">Factor</label>
     let fillNext = false, filledKey = '';  // Fill edges: build nudges into the next compose's reprojection
     // R / G / B shown (view only); Save uses fullCanvas(), with all channels
     const chanOn = () => [...document.querySelectorAll('#chan-show input')].map(cb => cb.checked);
+    // Brightness / contrast (-100..100) as a lookup table on the composed image, as brightness_contrast() in color_lab.py
+    const bcVals = () => [parseFloat($('bright').value) || 0, parseFloat($('contrast').value) || 0];
+    function bcLut() {
+      const [b, c] = bcVals();
+      if (!b && !c) return null;
+      const k = Math.pow(3, c / 100), lut = new Uint8ClampedArray(256);
+      for (let v = 0; v < 256; v++) lut[v] = Math.floor((v - 127.5) * k + 127.5 + b * 1.28 + 0.5);
+      return lut;
+    }
+    function adjusted(on) {  // lastImage with brightness / contrast and hidden channels set to 0
+      const lut = bcLut();
+      if (!lut && on.every(Boolean)) return lastImage;
+      const px = new Uint8ClampedArray(lastImage.data);
+      for (let i = 0; i < px.length; i += 4) for (let ch = 0; ch < 3; ch++) px[i + ch] = on[ch] ? (lut ? lut[px[i + ch]] : px[i + ch]) : 0;
+      return new ImageData(px, lastImage.width, lastImage.height);
+    }
     function showChannels() {
       if (!lastImage) return;
-      const on = chanOn(), g = $('canvas').getContext('2d');
-      if (on.every(Boolean)) { g.putImageData(lastImage, 0, 0); return; }
-      const px = new Uint8ClampedArray(lastImage.data);
-      for (let i = 0; i < px.length; i += 4) for (let ch = 0; ch < 3; ch++) if (!on[ch]) px[i + ch] = 0;
-      g.putImageData(new ImageData(px, lastImage.width, lastImage.height), 0, 0);
+      $('canvas').getContext('2d').putImageData(adjusted(chanOn()), 0, 0);
     }
     function fullCanvas() {
       if (!lastImage || chanOn().every(Boolean)) return $('canvas');
       const out = document.createElement('canvas'); out.width = lastImage.width; out.height = lastImage.height;
-      out.getContext('2d').putImageData(lastImage, 0, 0);
+      out.getContext('2d').putImageData(adjusted([true, true, true]), 0, 0);
       return out;
     }
+    function showBC() { const [b, c] = bcVals(); $('bright-v').textContent = b; $('contrast-v').textContent = c; }
     // All / Selected cards
     let showSelOnly = false;
     function applyShowFilter() {
@@ -628,7 +656,32 @@ linear = only normalize between the limits.">Factor</label>
     const telOf = (f) => (itemOf[f] && itemOf[f].tel) || (f.startsWith('jw') ? 'JWST' : 'HST');
     const itemOf = {};  // fname -> CSV row
 
-    const selection = () => ({ red: [...chosen.r], green: [...chosen.g], blue: [...chosen.b] });
+    // rrgggbb / mnn: the checks only mean "use this image"; the colors are split by wavelength (as auto_plot)
+    const isMiri = (f) => /miri/i.test(f) || /miri/i.test((itemOf[f] || {}).instrument_name || '');
+    const isNircam = (f) => /nircam/i.test(f) || /nircam/i.test((itemOf[f] || {}).instrument_name || '');
+    function splitColors(method, names) {  // -> {red, green, blue, note}; each list long -> short wavelength
+      const s = [...new Set(names)].sort((a, b) => waveOf(a) - waveOf(b));  // short -> long
+      const out = (r, g, b, note = '') => ({ red: r.reverse(), green: g.reverse(), blue: b.reverse(), note });
+      if (method === 'mnn') {
+        const m = s.filter(isMiri), n = s.filter(f => !isMiri(f));
+        if (m.length && n.length && n.every(isNircam)) { const nb = Math.ceil(n.length / 2); return out(m, n.slice(nb), n.slice(0, nb)); }
+        return { ...splitColors('rrgggbb', names), note: 'mnn needs MIRI and NIRCam images only; using rrgggbb' };
+      }
+      const N = s.length;
+      if (N === 0) return out([], [], []);
+      if (N === 1) return out([s[0]], [s[0]], [s[0]], 'one image: grey');
+      if (N === 2) return out([s[1]], [], [s[0]]);
+      const n = Math.floor(N / 3);
+      return out(s.slice(N - n), s.slice(n, N - n), s.slice(0, n));
+    }
+    const splitMode = () => ['rrgggbb', 'mnn'].includes($('method').value);
+    const checked = () => [...new Set([...chosen.r, ...chosen.g, ...chosen.b])];
+    function selection() {
+      if (!splitMode()) return { red: [...chosen.r], green: [...chosen.g], blue: [...chosen.b] };
+      const { red, green, blue } = splitColors($('method').value, checked());
+      return { red, green, blue };
+    }
+    function syncChecks() { document.querySelectorAll('.card').forEach(card => card.querySelectorAll('input[data-c]').forEach(cb => cb.checked = chosen[cb.dataset.c].has(card.dataset.fname))); }
     const allChosen = (sel = selection()) => [...new Set([...sel.red, ...sel.green, ...sel.blue])];
 
     function updateChosen() {
@@ -642,10 +695,17 @@ linear = only normalize between the limits.">Factor</label>
         line.textContent = 'filt05: ' + (names.length ? names.map(filterOf).join(', ') : '—');
         el.appendChild(line);
       } else {
+        const sel = selection(), m = $('method').value;
+        if (splitMode()) {
+          const line = document.createElement('div');
+          const note = splitColors(m, checked()).note;
+          line.textContent = m + (note ? ` (${note})` : '') + ':';
+          el.appendChild(line);
+        }
         for (const c of ['r', 'g', 'b']) {
           const line = document.createElement('div');
           line.className = c;
-          const names = [...chosen[c]];
+          const names = sel[{ r: 'red', g: 'green', b: 'blue' }[c]];
           line.textContent = `${c.toUpperCase()}: ` + (names.length ? names.map(n => `${filterOf(n)} (${n.split('_')[0]})`).join(', ') : '—');
           el.appendChild(line);
         }
@@ -664,8 +724,9 @@ linear = only normalize between the limits.">Factor</label>
       const sel = $('nudge-layer'), prev = sel.value;
       sel.innerHTML = names.length ? '' : '<option value="">(no layers)</option>';
       if ($('method').value !== 'filt05' && names.length) {  // whole colors first, then single layers
-        for (const c of ['r', 'g', 'b']) if (chosen[c].size) {
-          const o = new Option(`${c.toUpperCase()}: all ${{ r: 'red', g: 'green', b: 'blue' }[c]} layers (${chosen[c].size})`, '@' + c);
+        const sel = selection();
+        for (const c of ['r', 'g', 'b']) if (sel[{ r: 'red', g: 'green', b: 'blue' }[c]].length) {
+          const o = new Option(`${c.toUpperCase()}: all ${{ r: 'red', g: 'green', b: 'blue' }[c]} layers (${sel[{ r: 'red', g: 'green', b: 'blue' }[c]].length})`, '@' + c);
           o.style.color = `var(--${c})`; sel.add(o);
         }
       }
@@ -730,6 +791,10 @@ linear = only normalize between the limits.">Factor</label>
       if (!allChosen(sel).length) return;
       if (busy) { pending = true; return; }
       lastName = outName(sel);
+      if (splitMode()) {
+        const nm = (l) => l.length ? l.map(filterOf).join('+') : '(R+B)/2';
+        logLine(`---- ${$('method').value}${splitColors($('method').value, checked()).note ? ' (' + splitColors($('method').value, checked()).note + ')' : ''}: R = ${nm(sel.red)}, G = ${nm(sel.green)}, B = ${nm(sel.blue)}`);
+      }
       lastSel = sel;
       lastOpts = options();
       const o = options();
@@ -810,7 +875,7 @@ linear = only normalize between the limits.">Factor</label>
     }, { passive: false });
     wrap.addEventListener('dblclick', (e) => { if (hasImage && !e.target.closest('#viewbar')) fitView(); });
     wrap.addEventListener('pointerdown', (e) => {
-      if (!hasImage || e.button !== 0 || e.target.closest('#viewbar')) return;
+      if (!hasImage || e.button !== 0 || e.target.closest('#viewbar, #spec-scale')) return;
       wrap.setPointerCapture(e.pointerId);
       if (areaMode || e.shiftKey) drag = { kind: 'area', p0: toImage(e) };
       else { drag = { kind: 'pan', x: e.clientX, y: e.clientY, tx: view.tx, ty: view.ty }; wrap.classList.add('panning'); }
@@ -1029,6 +1094,8 @@ linear = only normalize between the limits.">Factor</label>
       drawSpectrum();
     };
     document.querySelectorAll('#chan-show input').forEach(cb => cb.onchange = showChannels);
+    for (const id of ['bright', 'contrast']) $(id).addEventListener('input', () => { showBC(); showChannels(); });
+    $('bc-reset').onclick = () => { $('bright').value = 0; $('contrast').value = 0; showBC(); showChannels(); };
     const setShowSel = (v) => { showSelOnly = v; $('show-all').classList.toggle('on', !v); $('show-sel').classList.toggle('on', v); applyShowFilter(); };
     $('show-all').onclick = () => setShowSel(false);
     $('show-sel').onclick = () => setShowSel(true);
@@ -1076,6 +1143,7 @@ linear = only normalize between the limits.">Factor</label>
       for (const id of ['lim-lo', 'lim-hi', 'blue-shift']) if ($(id).value !== $(id).defaultValue) { $(id).value = $(id).defaultValue; changed = true; }
       for (const id of ['fill', 'grey']) if ($(id).checked !== $(id).defaultChecked) { $(id).checked = $(id).defaultChecked; changed = true; }
       $('nudge-n').value = $('nudge-n').defaultValue;
+      if (bcVals().some(Boolean)) { $('bc-reset').onclick(); }
       showShifts(); showBlue(); updateChosen();
       if (changed && hasImage) compose();
     };
@@ -1133,7 +1201,7 @@ linear = only normalize between the limits.">Factor</label>
         if (!lastPixscale) { logLine('Compose first, then nudge.'); return; }
         const [dx, dy] = btn.dataset.d.split(',').map(Number);
         const n = Math.max(1, parseInt($('nudge-n').value) || 1);
-        for (const f of name.startsWith('@') ? [...chosen[name[1]]] : [name]) {  // a whole color moves all its layers
+        for (const f of name.startsWith('@') ? selection()[{ r: 'red', g: 'green', b: 'blue' }[name[1]]] : [name]) {  // a whole color moves all its layers
           const v = shifts[f] || [0, 0];
           shifts[f] = (dx === 0 && dy === 0) ? [0, 0] : [v[0] + dx * n * lastPixscale, v[1] + dy * n * lastPixscale];
         }
@@ -1319,7 +1387,8 @@ BLUE = ${pyList(sel.blue)}
 MAX_MP = 0
 FILL_HOLES = ${$('fill').checked ? 'True' : 'False'}
 OPTIONS = dict(
-    method=${pyStr(o.method)},  # 'rgb' or 'filt05'
+    method=${pyStr(o.method)},  # 'rgb', 'rrgggbb' or 'mnn' (as RED / GREEN / BLUE above), or 'filt05'
+    brightness=${bcVals()[0]}, contrast=${bcVals()[1]},  # -100..100, on the final image
     func=${pyStr(o.func)},  # 'none', 'log' or 'asinh'
     factor=${o.factor === null ? 'None' : o.factor},  # level_adjust factor, None = linear
     lims=[${o.lims[0]}, ${o.lims[1]}],  # level_adjust limits (quantiles)
@@ -1565,7 +1634,7 @@ if __name__ == '__main__':
         }
         $('clear-btn').onclick();
         red.forEach(f => chosen.r.add(f)); green.forEach(f => chosen.g.add(f)); blue.forEach(f => chosen.b.add(f));
-        document.querySelectorAll('.card').forEach(card => card.querySelectorAll('input[data-c]').forEach(cb => cb.checked = chosen[cb.dataset.c].has(card.dataset.fname)));
+        syncChecks();
         updateChosen();
         const c0 = centers[files.indexOf(g[0])];
         const names = [...new Set(g.map(f => itemOf[f].target_name))], insts = [...new Set(g.map(f => itemOf[f].inst))];
@@ -1584,7 +1653,25 @@ if __name__ == '__main__':
       btn.title = "Choose automatically: reddest as R, bluest as B and the closest to the middle wavelength as G, from images of this target that share a pointing, from any checked instrument.\nWeekly list: this week's releases (add previous / nearby above the list).\nSearch: all releases, plus other target names at the same pointing.\nNearby list: everything listed.\nPress again for another pointing. Does not compose.";
       btn.onclick = () => autoRGB(tel, target, btn).catch(e => { btn.disabled = false; btn.textContent = 'Auto RGB'; logLine('Auto RGB error: ' + e.message); });
       head.appendChild(btn);
+      if (isSearchMode && searchPos) {  // a list filtered by coordinates: choose all of it
+        const all = document.createElement('button');
+        all.className = 'ghost'; all.textContent = 'Select all';
+        all.title = 'Check every image shown in this list, split by wavelength: the longest third as R, the middle as G, the shortest third as B. Does not compose.';
+        all.onclick = selectAllShown;
+        head.appendChild(all);
+      }
       return head;
+    }
+
+    function selectAllShown() {
+      const files = [...new Set([...document.querySelectorAll('#cards .card:not(.hidden-sel)')].map(c => c.dataset.fname))].filter(f => waveOf(f) > 0);
+      if (!files.length) { logLine('Select all: no images with a known wavelength in this list'); return; }
+      if (files.length > 20 && !confirm(`Select all ${files.length} images? Each one is downloaded when you press Compose (10-30 s each the first time).`)) return;
+      const { red, green, blue } = splitColors('rrgggbb', files);
+      $('clear-btn').onclick();
+      red.forEach(f => chosen.r.add(f)); green.forEach(f => chosen.g.add(f)); blue.forEach(f => chosen.b.add(f));
+      syncChecks(); updateChosen();
+      logLine(`Select all: ${files.length} images, R = ${red.length}, G = ${green.length}, B = ${blue.length} (split by wavelength). Press Compose when ready.`);
     }
 
     let viewSeq = 0;
