@@ -81,8 +81,12 @@ def query_gc():
         print(f'read {len(table)} rows from {CACHE}')
     else:
         print('querying MAST for target_name GC_*')
-        table = Observations.query_criteria(obs_collection='JWST', dataproduct_type='image',
-                                            target_name='GC_*').to_pandas()
+        try:
+            table = Observations.query_criteria(obs_collection='JWST', dataproduct_type='image',
+                                                target_name='GC_*').to_pandas()
+        except Exception as e:  # MAST is often down or slow; try again next run
+            print(f'MAST query failed ({e}), nothing to update')
+            sys.exit(0)
         os.makedirs('data', exist_ok=True)
         table.to_pickle(CACHE)
         print(f'{len(table)} rows, cached in {CACHE}')

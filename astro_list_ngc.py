@@ -8,6 +8,7 @@ from mastodon_bot import connect_bot
 from pyongc import ongc
 from skimage.transform import resize
 import re
+import sys
 ##
 
 def list_ngc():
@@ -19,7 +20,11 @@ def list_ngc():
     end_time = Time.now().mjd
     start_time = end_time - 7
     # search images by observation date and by release date
-    table = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
+    try:
+        table = Observations.query_criteria(t_obs_release=[start_time, end_time], **args)
+    except Exception as e:  # MAST is often down or slow; try again next run
+        print(f'MAST query failed ({e}), nothing to update')
+        sys.exit(0)
     isnotnirspec = np.array(['NIRSPEC' not in x.upper() for x in table['instrument_name']])
     isnotniriss = np.array(['NIRISS' not in x.upper() for x in table['instrument_name']])
     table = table[isnotnirspec & isnotniriss]
