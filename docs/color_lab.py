@@ -123,14 +123,17 @@ def level_adjust(fits_arr, negative='consider', lims=[0.03, 0.98], factor=4.0, i
     else:
         minval = np.quantile(hist_dat, lims[0])
         maxval = np.quantile(hist_dat, lims[1])
-    # color_lab change: the original's other branch (lims != [0.03, 0.98]) hard-clipped to [0, 1] before to1(),
-    # capping highlights at expand_highs(0.75) = 0.667 (170/255). All lims now take the bot's default path.
+    # color_lab change: pixels below the lower limit are left out of the histogram equalization and stay dark
+    # (the original's ignore0 behavior), so the lower limit works for every factor. The original also hard-clipped
+    # non-default limits to [0, 1] before to1(), capping highlights at expand_highs(0.75) = 0.667 (170/255);
+    # here the highs are clipped only at the 99.8% quantile, as in the original's default path.
     rescaled = (fits_arr - minval) / (maxval - minval)
     if sample is None:
-        rescaled_no_outliers = np.maximum(rescaled, np.quantile(rescaled, 0.002))
+        rescaled_no_outliers = np.maximum(rescaled, 0.0)
         rescaled_no_outliers = np.minimum(rescaled_no_outliers, np.quantile(rescaled_no_outliers, 1.0 - 0.002))
     else:  # outside the sampled range saturates (to1 below still uses the unclipped values)
         rescaled_no_outliers = np.clip(rescaled, 0.0, 1.0)
+    ignore0 = True
     if factor is None:
         adjusted = rescaled
     else:
@@ -459,8 +462,6 @@ def area_mask(area, shape):
 def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98), sample=None):
     t = time.time()
     lims = [float(lims[0]), float(lims[1])]
-    if lims == [0.03, 0.98]:
-        lims = [0.03, 0.98]  # exact bot values select level_adjust's backward-compatible path
     if func == 'log':
         lay = log1(lay)
     elif func == 'asinh':
