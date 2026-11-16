@@ -339,6 +339,8 @@
           </select>
         </span>
         <button id="script-btn" disabled title="Download a Python script that does the same processing locally (full resolution by default) and saves a jpg">Local script</button>
+        <button id="fits-btn" disabled title="Download the checked images as FITS files: the primary header and the science layer (SCI) only, at full resolution and unprocessed. Files are named like the originals with _sci added.
+Chrome / Edge: choose a folder once and the files are written there directly. Other browsers: one download per file.">Download FITS</button>
         <div id="chosen"></div>
         <div id="state">
           <span id="status">Loading Python…</span>
@@ -377,7 +379,7 @@
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
               <li>Tune on the right: stretch factor, limits, log or asinh, filt05 colors, reference grid, or nudge a misaligned layer or a whole color (<b>Show</b> R / G / B under the nudge buttons hides colors to check the alignment).
                 These re-compose in about a second. Zoom with the mouse wheel or + / −, drag to pan; <b>▭ Limits from area</b> (or Shift+drag) takes the limits from a selected area, e.g. a galaxy nucleus. <b>SIMBAD</b> labels known objects; type a filter such as NGC or G (galaxies).</li>
-              <li><b>Save</b> as JPG or PNG, or download a <b>Local script</b> that does the same at full resolution on your computer.</li>
+              <li><b>Save</b> as JPG or PNG, or download a <b>Local script</b> that does the same at full resolution on your computer. <b>Download FITS</b> saves the checked images themselves (header and science layer, full resolution, unprocessed).</li>
             </ol>
             <p>Everything runs in your browser (Python via Pyodide); nothing is uploaded. Progress is printed in the log at the bottom right.</p>
           </div>
@@ -504,6 +506,7 @@ linear = only normalize between the limits.">Factor</label>
     let lastPixscale = null;   // arcsec per pixel of the shown image
     let layerInfo = {};        // fname -> [full nx, full ny, block factor, full-res arcsec/pixel]
     let lastSel = null, lastOpts = null, lastImage = null;
+    let fitsBusy = false;  // Download FITS running
     // R / G / B shown (view only); Save uses fullCanvas(), with all channels
     const chanOn = () => [...document.querySelectorAll('#chan-show input')].map(cb => cb.checked);
     function showChannels() {
@@ -637,6 +640,7 @@ linear = only normalize between the limits.">Factor</label>
       const names = allChosen();
       $('compose-btn').disabled = busy || names.length === 0;
       $('script-btn').disabled = names.length === 0;
+      $('fits-btn').disabled = names.length === 0 || fitsBusy;
       document.querySelectorAll('.card').forEach(card => {
         const f = card.dataset.fname;
         card.classList.toggle('sel', names.includes(f));
@@ -1151,6 +1155,100 @@ linear = only normalize between the limits.">Factor</label>
     // ---------- local script ----------
     const pyStr = (s) => "'" + String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n') + "'";
     const pyList = (l) => '[' + l.map(pyStr).join(', ') + ']';
+
+    // ---------- Download FITS: HDU 0 (primary header) + HDU 1 (SCI), the first two parts of the file ----------
+    // One Range request from byte 0 to the end of the SCI data gives a valid FITS file; NEXTEND is set to 1.
+    async function fitsLayout(url) {  // -> {primary: Uint8Array (header of HDU 0, with its data if any), end, extname, sciBytes}
+      let buf = new Uint8Array(0);
+      const need = async (n) => {  // make sure the first n bytes are read
+        while (buf.length < n) {
+          const r = await fetch(url, { headers: { Range: `bytes=${buf.length}-${buf.length + 2880 * 16 - 1}` } });
+          if (r.status !== 206) throw new Error(`HTTP ${r.status}`);
+          const b = new Uint8Array(await r.arrayBuffer());
+          if (!b.length) throw new Error('unexpected end of file');
+          const nb = new Uint8Array(buf.length + b.length); nb.set(buf); nb.set(b, buf.length); buf = nb;
+        }
+      };
+      const header = async (start) => {  // -> {cards: {KEY: value}, len (padded), endCard}
+        const cards = {};
+        for (let i = start; ; i += 80) {
+          await need(i + 80);
+          const card = String.fromCharCode(...buf.subarray(i, i + 80)), key = card.slice(0, 8).trim();
+          if (key === 'END') return { cards, len: Math.ceil((i + 80 - start) / 2880) * 2880 };
+          if (card[8] === '=') cards[key] = card.slice(10).split('/')[0].trim().replace(/^'|'$/g, '').trim();
+        }
+      };
+      const dataLen = (c) => {
+        const n = parseInt(c.NAXIS || '0');
+        if (!n) return 0;
+        let len = Math.abs(parseInt(c.BITPIX)) / 8;
+        for (let k = 1; k <= n; k++) len *= parseInt(c['NAXIS' + k]);
+        len = (len + parseInt(c.PCOUNT || '0')) * parseInt(c.GCOUNT || '1');
+        return Math.ceil(len / 2880) * 2880;
+      };
+      const h0 = await header(0), p0 = h0.len + dataLen(h0.cards);
+      const h1 = await header(p0), sci = dataLen(h1.cards);
+      await need(h0.len);
+      const primary = buf.slice(0, h0.len);
+      for (let i = 0; i < primary.length; i += 80) {  // NEXTEND = 1 (only HDU 1 follows), same card length
+        if (String.fromCharCode(...primary.subarray(i, i + 8)).trim() === 'NEXTEND') {
+          const card = String.fromCharCode(...primary.subarray(i, i + 80));
+          const fixed = (card.slice(0, 10) + '1'.padStart(20) + card.slice(30)).slice(0, 80);
+          for (let k = 0; k < 80; k++) primary[i + k] = fixed.charCodeAt(k);
+        }
+      }
+      return { primary, end: p0 + h1.len + sci, extname: h1.cards.EXTNAME || '?', sciBytes: sci };
+    }
+    const mb = (n) => n >= 1e9 ? (n / 1e9).toFixed(2) + ' GB' : Math.round(n / 1e6) + ' MB';
+    $('fits-btn').onclick = async () => {
+      const names = allChosen();
+      if (!names.length || fitsBusy) return;
+      fitsBusy = true; $('fits-btn').disabled = true;
+      const status = (t) => { if (!busy) $('status').textContent = t; };
+      try {
+        status('Reading FITS headers…');
+        const info = [];
+        for (const f of names) {
+          try { info.push({ f, ...(await fitsLayout(s3urlOf(f))) }); }
+          catch (e) { logLine(`Download FITS: ${f}: ${e.message}`); }
+        }
+        if (!info.length) { status('Download failed (see log)'); return; }
+        info.forEach(x => { if (x.extname !== 'SCI') logLine(`Download FITS: ${x.f}: HDU 1 is ${x.extname}, not SCI`); });
+        const total = info.reduce((a, x) => a + x.end, 0);
+        logLine(`Download FITS: ${info.length} file${info.length > 1 ? 's' : ''}, ${mb(total)} (${info.map(x => `${filterOf(x.f)} ${mb(x.end)}`).join(', ')})`);
+        if (total > 1e9 && !confirm(`Download ${info.length} FITS file(s), ${mb(total)} in total?`)) { status('Download cancelled'); return; }
+        let dir = null;
+        if (window.showDirectoryPicker) {
+          try { dir = await window.showDirectoryPicker({ id: 'colorlab-fits', mode: 'readwrite' }); }
+          catch (e) { if (e.name === 'AbortError') { status('Download cancelled'); return; } dir = null; }
+        }
+        let done = 0;
+        for (const [k, x] of info.entries()) {
+          const name = x.f.replace(/\.fits$/, '') + '_sci.fits', tag = `${filterOf(x.f)} (${k + 1}/${info.length})`;
+          try {
+            const r = await fetch(s3urlOf(x.f), { headers: { Range: `bytes=${x.primary.length}-${x.end - 1}` } });
+            if (r.status !== 206) throw new Error(`HTTP ${r.status}`);
+            let got = x.primary.length;
+            const progress = new TransformStream({ transform(chunk, ctl) {
+              got += chunk.length; status(`Downloading ${tag} ${Math.round(100 * got / x.end)}%`); ctl.enqueue(chunk);
+            } });
+            if (dir) {  // straight to disk
+              const w = await (await dir.getFileHandle(name, { create: true })).createWritable();
+              await w.write(x.primary);
+              await r.body.pipeThrough(progress).pipeTo(w);
+            } else {  // in memory, then one download
+              const parts = [x.primary], reader = r.body.pipeThrough(progress).getReader();
+              for (; ;) { const { done: d, value } = await reader.read(); if (d) break; parts.push(value); }
+              const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob(parts, { type: 'application/fits' })), download: name });
+              a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+            }
+            done++;
+            logLine(`Download FITS: ${name} (${mb(x.end)})${dir ? ' saved to ' + dir.name : ''}`);
+          } catch (e) { logLine(`Download FITS: ${name}: ${e.message}`); }
+        }
+        status(done === info.length ? `Downloaded ${done} FITS file${done > 1 ? 's' : ''}` : `Downloaded ${done} of ${info.length} (see log)`);
+      } finally { fitsBusy = false; $('fits-btn').disabled = allChosen().length === 0; }
+    };
 
     $('script-btn').onclick = async () => {
       const sel = selection();
