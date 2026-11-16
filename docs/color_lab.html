@@ -504,11 +504,12 @@ linear = only normalize between the limits.">Factor</label>
           <div class="row bc-row" title="Brightness of the composed image: adds or subtracts the same amount on all colors. Instant (no re-processing); included in Save and the Local script.">
             <label class="lbl" for="bright">Brightness</label>
             <input type="range" id="bright" min="-100" max="100" step="1" value="0"><span class="bc-val" id="bright-v">0</span>
+            <button class="ghost small bc-reset" data-for="bright" title="Brightness back to 0">↺</button>
           </div>
           <div class="row bc-row" title="Contrast of the composed image: spreads (or squeezes) the levels around mid-grey, up to 3x. Instant (no re-processing); included in Save and the Local script.">
             <label class="lbl" for="contrast">Contrast</label>
             <input type="range" id="contrast" min="-100" max="100" step="1" value="0"><span class="bc-val" id="contrast-v">0</span>
-            <button id="bc-reset" class="ghost small" title="Brightness and contrast back to 0">0</button>
+            <button class="ghost small bc-reset" data-for="contrast" title="Contrast back to 0">↺</button>
           </div>
         </div>
         <div id="log"></div>
@@ -724,9 +725,9 @@ linear = only normalize between the limits.">Factor</label>
       const sel = $('nudge-layer'), prev = sel.value;
       sel.innerHTML = names.length ? '' : '<option value="">(no layers)</option>';
       if ($('method').value !== 'filt05' && names.length) {  // whole colors first, then single layers
-        const sel = selection();
-        for (const c of ['r', 'g', 'b']) if (sel[{ r: 'red', g: 'green', b: 'blue' }[c]].length) {
-          const o = new Option(`${c.toUpperCase()}: all ${{ r: 'red', g: 'green', b: 'blue' }[c]} layers (${sel[{ r: 'red', g: 'green', b: 'blue' }[c]].length})`, '@' + c);
+        const cur = selection();
+        for (const c of ['r', 'g', 'b']) if (cur[{ r: 'red', g: 'green', b: 'blue' }[c]].length) {
+          const o = new Option(`${c.toUpperCase()}: all ${{ r: 'red', g: 'green', b: 'blue' }[c]} layers (${cur[{ r: 'red', g: 'green', b: 'blue' }[c]].length})`, '@' + c);
           o.style.color = `var(--${c})`; sel.add(o);
         }
       }
@@ -1095,7 +1096,8 @@ linear = only normalize between the limits.">Factor</label>
     };
     document.querySelectorAll('#chan-show input').forEach(cb => cb.onchange = showChannels);
     for (const id of ['bright', 'contrast']) $(id).addEventListener('input', () => { showBC(); showChannels(); });
-    $('bc-reset').onclick = () => { $('bright').value = 0; $('contrast').value = 0; showBC(); showChannels(); };
+    const resetBC = (ids = ['bright', 'contrast']) => { ids.forEach(id => $(id).value = 0); showBC(); showChannels(); };
+    document.querySelectorAll('.bc-reset').forEach(btn => btn.onclick = () => resetBC([btn.dataset.for]));
     const setShowSel = (v) => { showSelOnly = v; $('show-all').classList.toggle('on', !v); $('show-sel').classList.toggle('on', v); applyShowFilter(); };
     $('show-all').onclick = () => setShowSel(false);
     $('show-sel').onclick = () => setShowSel(true);
@@ -1143,7 +1145,7 @@ linear = only normalize between the limits.">Factor</label>
       for (const id of ['lim-lo', 'lim-hi', 'blue-shift']) if ($(id).value !== $(id).defaultValue) { $(id).value = $(id).defaultValue; changed = true; }
       for (const id of ['fill', 'grey']) if ($(id).checked !== $(id).defaultChecked) { $(id).checked = $(id).defaultChecked; changed = true; }
       $('nudge-n').value = $('nudge-n').defaultValue;
-      if (bcVals().some(Boolean)) { $('bc-reset').onclick(); }
+      if (bcVals().some(Boolean)) resetBC();
       showShifts(); showBlue(); updateChosen();
       if (changed && hasImage) compose();
     };
