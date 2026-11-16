@@ -261,6 +261,7 @@
     #auto-opts input { margin: 0 2px 0 0; }
     #chan-show { gap: 10px; font-size: 13px; color: #aaa; }
     #chan-show label.r { color: var(--r); } #chan-show label.g { color: var(--g); } #chan-show label.b { color: var(--b); }
+    #fill-edges.due { background: var(--accent); color: var(--bg); }
     #nudge-pad { display: grid; grid-template-columns: repeat(3, 34px); gap: 3px; }
     #nudge-pad button { padding: 4px 0; }
     #shifts { font-size: 11px; color: #aaa; }
@@ -432,6 +433,16 @@ filt05: every chosen image gets a color from its wavelength on a color wheel (lo
           <div class="row"><label class="lbl" for="ref" title="The layer whose pixel grid all others are reprojected to. It sets the field of view, orientation and resolution of the result.">Reference</label>
             <select id="ref"></select>
           </div>
+          <div class="row"><label class="lbl" for="align" title="How layers are matched to the reference.
+sky: by sky coordinates, the usual choice.
+pixels: by image centers and pixel size, ignoring sky coordinates. For moving targets (comets, asteroids, planets), whose images are aligned on the stars so the target sits elsewhere in each image.
+auto: pixels when the files mark a moving target, else sky.">Align</label>
+            <select id="align">
+              <option value="auto" selected>auto</option>
+              <option value="sky">sky</option>
+              <option value="pixels">pixels (moving target)</option>
+            </select>
+          </div>
           <div id="ref-hint"></div>
           <div class="row"><label class="lbl" for="func" title="Applied to each layer before the stretch.
 none: the default.
@@ -468,6 +479,7 @@ linear = only normalize between the limits.">Factor</label>
             <select id="nudge-layer"></select>
             <input type="number" id="nudge-n" value="1" min="1" max="200" step="1" title="pixels per click">
             <span class="hint">px</span>
+            <button id="fill-edges" class="ghost small" title="Nudges are fast: they move the composed layer, so edges that move into view stay empty. Fill edges reprojects the nudged layers with their nudges built in, so those edges show the layer's own data (where it has any). Takes a moment per layer.">↻ Fill edges</button>
           </div>
           <div class="row">
             <div id="nudge-pad">
@@ -507,6 +519,7 @@ linear = only normalize between the limits.">Factor</label>
     let layerInfo = {};        // fname -> [full nx, full ny, block factor, full-res arcsec/pixel]
     let lastSel = null, lastOpts = null, lastImage = null;
     let fitsBusy = false;  // Download FITS running
+    let fillNext = false, filledKey = '';  // Fill edges: build nudges into the next compose's reprojection
     // R / G / B shown (view only); Save uses fullCanvas(), with all channels
     const chanOn = () => [...document.querySelectorAll('#chan-show input')].map(cb => cb.checked);
     function showChannels() {
@@ -708,6 +721,7 @@ linear = only normalize between the limits.">Factor</label>
         ref: $('ref').value || null,
         area: areaFits(),
         filters: Object.fromEntries(allChosen().map(f => [f, [filterOf(f), waveOf(f)]])),
+        align: $('align').value,
       };
     }
 
@@ -718,15 +732,17 @@ linear = only normalize between the limits.">Factor</label>
       lastName = outName(sel);
       lastSel = sel;
       lastOpts = options();
+      const o = options();
+      if (fillNext) { o.fill_edges = true; fillNext = false; filledKey = shiftsKey(); }
       setBusy(true, 'Working…');
-      worker.postMessage({ cmd: 'compose', ...sel, maxMP: parseFloat($('maxmp').value), fill: $('fill').checked, opts: options() });
+      worker.postMessage({ cmd: 'compose', ...sel, maxMP: parseFloat($('maxmp').value), fill: $('fill').checked, opts: o });
     }
     $('compose-btn').onclick = compose;
 
     // processing controls re-compose right away when an image is shown (layers are cached, so it is fast)
     const showBlue = () => { $('blue-row').style.display = $('method').value === 'filt05' ? '' : 'none'; };
     $('method').addEventListener('change', showBlue);
-    for (const id of ['method', 'ref', 'func', 'factor', 'lim-lo', 'lim-hi', 'blue-shift', 'fill', 'grey', 'maxmp']) {
+    for (const id of ['method', 'ref', 'align', 'func', 'factor', 'lim-lo', 'lim-hi', 'blue-shift', 'fill', 'grey', 'maxmp']) {
       $(id).addEventListener('change', () => { updateChosen(); if (hasImage) compose(); });
     }
 
@@ -1053,7 +1069,7 @@ linear = only normalize between the limits.">Factor</label>
       let changed = Object.keys(shifts).length > 0 || !!area;
       clearArea();
       for (const k of Object.keys(shifts)) delete shifts[k];
-      for (const id of ['method', 'ref', 'func', 'factor']) {
+      for (const id of ['method', 'ref', 'align', 'func', 'factor']) {
         const sel = $(id), def = [...sel.options].find(o => o.defaultSelected) || sel.options[0];
         if (sel.value !== def.value) { sel.value = def.value; changed = true; }
       }
@@ -1098,7 +1114,17 @@ linear = only normalize between the limits.">Factor</label>
         .map(([k, v]) => `${filterOf(k)}: ${v[0] >= 0 ? '→' : '←'}${Math.abs(px(v[0]))} ${v[1] >= 0 ? '↑' : '↓'}${Math.abs(px(v[1]))} px` +
           ` <span class="hint">(${v[0].toFixed(2)}″, ${v[1].toFixed(2)}″)</span>`);
       $('shifts').innerHTML = parts.length ? parts.join('<br>') : 'no nudges';
+      $('fill-edges').classList.toggle('due', parts.length > 0 && shiftsKey() !== filledKey);
     }
+    // Fill edges: the next compose builds the nudges into the reprojection; highlighted while nudges changed since
+    function shiftsKey() {
+      const nz = Object.entries(shifts).filter(([, v]) => v[0] || v[1]).sort();
+      return nz.length ? JSON.stringify([nz, effectiveRef(), $('align').value, $('maxmp').value, $('fill').checked]) : '';
+    }
+    $('fill-edges').onclick = () => {
+      if (!hasImage) { logLine('Compose first, then nudge and fill the edges.'); return; }
+      fillNext = true; compose(); showShifts();
+    };
 
     document.querySelectorAll('#nudge-pad button').forEach(btn => {
       btn.onclick = () => {
@@ -1301,6 +1327,7 @@ OPTIONS = dict(
     grey=${o.grey ? 'True' : 'False'},  # grey_zeros
     ref=${o.ref ? pyStr(o.ref) : 'None'},  # reference grid (reproject_to); None = first listed. A short-wavelength reference makes a bigger image
     shifts=${shiftsPy},  # nudges [right, up] in arcsec
+    align=${pyStr(o.align || 'auto')},  # 'auto', 'sky' or 'pixels' (moving targets: match layers by pixels, not sky)
     area=${o.area ? '[' + o.area.map(v => +v.toFixed(5)).join(', ') + ']' : 'None'},  # [x0, x1, y0, y1] fractions of the reference image (y up) to take the limits from; None = whole image
     filters={${Object.entries(o.filters).map(([k, v]) => `${pyStr(k)}: [${pyStr(v[0])}, ${v[1]}]`).join(', ')}},  # file: [filter, wavelength nm]
 )
@@ -1324,6 +1351,21 @@ if __name__ == '__main__':
     // The list around one image: all telescopes and instruments, any target name, any date (Exit restores the previous list).
     // Called by Show nearby, and automatically when the first image is checked by hand in a name / date list
     // (Auto RGB keeps the list, so pressing it again cycles through the pointings of the same pool).
+    const movingCache = {};
+    async function isMovingTarget(fname) {  // HST MTFLAG = T or JWST TARGTYPE = MOVING in the primary header
+      if (fname in movingCache) return movingCache[fname];
+      try {
+        const r = await fetch(s3urlOf(fname), { headers: { Range: 'bytes=0-46079' } });
+        const t = new TextDecoder('ascii').decode(await r.arrayBuffer());
+        let mv = false;
+        for (let i = 0; i + 80 <= t.length; i += 80) {
+          const k = t.slice(i, i + 8).trim(), v = t.slice(i + 10, i + 80).split('/')[0].replace(/'/g, '').trim().toUpperCase();
+          if (k === 'END') break;
+          if ((k === 'MTFLAG' && (v === 'T' || v === 'TRUE')) || (k === 'TARGTYPE' && v === 'MOVING')) mv = true;
+        }
+        return (movingCache[fname] = mv);
+      } catch (e) { return false; }
+    }
     async function showNearby(item, fname) {
       let ra = parseFloat(item.s_ra), dec = parseFloat(item.s_dec);
       if (!isFinite(ra)) { const c = await readCrval(fname).catch(() => null); if (c) [ra, dec] = c; }  // rows not back-filled yet
@@ -1403,7 +1445,10 @@ if __name__ == '__main__':
             if (a === 'new') { $('clear-btn').onclick(); cb.checked = true; }
           }
           chosen[c].add(fname); updateChosen();
-          if (allChosen().length === 1 && !(isSearchMode && searchPos)) showNearby(item, fname);  // first image: list its sky area
+          if (allChosen().length === 1 && !(isSearchMode && searchPos)) {  // first image: list its sky area
+            if (await isMovingTarget(fname)) logLine(`${item.target_name} is a moving target: the list is kept (images near its sky position would show other objects)`);
+            else if (allChosen().length === 1) showNearby(item, fname);
+          }
         };
       });
       return card;

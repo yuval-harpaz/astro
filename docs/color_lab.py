@@ -27,7 +27,9 @@ warnings.simplefilter('ignore', FITSFixedWarning)
 S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/'
 S3_HST = 'https://stpubdata.s3.amazonaws.com/hst/public/'
 RAW = {}     # name -> (data float32 2D, WCS, block factor, (full nx, full ny)), downsampled and hole-filled
-REPROJ = {}  # (name, ref) -> float32 2D on ref grid
+REPROJ = {}  # (name, ref, align, (dx, dy)) -> float32 2D on ref grid, with a nudge of (dx, dy) ref pixels built in
+MOVING = {}  # name -> True for moving targets (HST MTFLAG = T, JWST TARGTYPE = MOVING): align by pixels, not by sky
+BAKED = {}   # (name, ref, align, ref shape) -> nudge (dx, dy) in ref pixels built into the reprojection ("Fill edges")
 _T0 = [time.time()]
 
 
@@ -289,6 +291,16 @@ def _read_header(url, offset):
             raise IOError('END card not found')
 
 
+def is_moving(primary):
+    """Moving target (comet, asteroid, planet): HST MTFLAG = T, JWST TARGTYPE = MOVING. primary: dict-like header."""
+    mt = primary.get('MTFLAG', '')
+    return mt is True or str(mt).strip().upper() in ('T', 'TRUE') or str(primary.get('TARGTYPE', '')).strip().upper() == 'MOVING'
+
+
+def set_moving(name, flag):
+    MOVING[name] = bool(flag)
+
+
 def block_factor(nx, ny, max_mp):
     return 1 if not max_mp else max(1, int(np.ceil(np.sqrt(nx * ny / (max_mp * 1e6)))))
 
@@ -299,6 +311,8 @@ def read_sci(fname, max_mp):
     off = 0
     for ext in range(6):
         text, hdr, start, size = _read_header(url, off)
+        if ext == 0:
+            MOVING[fname] = is_moving(hdr)
         if ext > 0 and hdr.get('EXTNAME', '').strip() == 'SCI':
             break
         off = start + int(np.ceil(size / 2880)) * 2880
@@ -365,27 +379,39 @@ def has_layer(name):
     return name in RAW
 
 
-def reproject_to(name, ref, chunk=256):
-    key = (name, ref)
+def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256):
+    """Layer `name` on the grid of `ref`, moved by shift = (dx, dy) ref pixels (right, up), so a nudge brings in the
+    layer's own data instead of empty edges. align 'sky': by WCS; 'pixels': centers matched and the pixel scale of ref,
+    ignoring the sky position (moving targets, where the stars move between images)."""
+    shift = (int(shift[0]), int(shift[1]))
+    key = (name, ref, align, shift)
     if key in REPROJ:
         step(f'{short(name)}: reprojected layer cached')
         return REPROJ[key]
     data, wcs = RAW[name][:2]
-    if name == ref:
+    if name == ref and shift == (0, 0):
         out = data
     else:
         t = time.time()
         ref_data, ref_wcs = RAW[ref][:2]
         ny, nx = ref_data.shape
+        ly, lx = data.shape
+        s = pixscale(ref) / pixscale(name)  # layer pixels per ref pixel
         out = np.empty((ny, nx), np.float32)
-        xx = np.arange(nx, dtype=np.float64)
+        xx = np.arange(nx, dtype=np.float64) - shift[0]
         for y0 in range(0, ny, chunk):
             y1 = min(ny, y0 + chunk)
-            gx, gy = np.meshgrid(xx, np.arange(y0, y1, dtype=np.float64))
-            lon, lat = ref_wcs.pixel_to_world_values(gx, gy)
-            px, py = wcs.world_to_pixel_values(lon, lat)
+            gx, gy = np.meshgrid(xx, np.arange(y0, y1, dtype=np.float64) - shift[1])
+            if align == 'pixels' or name == ref:
+                px, py = (gx - (nx - 1) / 2) * s + (lx - 1) / 2, (gy - (ny - 1) / 2) * s + (ly - 1) / 2
+            else:
+                lon, lat = ref_wcs.pixel_to_world_values(gx, gy)
+                px, py = wcs.world_to_pixel_values(lon, lat)
             out[y0:y1] = map_coordinates(data, [py, px], order=1, cval=np.nan, prefilter=False)
-        step(f'{short(name)}: reprojected onto {short(ref)} grid ({nx}x{ny}), {time.time() - t:.1f}s')
+        how = 'pixel grid' if align == 'pixels' else 'grid'
+        step(f'{short(name)}: reprojected onto {short(ref)} {how} ({nx}x{ny})' + (f', moved {shift[0]:+d}, {shift[1]:+d} px' if any(shift) else '') + f', {time.time() - t:.1f}s')
+    for k in [k for k in REPROJ if k[:3] == key[:3] and k != key]:  # keep one version per layer
+        del REPROJ[k]
     REPROJ[key] = out
     return out
 
@@ -393,6 +419,7 @@ def reproject_to(name, ref, chunk=256):
 def clear():
     RAW.clear()
     REPROJ.clear()
+    BAKED.clear()
     gc.collect()
 
 
@@ -414,7 +441,7 @@ def forget(keep, max_raw=8):
 
 
 DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, ref=None, area=None,
-                subtract_blue=0.5)
+                subtract_blue=0.5, align='auto', fill_edges=False)
 
 
 def area_mask(area, shape):
@@ -471,14 +498,26 @@ def compose_rgb(red, green, blue, **opts):
     if sample is not None:
         step(f'limits sampled from a {int(sample.any(1).sum())}x{int(sample.any(0).sum())} px area')
     scale = 1.0 / pixscale(ref)  # arcsec -> pixels of the reference grid
+    align = o['align'] if o['align'] in ('sky', 'pixels') else ('pixels' if any(MOVING.get(n) for n in allnames) else 'sky')
+    if o['align'] not in ('sky', 'pixels'):
+        step(f'align: {align}' + (' (moving target: the stars move between images, so layers are matched by pixels)' if align == 'pixels' else ''))
+    # nudges in reference pixels; the reference keeps the frame, so a nudge of the reference moves the others the opposite way
+    px = {n: (int(round(float(shifts.get(n, (0, 0))[0]) * scale)), int(round(float(shifts.get(n, (0, 0))[1]) * scale))) for n in allnames}
+    eff = {n: (px[n][0] - px[ref][0], px[n][1] - px[ref][1]) for n in allnames}
+    if any(px[ref]):
+        step(f'{short(ref)} is the reference: its nudge moves the other layers {-px[ref][0]:+d}, {-px[ref][1]:+d} px instead')
 
     def layer(name):
-        lay = reproject_to(name, ref).copy()
-        dx, dy = shifts.get(name, (0, 0))
-        dx, dy = int(round(float(dx) * scale)), int(round(float(dy) * scale))
-        if dx or dy:
-            lay = shift_layer(lay, dx, dy)
-            step(f'{short(name)}: nudged {dx:+d} px right, {dy:+d} px up')
+        dx, dy = eff[name]
+        bkey = (name, ref, align, (ny, nx))
+        if o['fill_edges']:  # build the current nudge into the reprojection: the edges get the layer's own data
+            BAKED[bkey] = (dx, dy)
+        bx, by = BAKED.get(bkey, (0, 0))
+        lay = reproject_to(name, ref, align, (bx, by)).copy()
+        rx, ry = dx - bx, dy - by
+        if rx or ry:  # fast: move the reprojected layer (uncovered edges stay empty until Fill edges)
+            lay = shift_layer(lay, rx, ry)
+            step(f'{short(name)}: nudged {rx:+d} px right, {ry:+d} px up')
         return stretch(lay, name, o['func'], o['factor'], o['lims'], sample)
 
     if o['method'] == 'filt05':
@@ -602,7 +641,7 @@ def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='',
         _add(name, data, text, f, fill)
     names = list(dict.fromkeys(list(red) + list(green) + list(blue)))
     size_report(names, opts.get('ref') if opts.get('ref') in names else names[0], max_mp)
-    rgb = compose_rgb(red, green, blue, **opts)
+    rgb = compose_rgb(red, green, blue, **{**opts, 'fill_edges': True})  # nudges built into the reprojection
     from PIL import Image
     Image.fromarray(rgb[::-1]).save(out, quality=95)
     step(f'saved {out}')

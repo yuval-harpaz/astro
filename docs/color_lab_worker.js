@@ -78,9 +78,13 @@ const shortName = (f) => { if (FILTERS[f]) return FILTERS[f][0]; const m = [...f
 // Download SCI and block-average (nan-mean) by an integer factor so the image is <= maxMP megapixels.
 async function readSci(fname, maxMP) {
   const url = s3url(fname);
-  let off = 0, hdr = null;
+  let off = 0, hdr = null, moving = false;
   for (let ext = 0; ext < 6; ext++) {
     hdr = await readHeader(url, off);
+    if (ext === 0) {  // moving target (comet, asteroid, planet): HST MTFLAG = T, JWST TARGTYPE = MOVING
+      const mt = (hdr.cards.MTFLAG || '').trim().toUpperCase(), tt = (hdr.cards.TARGTYPE || '').trim().toUpperCase();
+      moving = mt === 'T' || mt === 'TRUE' || tt === 'MOVING';
+    }
     if (ext > 0 && hdr.cards.EXTNAME === 'SCI') break;
     off = hdr.dataStart + Math.ceil(hdr.dataSize / BLOCK) * BLOCK;
     hdr = null;
@@ -115,7 +119,7 @@ async function readSci(fname, maxMP) {
   const out = new Float32Array(ox * oy);
   for (let i = 0; i < out.length; i++) out[i] = cnt[i] ? sum[i] / cnt[i] : NaN;
   step(`${shortName(fname)}: downloaded in ${((performance.now() - tDl) / 1000).toFixed(1)}s`);
-  return { data: out, ny: oy, nx: ox, header: hdr.text, factor: f };
+  return { data: out, ny: oy, nx: ox, header: hdr.text, factor: f, moving };
 }
 
 async function init() {
@@ -159,6 +163,8 @@ self.onmessage = async (ev) => {
         if (cl.has_layer(n)) { step(`${shortName(n)}: using cached layer`); continue; }
         const L = await readSci(n, maxMP);
         cl.add_layer(n, new Uint8Array(L.data.buffer), L.ny, L.nx, L.header, L.factor, fill);
+        cl.set_moving(n, L.moving);
+        if (L.moving) step(`${shortName(n)}: moving target`);
         post('mem', memInfo());
       }
       const pyOpts = py.toPy(opts);
