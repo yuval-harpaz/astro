@@ -38,7 +38,7 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'docs', 'hst')
 LATEST_DAYS = 30
 COLUMNS = ['obsid', 'proposal_id', 'proposal_pi', 'target_name', 'instrument_name', 'obs_title', 'jpegURL',
            't_max', 't_obs_release', 'dataURL', 'filters', 's_ra', 's_dec', 's_rad']
-INSTRUMENTS = ('ACS/WFC', 'ACS/HRC', 'ACS/SBC', 'WFC3/UVIS', 'WFC3/IR', 'WFPC2', 'WFPC2/WFC', 'WFPC2/PC', 'NICMOS')
+INSTRUMENTS = ('ACS/WFC', 'ACS/HRC', 'ACS/SBC', 'WFC3/UVIS', 'WFC3/IR', 'WFPC2', 'WFPC2/WFC', 'WFPC2/PC')  # no NICMOS: its files are not on the S3 mirror
 
 
 def query(start, end, retries=3):

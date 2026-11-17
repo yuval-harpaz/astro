@@ -480,7 +480,8 @@ def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98), sample=None):
 
 def compose_rgb(red, green, blue, **opts):
     """Returns uint8 (ny, nx, 3) with FITS orientation (origin lower-left). Reference = first layer listed.
-    opts: method 'rgb' (layers per channel, like the bot) | 'filt05' (all layers colored by wavelength, like auto_plot),
+    opts: method 'rgb' (layers per channel, like the bot) | 'filt05' (all layers colored by wavelength, like auto_plot)
+    | 'natural' (each layer in the color of its wavelength, opts colors {name: (r, g, b)} 0-1),
     func 'none' | 'log' | 'asinh', factor 1-4 | None (linear), lims [low, high] quantiles, grey (grey_zeros),
     shifts {name: [dx, dy]} in arcsec (right, up), so nudges keep their size on the sky at any resolution or reference,
     ref: name of the layer whose grid all others are reprojected to (like auto_plot's reproject_to); None = first listed,
@@ -521,7 +522,20 @@ def compose_rgb(red, green, blue, **opts):
             step(f'{short(name)}: nudged {rx:+d} px right, {ry:+d} px up')
         return stretch(lay, name, o['func'], o['factor'], o['lims'], sample)
 
-    if o['method'] == 'filt05':
+    if o['method'] == 'natural':  # each filter in its own color (the page's spectrum bar), added, hues kept
+        cols = o.get('colors') or {}
+        rgb = np.zeros((ny, nx, 3), np.float64)
+        for name in sorted(allnames, key=wavelength):
+            col = cols.get(name, (1.0, 1.0, 1.0))
+            lay = layer(name)
+            lay[np.isnan(lay)] = 0
+            for ich in range(3):
+                rgb[..., ich] += lay * col[ich]
+            step(f'{short(name)}: natural color RGB({col[0]:.2f}, {col[1]:.2f}, {col[2]:.2f})')
+        top = np.quantile(rgb.max(-1), 0.999)
+        rgb = np.clip(rgb / (top if top > 0 else 1), 0, 1)
+        step('natural: added, then scaled together (99.9% of the brightest channel = white), so each filter keeps its hue')
+    elif o['method'] == 'filt05':
         names = sorted(allnames, key=wavelength)
         cols = colors_by_filt([wavelength(n) for n in names], float(o['subtract_blue']))
         step(f'filt05: Blue % = {float(o["subtract_blue"]) * 100:g}')
@@ -550,7 +564,7 @@ def compose_rgb(red, green, blue, **opts):
             step('G = (R + B) / 2')
     missing = np.isnan(rgb)  # outside a channel's footprint (rgb method); filt05 already set those to 0
     rgb[missing] = 0
-    if o['grey'] and o['method'] == 'filt05':
+    if o['grey'] and o['method'] in ('filt05', 'natural'):
         rgb = grey_zeros(rgb, replace=np.max)
         step('grey missing: fill zero pixels of each channel with the max of the other two')
     elif o['grey']:
