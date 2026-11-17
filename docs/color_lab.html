@@ -1665,6 +1665,7 @@ if __name__ == '__main__':
           green = [g[im]];
         }
         $('clear-btn').onclick();
+        showExtraCards([...red, ...green, ...blue], btn.closest('.group-head'));
         red.forEach(f => chosen.r.add(f)); green.forEach(f => chosen.g.add(f)); blue.forEach(f => chosen.b.add(f));
         syncChecks();
         updateChosen();
@@ -1675,6 +1676,24 @@ if __name__ == '__main__':
           (groups.length > 1 ? ` (pointing ${k + 1} of ${groups.length}; press again for the next)` : '') + '. Press Compose when ready.');
         if (!busy) $('status').textContent = groups.length > 1 ? `Auto RGB: pointing ${k + 1} of ${groups.length}` : 'Auto RGB selected';
       } finally { btn.disabled = false; btn.textContent = label; }
+    }
+    // Auto RGB may choose images of another target name at the same pointing that are not in the list: add them
+    // under their own head after the pressed group, so their cards (and Selected) show them
+    function showExtraCards(files, after) {
+      document.querySelectorAll('#cards .extra').forEach(e => e.remove());
+      const shown = new Set([...document.querySelectorAll('#cards .card')].map(c => c.dataset.fname));
+      const missing = files.filter(f => !shown.has(f) && itemOf[f]).sort((a, b) => waveOf(b) - waveOf(a));
+      if (!missing.length || !after) return;
+      let at = after;  // last element of the pressed group
+      while (at.nextElementSibling && !at.nextElementSibling.classList.contains('group-head') && at.nextElementSibling.tagName !== 'P') at = at.nextElementSibling;
+      const byKey = {};
+      for (const f of missing) (byKey[itemOf[f].tel + '|' + itemOf[f].target_name] ||= []).push(f);
+      for (const fs of Object.values(byKey)) {
+        const it = itemOf[fs[0]], head = makeGroupHead(it.tel, it.target_name + ' (same pointing)', fs.length);
+        head.querySelectorAll('button').forEach(b => b.remove());
+        head.title = 'Chosen by Auto RGB: another target name at the same pointing';
+        for (const e of [head, ...fs.map(f => makeCard(itemOf[f]))]) { e.classList.add('extra'); at.after(e); at = e; }
+      }
     }
     function makeGroupHead(tel, target, n) {
       const head = document.createElement('div');
