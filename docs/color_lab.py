@@ -12,6 +12,7 @@ Pipeline, following the color bot (astro_jwst_news_color.py) defaults:
 Reprojected layers are cached per reference, so stretch settings can be changed without reprojecting.
 """
 import gc
+import os
 import re
 import time
 import urllib.request
@@ -20,6 +21,7 @@ import numpy as np
 from astropy.io import fits
 from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import proj_plane_pixel_scales
+from scipy import ndimage
 from scipy.ndimage import map_coordinates, maximum_filter, label
 
 warnings.simplefilter('ignore', FITSFixedWarning)
@@ -308,6 +310,49 @@ def block_factor(nx, ny, max_mp):
     return 1 if not max_mp else max(1, int(np.ceil(np.sqrt(nx * ny / (max_mp * 1e6)))))
 
 
+def clean_cosmic(d, sig=5.0, objlim=3.0, iters=3):
+    """Remove cosmic-ray hits (dots and short streaks) from one image, a simplified L.A.Cosmic (van Dokkum 2001):
+    a pixel is a hit when it is sig x the local noise above the 5x5 median AND much sharper than the fine structure
+    of real sources (med3 - med7 of med3), which keeps stars and nebula detail. Hits (grown by one pixel) get the
+    5x5 median. HST images made from one or two exposures are full of hits; JWST i2d products are already clean.
+    Returns the cleaned image and the number of replaced pixels."""
+    from numpy.lib.stride_tricks import sliding_window_view as swv
+    d = d.astype(np.float32, copy=True)
+    good = np.isfinite(d)
+    if not good.any():
+        return d, 0
+    fillv = np.float32(np.nanmedian(d))
+    total = np.zeros(d.shape, bool)
+    ny, nx = d.shape
+    b = 32
+    for _ in range(iters):
+        x = np.where(good, d, fillv)
+        med5 = ndimage.median_filter(x, 5)
+        resid = x - med5
+        # local noise: robust scatter of the residual in 32 px blocks, interpolated
+        py_, px_ = (-ny) % b, (-nx) % b
+        r = np.pad(np.abs(resid), ((0, py_), (0, px_)), mode='edge').reshape((ny + py_) // b, b, (nx + px_) // b, b)
+        blk = 1.4826 * np.median(r.transpose(0, 2, 1, 3).reshape(r.shape[0], r.shape[2], -1), -1)
+        noise = ndimage.zoom(blk, b, order=1)[:ny, :nx]
+        noise = np.maximum(noise, 1.4826 * np.median(np.abs(resid[good])) + 1e-12)
+        ys, xs = np.nonzero(good & (resid > sig * noise))
+        if not len(ys):
+            break
+        # fine structure at the candidates only, from a 9x9 window: med3 at the center minus the median of the 7x7 med3
+        w = swv(np.pad(x, 4, mode='edge'), (9, 9))[ys, xs]
+        m3 = np.median(swv(w, (3, 3), axis=(1, 2)).reshape(len(ys), 7, 7, 9), -1)
+        fine = np.maximum(m3[:, 3, 3] - np.median(m3.reshape(len(ys), -1), -1), 0.1 * noise[ys, xs])
+        keep = resid[ys, xs] / fine > objlim
+        if not keep.any():
+            break
+        cr = np.zeros(d.shape, bool)
+        cr[ys[keep], xs[keep]] = True
+        cr = ndimage.binary_dilation(cr) & good & (resid > 2 * noise)
+        d[cr] = med5[cr]
+        total |= cr
+    return d, int(total.sum())
+
+
 def read_sci(fname, max_mp):
     """Download only the SCI extension and block-average it (nan-mean). Returns data, header text, factor."""
     url = s3url(fname)
@@ -360,16 +405,20 @@ def binned_wcs(header_text, factor):
     return wcs
 
 
-def add_layer(name, buf, ny, nx, header_text, factor, fill=True):
+def add_layer(name, buf, ny, nx, header_text, factor, fill=True, cosmic=False):
     """buf: bytes-like (or Pyodide JsProxy of a Uint8Array) of native float32, row-major (ny, nx)."""
     if hasattr(buf, 'to_py'):
         buf = buf.to_py()
     data = np.frombuffer(buf, dtype=np.float32).reshape(int(ny), int(nx)).copy()
-    _add(name, data, header_text, int(factor), fill)
+    _add(name, data, header_text, int(factor), fill, cosmic)
     return data.nbytes
 
 
-def _add(name, data, header_text, factor, fill):
+def _add(name, data, header_text, factor, fill, cosmic=False):
+    if cosmic and not os.path.basename(name).startswith('jw'):  # HST only: JWST i2d products are already clean
+        t = time.time()
+        data, n = clean_cosmic(data)
+        step(f'{short(name)}: remove cosmic rays, {n} pixels ({n / data.size * 100:.2f}%), {time.time() - t:.1f}s')
     if fill:
         t = time.time()
         data, n, it = fill_holes(data)
@@ -655,13 +704,13 @@ def brightness_contrast(rgb, brightness=0, contrast=0):
     return lut[rgb]
 
 
-def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='', **opts):
+def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='', cosmic=True, **opts):
     """Stand-alone: download, process and save a jpg. max_mp=0 means full resolution. opts: see compose_rgb."""
     reset_clock()
     set_filters(opts.get('filters'))
     for name in dict.fromkeys(list(red) + list(green) + list(blue)):
         data, text, f = read_sci(name, max_mp)
-        _add(name, data, text, f, fill)
+        _add(name, data, text, f, fill, cosmic)
     names = list(dict.fromkeys(list(red) + list(green) + list(blue)))
     size_report(names, opts.get('ref') if opts.get('ref') in names else names[0], max_mp)
     brightness, contrast = float(opts.pop('brightness', 0) or 0), float(opts.pop('contrast', 0) or 0)

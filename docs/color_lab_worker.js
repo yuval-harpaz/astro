@@ -144,7 +144,7 @@ self.onmessage = async (ev) => {
   let cl = null;
   try {
     if (cmd === 'compose') {
-      const { red, green, blue, maxMP, fill, opts } = ev.data;
+      const { red, green, blue, maxMP, fill, cosmic, opts } = ev.data;
       let names = [...new Set([...red, ...green, ...blue])];
       const ref = names.includes(opts.ref) ? opts.ref : names[0];  // reference grid (same rule as compose())
       names = [ref, ...names.filter(n => n !== ref)];
@@ -152,9 +152,9 @@ self.onmessage = async (ev) => {
       FILTERS = { ...FILTERS, ...(opts.filters || {}) };
       const pf = py.toPy(opts.filters || {}); cl.set_filters(pf); pf.destroy();
       t0 = performance.now(); cl.reset_clock();
-      const key = JSON.stringify({ maxMP, fill });
+      const key = JSON.stringify({ maxMP, fill, cosmic: !!cosmic });
       if (cacheKey !== key) {
-        if (cacheKey !== null) log('size / fill holes changed: processing from scratch');
+        if (cacheKey !== null) log('size / fill holes / cosmic rays changed: processing from scratch');
         cl.clear(); cacheKey = key;
       }
       cl.forget(py.toPy(names));
@@ -162,7 +162,7 @@ self.onmessage = async (ev) => {
       for (const n of names) {
         if (cl.has_layer(n)) { step(`${shortName(n)}: using cached layer`); continue; }
         const L = await readSci(n, maxMP);
-        cl.add_layer(n, new Uint8Array(L.data.buffer), L.ny, L.nx, L.header, L.factor, fill);
+        cl.add_layer(n, new Uint8Array(L.data.buffer), L.ny, L.nx, L.header, L.factor, fill, !!cosmic);
         cl.set_moving(n, L.moving);
         if (L.moving) step(`${shortName(n)}: moving target`);
         post('mem', memInfo());
