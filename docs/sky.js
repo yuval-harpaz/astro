@@ -94,16 +94,17 @@ const Sky = (() => {
       clearTimeout(timer);
       const text = input.value, my = ++seq;
       if (text.trim().length < 2 || parse(text)) { items = []; render(); return; }
-      timer = setTimeout(async () => {
+      timer = setTimeout(() => {  // all sources at once; rows in the order of the sources, whichever answers first
         items = [];
-        for (const src of sources) {
-          let got = [];
-          try { got = await src(text); } catch (e) { got = []; }
+        const got = sources.map(() => []);
+        const key = (l) => l.toLowerCase().replace(/[^a-z0-9]/g, '');
+        sources.forEach((src, k) => Promise.resolve().then(() => src(text)).catch(() => []).then(rows => {
           if (my !== seq) return;
-          const seen = new Set(items.map(i => i.label.toLowerCase()));
-          items.push(...got.filter(g => !seen.has(g.label.toLowerCase())));
+          got[k] = rows || [];
+          const seen = new Set();
+          items = got.flat().filter(g => { const q = key(g.label); return !seen.has(q) && seen.add(q); });
           active = -1; render();
-        }
+        }));
       }, 250);
     });
     input.addEventListener('keydown', (e) => {
@@ -138,9 +139,9 @@ const Sky = (() => {
     };
     button.onclick = go;
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
-    autocomplete(input, [
-      async (t) => (await localNames(t)).slice(0, 8).map(n => ({ label: n, hint: 'in list', local: true })),
+    autocomplete(input, [  // SIMBAD names first (a pick searches by position), then names only in our lists
       async (t) => (await complete(t)).map(s => ({ label: s.name, hint: `${s.otype} · SIMBAD`, ...s })),
+      async (t) => (await localNames(t)).slice(0, 8).map(n => ({ label: n, hint: 'in list', local: true })),
     ], (it) => {
       input.value = it.label;
       if (it.local) onText(it.label); else onPos({ ra: it.ra, dec: it.dec, label: `${it.name} (${fmt(it.ra, it.dec)})` });

@@ -493,7 +493,7 @@ def forget(keep, max_raw=8):
 
 
 DEFAULTS = dict(method='rgb', func='none', factor=2.0, lims=[0.03, 0.98], grey=True, shifts=None, ref=None, area=None,
-                subtract_blue=0.5, align='auto', fill_edges=False)
+                subtract_blue=0.5, align='auto', fill_edges=False, mosaic=True)
 
 
 def area_mask(area, shape):
@@ -511,6 +511,9 @@ def area_mask(area, shape):
 def stretch(lay, name, func='none', factor=2.0, lims=(0.03, 0.98), sample=None):
     t = time.time()
     lims = [float(lims[0]), float(lims[1])]
+    if not np.any(np.isfinite(lay) & (lay != 0)):
+        step(f'{short(name)}: no data on the reference grid (it does not overlap the reference image)')
+        return np.full(lay.shape, np.nan, np.float32)
     if func == 'log':
         lay = log1(lay)
     elif func == 'asinh':
@@ -558,7 +561,7 @@ def compose_rgb(red, green, blue, **opts):
     if any(px[ref]):
         step(f'{short(ref)} is the reference: its nudge moves the other layers {-px[ref][0]:+d}, {-px[ref][1]:+d} px instead')
 
-    def layer(name):
+    def placed(name):  # reprojected onto the reference grid and nudged, not stretched
         dx, dy = eff[name]
         bkey = (name, ref, align, (ny, nx))
         if o['fill_edges']:  # build the current nudge into the reprojection: the edges get the layer's own data
@@ -569,14 +572,47 @@ def compose_rgb(red, green, blue, **opts):
         if rx or ry:  # fast: move the reprojected layer (uncovered edges stay empty until Fill edges)
             lay = shift_layer(lay, rx, ry)
             step(f'{short(name)}: nudged {rx:+d} px right, {ry:+d} px up')
-        return stretch(lay, name, o['func'], o['factor'], o['lims'], sample)
+        return lay
+
+    def layer(name):
+        return stretch(placed(name), name, o['func'], o['factor'], o['lims'], sample)
+
+    def units(names):
+        """Layers to stretch: with mosaic, images of the same filter are one layer (list of names), else one each."""
+        if not o['mosaic']:
+            return [[n] for n in names]
+        groups = {}
+        for n in names:
+            groups.setdefault((short(n).lower(), round(wavelength(n))), []).append(n)
+        return list(groups.values())
+
+    def unit_layer(group):
+        """One stretched layer per filter. Several images of a filter are a mosaic: on the reference grid, each pixel
+        is the median of the images that have data there (0 and NaN are no data), so segments complete
+        each other, and the stretch (level_adjust) sees the whole mosaic at once, not each segment on its own."""
+        if len(group) == 1:
+            return layer(group[0])
+        t = time.time()
+        stack = np.empty((len(group), ny, nx), np.float32)
+        for i, n in enumerate(group):
+            stack[i] = placed(n)
+        stack[stack == 0] = np.nan  # 0 = no data (negative values are sky noise and stay)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            lay = np.nanmedian(stack, 0).astype(np.float32)
+        cover = [float(np.isfinite(stack[i]).mean() * 100) for i in range(len(group))]
+        del stack
+        step(f'{short(group[0])}: mosaic of {len(group)} images (median where they overlap; each covers '
+             f'{", ".join(f"{c:.0f}%" for c in cover)}, together {np.isfinite(lay).mean() * 100:.0f}%), {time.time() - t:.1f}s')
+        return stretch(lay, group[0], o['func'], o['factor'], o['lims'], sample)
 
     if o['method'] == 'natural':  # each filter in its own color (the page's spectrum bar), added, hues kept
         cols = o.get('colors') or {}
         rgb = np.zeros((ny, nx, 3), np.float64)
-        for name in sorted(allnames, key=wavelength):
+        for group in units(sorted(allnames, key=wavelength)):
+            name = group[0]
             col = cols.get(name, (1.0, 1.0, 1.0))
-            lay = layer(name)
+            lay = unit_layer(group)
             lay[np.isnan(lay)] = 0
             for ich in range(3):
                 rgb[..., ich] += lay * col[ich]
@@ -585,12 +621,13 @@ def compose_rgb(red, green, blue, **opts):
         rgb = np.clip(rgb / (top if top > 0 else 1), 0, 1)
         step('natural: added, then scaled together (99.9% of the brightest channel = white), so each filter keeps its hue')
     elif o['method'] == 'filt05':
-        names = sorted(allnames, key=wavelength)
-        cols = colors_by_filt([wavelength(n) for n in names], float(o['subtract_blue']))
+        groups = units(sorted(allnames, key=wavelength))
+        cols = colors_by_filt([wavelength(g[0]) for g in groups], float(o['subtract_blue']))
         step(f'filt05: Blue % = {float(o["subtract_blue"]) * 100:g}')
         rgb = np.zeros((ny, nx, 3), np.float64)
-        for name, col in zip(names, cols):
-            lay = layer(name)
+        for group, col in zip(groups, cols):
+            name = group[0]
+            lay = unit_layer(group)
             lay[np.isnan(lay)] = 0
             for ich in range(3):
                 rgb[..., ich] += lay * col[ich]
@@ -604,10 +641,18 @@ def compose_rgb(red, green, blue, **opts):
             if not names:
                 continue
             acc = np.zeros((ny, nx), np.float32)
-            for name in names:
-                acc += layer(name)
-            rgb[..., ich] = acc / len(names)
-            step(f'{"RGB"[ich]} = ' + (f'mean of {len(names)} layers' if len(names) > 1 else short(names[0])))
+            cnt = np.zeros((ny, nx), np.uint16)
+            groups = units(names)
+            for group in groups:  # nanmean: a pixel covered by any of the layers keeps data (a plain mean needs all of them)
+                lay = unit_layer(group)
+                ok = ~np.isnan(lay)
+                acc[ok] += lay[ok]
+                cnt += ok
+                del lay, ok
+            with np.errstate(invalid='ignore', divide='ignore'):
+                rgb[..., ich] = np.where(cnt > 0, acc / np.maximum(cnt, 1), np.nan)
+            del acc, cnt
+            step(f'{"RGB"[ich]} = ' + (f'nanmean of {len(groups)} layers' if len(groups) > 1 else short(names[0])))
         if not green and red and blue:  # like the bot with 2 files
             rgb[..., 1] = (rgb[..., 0] + rgb[..., 2]) / 2
             step('G = (R + B) / 2')
