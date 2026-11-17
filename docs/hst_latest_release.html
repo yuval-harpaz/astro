@@ -341,7 +341,7 @@
       const searchPosition = (p) => { searchPos = p; isSearchMode = true; updateView(); };
       Sky.searchBox({
         input: searchInput, button: document.getElementById('search-btn'),
-        localNames: async (t) => { const n = normalize(t); return (await targetIndex()).filter(r => normalize(r.target_name).includes(n)).map(r => r.target_name); },
+        localNames: async (t) => { const n = normalize(t); return [...new Set((await targetIndex()).filter(r => normalize(r.target_name).includes(n)).map(r => r.target_name))]; },
         onText: (t) => { searchQuery = t; searchPos = null; isSearchMode = true; updateView(); },
         onPos: searchPosition,
       });
@@ -384,7 +384,7 @@
         const idx = await targetIndex();
         const years = [...new Set(idx.flatMap(r => (r.years || '').split(';').filter(Boolean)))].sort();
         document.getElementById('earliest-release-info').innerText =
-          `HST images released ${years.length ? 'from ' + years[0] : ''} to today (${idx.length} targets). Level 3 drizzled science images; older years load when you go back or search.`;
+          `HST images released ${years.length ? 'from ' + years[0] : ''} to today (${new Set(idx.map(r => r.target_name)).size} targets). Level 3 drizzled science images; older years load when you go back or search.`;
         updateView();
       })().catch(err => {
         document.getElementById('image-container').innerHTML = '<p>Error loading data.</p>';

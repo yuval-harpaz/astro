@@ -1887,8 +1887,14 @@ if __name__ == '__main__':
       parts.forEach((p, k) => { hstLoaded.add(p); if (texts[k]) addRows(parseCSV(texts[k]), 'HST'); });
     }
     function hstIndex() {  // {target_name: [years]} from hst/targets.csv, to load only the years a search needs
-      if (!hstIndexPromise) hstIndexPromise = getCSV('hst/targets.csv').then(t => { hstTargets = t ? parseCSV(t) : []; return Object.fromEntries(hstTargets
-        .map(r => [r.target_name, (r.years || '').split(';').filter(Boolean)])); });
+      // targets spread over the sky (planets, parallel fields) have one row per sky cell: merge their years by name
+      if (!hstIndexPromise) hstIndexPromise = getCSV('hst/targets.csv').then(t => {
+        hstTargets = t ? parseCSV(t) : [];
+        const idx = {};
+        for (const r of hstTargets) { const ys = idx[r.target_name] ||= []; for (const y of (r.years || '').split(';')) if (y && !ys.includes(y)) ys.push(y); }
+        for (const ys of Object.values(idx)) ys.sort();
+        return idx;
+      });
       return hstIndexPromise;
     }
 

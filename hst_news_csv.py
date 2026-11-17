@@ -8,7 +8,8 @@ Products whose SCI extension is empty (NAXIS = 0, seen in some old drizzled file
 Files (docs/hst/):
     YYYY.csv      all images released in that year
     latest.csv    images released in the last LATEST_DAYS days (what the pages load first)
-    targets.csv   target_name, years, ra, dec, rad  (index for searching the year files by name or position)
+    targets.csv   target_name, years, ra, dec, rad  (index for searching the year files by name or position;
+                  targets spread over more than 1 degree get one row per 0.5 degree sky cell)
 
 Coordinates (degrees): s_ra, s_dec = center of the footprint polygon from CADC, s_rad = center to farthest vertex,
 as in coords_csv.py for the JWST CSVs.
@@ -167,28 +168,51 @@ def write_latest():
     print(f'latest.csv: {len(df)} rows since {cutoff}')
 
 
-def write_targets():
-    """target_name, years, and a circle (ra, dec, rad) covering all its images, for name and position searches."""
-    years, pts = {}, {}
+def write_targets(split_deg=1.0, cell_deg=0.5):
+    """target_name, years, and a circle (ra, dec, rad) covering its images, for name and position searches.
+    Targets spread over more than split_deg (planets, comets, generic parallel-field names such as ANY or PAR)
+    get one row per cell_deg sky cell, so a position search does not match them everywhere. The pages merge
+    the years of rows with the same name."""
+    pts = {}
     for f in sorted(os.listdir(OUT)):
         if f[:4].isdigit() and f.endswith('.csv'):
             df = pd.read_csv(os.path.join(OUT, f), dtype=str, keep_default_na=False)
             for t, g in df.groupby('target_name'):
-                years.setdefault(t, []).append(f[:4])
-                if 's_ra' in g:
-                    g = g[g['s_ra'] != '']
-                    pts.setdefault(t, []).extend(zip(g['s_ra'].astype(float), g['s_dec'].astype(float), g['s_rad'].astype(float)))
+                lst = pts.setdefault(t, [])
+                has = g['s_ra'] != '' if 's_ra' in g else pd.Series(False, index=g.index)
+                lst.extend((f[:4], float(a), float(d), float(r)) for a, d, r in zip(g.loc[has, 's_ra'], g.loc[has, 's_dec'], g.loc[has, 's_rad']))
+                if (~has).any():
+                    lst.append((f[:4], None, None, None))
+
+    def circle(p):
+        cra, cdec, _ = sky_center(p[:, 0], p[:, 1])
+        sep = np.degrees(np.arccos(np.clip(_unit(p[:, 0], p[:, 1]) @ _unit(cra, cdec), -1, 1)))
+        return cra, cdec, float((np.atleast_1d(sep) + p[:, 2]).max())
+
     rows = []
-    for t, ys in years.items():
-        ra = dec = rad = ''
-        if pts.get(t):
-            p = np.array(pts[t])
-            cra, cdec, _ = sky_center(p[:, 0], p[:, 1])
-            sep = np.degrees(np.arccos(np.clip(_unit(p[:, 0], p[:, 1]) @ _unit(cra, cdec), -1, 1)))
-            ra, dec, rad = f'{cra:.5f}', f'{cdec:.5f}', f'{float((sep + p[:, 2]).max()):.4f}'
-        rows.append((t, ';'.join(ys), ra, dec, rad))
+    for t, lst in pts.items():
+        years = sorted({y for y, *_ in lst})
+        pos = [(y, a, d, r) for y, a, d, r in lst if a is not None]
+        if not pos:
+            rows.append((t, ';'.join(years), '', '', ''))
+            continue
+        p = np.array([(a, d, r) for _, a, d, r in pos])
+        cra, cdec, rad = circle(p)
+        if rad <= split_deg:
+            rows.append((t, ';'.join(years), f'{cra:.5f}', f'{cdec:.5f}', f'{rad:.4f}'))
+            continue
+        nopos = sorted({y for y, a, *_ in lst if a is None})
+        cells = {}
+        for (y, a, d, r) in pos:
+            key = (int(np.floor(d / cell_deg)), int(np.floor(a * max(np.cos(np.radians(d)), 0.01) / cell_deg)))
+            cells.setdefault(key, []).append((y, a, d, r))
+        for i, c in enumerate(cells.values()):
+            q = np.array([(a, d, r) for _, a, d, r in c])
+            cra, cdec, rad = circle(q)
+            ys = sorted({y for y, *_ in c} | (set(nopos) if i == 0 else set()))
+            rows.append((t, ';'.join(ys), f'{cra:.5f}', f'{cdec:.5f}', f'{rad:.4f}'))
     pd.DataFrame(rows, columns=['target_name', 'years', 'ra', 'dec', 'rad']).to_csv(os.path.join(OUT, 'targets.csv'), index=False)
-    print(f'targets.csv: {len(rows)} targets')
+    print(f'targets.csv: {len(pts)} targets, {len(rows)} rows')
 
 
 def update(start, end, step_days):
