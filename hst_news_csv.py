@@ -2,7 +2,8 @@
 
 Metadata comes from the CADC TAP service (fast; MAST was very slow in Nov 2026 and neither allows browser
 queries). Only products that exist on the public STScI S3 mirror (which the browser can read) are kept:
-pipeline drizzled products, <obs_id>_drc.fits (CTE corrected) or else <obs_id>_drz.fits, with a preview jpg.
+pipeline drizzled products, <obs_id>_drc.fits (CTE corrected) or else <obs_id>_drz.fits, with a preview jpg
+(<file>.jpg; for WFPC2 <obs_id>_drw.jpg).
 Products whose SCI extension is empty (NAXIS = 0, seen in some old drizzled files) are skipped.
 
 Files (docs/hst/):
@@ -115,6 +116,12 @@ def s3_file(obs_id, instrument):
     return None
 
 
+def preview_url(obs_id, file, instrument):
+    """Preview jpg on S3: <file>.jpg, but WFPC2 folders only have <obs_id>_drw.jpg (and _drw_thumb.jpg)."""
+    name = f'{obs_id}_drw.jpg' if instrument.startswith('WFPC2') else file.replace('.fits', '.jpg')
+    return f'{S3}{obs_id[:4]}/{obs_id}/{name}'
+
+
 def to_rows(df):
     """CADC rows -> page rows (same columns as the JWST CSVs plus filters), only files that exist on S3."""
     if df is None or len(df) == 0:
@@ -138,7 +145,7 @@ def to_rows(df):
         'target_name': df['target_name'].values,
         'instrument_name': df['instrument_name'].values,
         'obs_title': df['proposal_title'].values,
-        'jpegURL': [f'{S3}{o[:4]}/{o}/{f.replace(".fits", ".jpg")}' for o, f in zip(df['observationID'], df['file'])],
+        'jpegURL': [preview_url(o, f, i) for o, f, i in zip(df['observationID'], df['file'], df['instrument_name'])],
         't_max': t_max,
         't_obs_release': df['dataRelease'].str.replace('T', ' ').values,
         'dataURL': ['mast:HST/product/' + f for f in df['file']],
