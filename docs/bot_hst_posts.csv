@@ -1,0 +1,63 @@
+target_name,release,files,filters,labels,posted
+NGC7674,2026-11-18 09:47:28.000,ifoc15010_drz.fits;ifoc15020_drz.fits;ifoc15030_drz.fits,f160w;f132n;f110w,NGC 7674;NGC 7674A,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lvs5ac2o2v
+CLUTCH-TARGET-JV,2026-11-18 07:41:04.000,jfq8jv010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-JV,2026-11-18 06:19:57.000,ifq8jv030_drz.fits,f098m,,skip: no named objects
+CLUTCH-TARGET-JU,2026-11-18 05:03:35.000,jfq8ju020_drc.fits;jfq8ju010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JU,2026-11-18 03:22:28.000,ifq8ju040_drc.fits;ifq8ju030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-JS,2026-11-18 02:21:34.000,jfq8js020_drc.fits;jfq8js010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JS,2026-11-17 23:29:28.000,ifq8js040_drc.fits;ifq8js030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-JT,2026-11-18 02:05:46.000,jfq8jt020_drc.fits;jfq8jt010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JT,2026-11-17 23:21:51.000,ifq8jt040_drc.fits;ifq8jt030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KH,2026-11-18 01:44:15.000,jfq8kh020_drc.fits;jfq8kh010_drc.fits,f606w;f435w,LEDA 1209479,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lvtpsfe62v
+CLUTCH-TARGET-KH,2026-11-18 00:02:15.000,ifq8kh040_drc.fits;ifq8kh030_drz.fits,f098m;f275w,,skip: no named objects
+SARS059.33488-30.34397,2026-11-18 01:27:55.000,jf557k010_drc.fits;jf557khcq_drz.fits,f435w,LEDA 100568;LEDA 719753,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lvukjlkq2p
+DESJ0354-1609,2026-11-18 00:16:31.000,jf542k010_drc.fits,f606w,,skip: no named objects
+PHOENIX-XRAY-ARC,2026-11-17 23:48:23.000,ifsl02010_drc.fits,f390w,,skip: UV only
+CLUTCH-TARGET-KG,2026-11-17 23:39:07.000,ifq8kg040_drc.fits;ifq8kg030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-JP,2026-11-17 23:27:13.000,ifq8jp040_drc.fits;ifq8jp030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-JP,2026-11-17 01:45:25.000,jfq8jp010_drc.fits,f606w,,skip: no named objects
+EUCLIDDSPL115943+673249,2026-11-17 17:10:02.000,ifo609010_drc.fits,f475w,,skip: no named objects
+LEDA-855412,2026-11-17 01:13:58.000,ifri01010_drc.fits;ifri01e9q_drc.fits;ifri01020_drz.fits;ifri01030_drz.fits,f160w;f814w,LEDA 855412,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lvvlinxy2j
+CLUTCH-TARGET-JF,2026-11-16 11:27:16.000,jfq8jf020_drc.fits;jfq8jf010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JF,2026-11-16 03:35:29.000,ifq8jf040_drc.fits;ifq8jf030_drz.fits,f098m;f275w,LEDA 1217867,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lvwkqzwf2b
+CLUTCH-TARGET-JR,2026-11-16 04:41:57.000,jfq8jr020_drc.fits;jfq8jr010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JR,2026-11-16 01:01:04.000,ifq8jr040_drc.fits;ifq8jr030_drz.fits,f098m;f275w,,skip: no named objects
+MAGEJ1304+3646,2026-11-15 21:57:34.000,ifxl0c010_drc.fits;ifxl0c020_drc.fits,f814w;f606w,,skip: no named objects
+FAIRALL1116,2026-11-15 21:19:31.000,jf554am6q_drz.fits,f435w,,skip: narrow strip
+PAR058,2026-11-15 02:52:11.000,ifqh10010_drc.fits;ifqh09010_drc.fits;ifqh17020_drc.fits;ifqh17010_drc.fits,f814w;f625w;f336w,,skip: no named objects
+ESO490-26,2026-11-14 18:17:02.000,ifya62010_drc.fits;ifya62hiq_drc.fits,f225w,,skip: UV only
+CLUTCH-TARGET-JQ,2026-11-14 17:24:59.000,jfq8jq020_drc.fits;jfq8jq010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JQ,2026-11-14 15:44:22.000,ifq8jq040_drc.fits;ifq8jq030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-JE,2026-11-14 14:13:30.000,jfq8je020_drc.fits;jfq8je010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JE,2026-11-14 12:37:20.000,ifq8je040_drc.fits;ifq8je030_drz.fits,f098m;f275w,,skip: no named objects
+ANY,2026-11-14 01:58:42.000,jfjzz5010_drc.fits,f814w,,skip: no named objects
+ABELL-S1063,2026-11-14 00:40:01.000,ifjzz5020_drz.fits,f140w,ACO S 1063,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lvxrd3aa2p
+IRAS05480+5927,2026-11-13 21:13:46.000,ifya81010_drc.fits;ifya81cxq_drc.fits,f336w,,skip: UV only
+MRK477,2026-11-13 19:30:00.000,ifya36010_drc.fits;ifya36cqq_drc.fits,f225w,,skip: UV only
+SDSSJ104326.47+110524.2,2026-11-13 18:55:28.000,ifya24010_drc.fits;ifya24cjq_drc.fits,f225w,,skip: UV only
+CLUTCH-TARGET-JO,2026-11-13 13:08:53.000,jfq8jo010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-JO,2026-11-13 12:57:56.000,ifq8jo040_drc.fits;ifq8jo030_drz.fits,f098m;f275w,,skip: no named objects
+BPMG-CFBDS-J232304-015232,2026-11-13 13:05:01.000,ifpf28010_drc.fits;ifpf28030_drc.fits;ifpf28020_drc.fits,f656n;f625w;f336w,,skip: no named objects
+CLUTCH-TARGET-JN,2026-11-13 11:14:10.000,ifq8jn040_drc.fits;ifq8jn030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-JN,2026-11-13 08:31:51.000,jfq8jn010_drc.fits,f606w,,skip: no named objects
+BPMG-2MASSW-J2208136+292121,2026-11-13 09:54:53.000,ifpf24010_drc.fits;ifpf24030_drc.fits;ifpf24020_drc.fits;ifpf24040_drc.fits,f656n;f336w;f225w,,skip: no named objects
+BPMG-PSO-J334.1193+19.8800,2026-11-13 09:54:40.000,ifpf30030_drc.fits;ifpf30020_drc.fits;ifpf30010_drc.fits,f656n;f625w;f336w,,skip: no named objects
+MAGEJ1343+5813,2026-11-12 16:45:15.000,ifxl0x010_drc.fits;ifxl0x020_drc.fits,f814w;f606w,LEDA 2576103,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lvzbwvbu2b
+CLUTCH-TARGET-JH,2026-11-12 15:34:00.000,jfq8jh020_drc.fits;jfq8jh010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JH,2026-11-12 10:03:57.000,ifq8jh040_drc.fits;ifq8jh030_drz.fits,f098m;f275w,,skip: no named objects
+DW1247P3313,2026-11-12 14:47:07.000,jfmy0f020_drc.fits;jfmy0f010_drc.fits,f814w;f606w,,skip: no named objects
+NGC-5905,2026-11-12 14:16:24.000,ifo001030_drc.fits;ifo001020_drc.fits;ifo001010_drc.fits,f625w;f438w;f225w,NGC 5905,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lw32kdof2a
+J1504+6252,2026-11-12 13:34:03.000,ifpti0gcq_drz.fits,f125w,,skip: no named objects
+CLUTCH-TARGET-JI,2026-11-12 12:01:03.000,ifq8ji040_drc.fits;ifq8ji030_drz.fits,f098m;f275w,,skip: no named objects
+V-GI-CYG,2026-11-12 09:31:59.000,ifn6a9ezq_drc.fits;ifn6a9f0q_drc.fits;ifn6a9f2q_drc.fits;ifn6a9f1q_drc.fits;ifn6a9f4q_drc.fits;ifn6a9f3q_drc.fits;ifn6a9evq_drz.fits;ifn6a9eyq_drz.fits;ifn609030_drz.fits;ifn6a9exq_drz.fits;ifn6a9ewq_drz.fits;ifn6a9euq_drz.fits;ifn6a9etq_drz.fits,f160w;f098m;f336w,,skip: no named objects
+CLUTCH-TARGET-JG,2026-11-12 08:38:00.000,jfq8jg020_drc.fits;jfq8jg010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JG,2026-11-12 06:57:35.000,ifq8jg040_drc.fits;ifq8jg030_drz.fits,f098m;f275w,,skip: no named objects
+6993,2026-11-12 05:05:26.000,ifzj01snq_drc.fits;ifzj01seq_drc.fits;ifzj01sdq_drc.fits;ifzj01t0q_drc.fits;ifzj01t1q_drc.fits;ifzj01s4q_drc.fits;ifzj01t2q_drc.fits;ifzj01szq_drc.fits;ifzj01syq_drc.fits;ifzj01sxq_drc.fits;ifzj01suq_drc.fits;ifzj01svq_drc.fits;ifzj01swq_drc.fits;ifzj01stq_drc.fits;ifzj01srq_drc.fits;ifzj01slq_drc.fits;ifzj01soq_drc.fits;ifzj01scq_drc.fits;ifzj01sqq_drc.fits;ifzj01spq_drc.fits;ifzj01smq_drc.fits;ifzj01siq_drc.fits;ifzj01sgq_drc.fits;ifzj01skq_drc.fits;ifzj01sjq_drc.fits;ifzj01shq_drc.fits;ifzj01sfq_drc.fits;ifzj01sbq_drc.fits;ifzj01s9q_drc.fits;ifzj01ssq_drc.fits;ifzj01saq_drc.fits;ifzj01s8q_drc.fits;ifzj01s3q_drc.fits;ifzj01s7q_drc.fits;ifzj01s5q_drc.fits;ifzj01s6q_drc.fits,f350lp,6993,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lw4iuczd2t
+NGC7130,2026-11-12 02:30:18.000,ifoc05010_drz.fits;ifoc05030_drz.fits;ifoc05020_drz.fits,f160w;f130n;f110w,NGC 7130,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lw5daaf72a
+DW1239P3230,2026-11-11 14:41:15.000,jfmy98020_drc.fits;jfmy98010_drc.fits,f814w;f606w,,skip: no named objects
+CLUTCH-TARGET-JD,2026-11-11 12:20:58.000,jfq8jd020_drc.fits;jfq8jd010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JD,2026-11-11 10:48:01.000,ifq8jd040_drc.fits;ifq8jd030_drz.fits,f098m;f275w,,skip: no named objects
+DECALSJ0124-3536,2026-11-10 21:08:39.000,jf5619010_drc.fits,f814w,,skip: no named objects
+DESJ0501-4118,2026-11-10 20:40:10.000,jf5696010_drc.fits,f814w,,skip: no named objects
+VLNT-010-J110437+062343,2026-11-10 17:07:49.000,jf508y010_drz.fits;jf508y020_drz.fits,f775w;f435w,LEDA 33462,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lw6btok72w
+OFFSET-JUPITER-01DEG,2026-11-10 16:36:17.000,jfk412010_drc.fits;jfk412020_drc.fits,f775w,,skip: no named objects

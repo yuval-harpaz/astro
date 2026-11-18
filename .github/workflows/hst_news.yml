@@ -1,5 +1,6 @@
 name: HST news csv
 # docs/hst/*.csv for hst_latest_release.html and color_lab.html (metadata from CADC, files on the STScI S3 mirror)
+# then hst_bot.py posts new images of named objects to Bluesky (log: docs/bot_hst_posts.csv)
 on:
   workflow_dispatch:
   schedule:
@@ -16,10 +17,17 @@ jobs:
         python-version: "3.10"
     - name: Install dependencies
       run: |
-        pip install pandas requests astropy
+        pip install pandas requests astropy scipy pillow opencv-python-headless atproto
     - name: run script
       run: |
         python hst_news_csv.py --days 10
+    - name: HST bot (Bluesky)
+      continue-on-error: true
+      env:
+          BNDL_HST: ${{ secrets.BNDL_HST }}
+          BWORD_HST: ${{ secrets.BWORD_HST }}
+      run: |
+        python hst_bot.py
     - name: check news
       run: |
         git config --global user.name "actions"
@@ -32,7 +40,7 @@ jobs:
         fi
     - name: commit files
       run: |
-        git add docs/hst
+        git add docs/hst docs/bot_hst_posts.csv
         git commit -m "auto update hst csv"
         git pull --no-rebase --no-edit
       if: ${{ env.IS_NEW == 'true' }}
