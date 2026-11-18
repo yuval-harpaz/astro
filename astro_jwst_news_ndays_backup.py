@@ -114,7 +114,8 @@ for calib in [False, True]:
                   f'targets: {tgts}\n'
                   f'table row: {tblrow}\n'
                   f'new date: {new_date[:16]}, prev date: {last_date[:16]}')
-            toot = f'New #JWST {tit} images ({tgts}), take a look at https://yuval-harpaz.github.io/astro/{html_name[5:]}'
+            news_url = 'https://yuval-harpaz.github.io/astro/jwst_latest_release.html'
+            toot = f'New #JWST {tit} images ({tgts}). Take a look at the news page: {news_url}'  # mastodon: plain url
             if len(toot) > 500:
                 toot = toot[:500]
 
@@ -124,17 +125,14 @@ for calib in [False, True]:
                 boot = client_utils.TextBuilder()
                 blue = True
                 blim = 250  # should be 300 limit but failed once
-                if 'https' in toot:
-                    txt = toot[:toot.index('https')]
-                    if len(txt) > blim:
-                        txt = txt[:blim]
-                    boot.text(txt)
-                    boot.link('news_by_date.html', toot[toot.index('https'):])
-                else:
-                    txt = toot
-                    if len(txt) > blim:
-                        txt = txt[:blim]
-                    boot.text(txt)
+                # bluesky: ends with "Take a look at the news page.", "news page" links to jwst_latest_release.html
+                txt = f'New #JWST {tit} images ({tgts}). '
+                end = 'Take a look at the '
+                if len(txt) + len(end) + 10 > blim:
+                    txt = txt[:blim - len(end) - 14] + '...). '
+                boot.text(txt + end)
+                boot.link('news page', news_url)
+                boot.text('.')
             except:
                 print('failed bluesky')
                 blue = False

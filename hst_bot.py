@@ -47,6 +47,8 @@ MAX_MP = 4  # megapixels of the reference grid (block-averaged on download)
 MAX_FILES_PER_FILTER = 4
 MAX_MOVING_FILES = 9  # median of up to this many frames of a moving target (removes cosmic rays)
 BSKY_LIMIT = 300
+NEWS_URL = 'https://yuval-harpaz.github.io/astro/hst_latest_release.html'
+NEWS_TEXT = 'Take a look at the news page.'  # "news page" links to NEWS_URL
 CREDIT = 'Credits: NASA, ESA, STScI.'
 REPOST_DAYS = 7
 MIN_WAVE = 350  # nm: UV-only data (f225w, f275w, f336w) shows almost nothing
@@ -292,20 +294,31 @@ def save_jpg(img, path, max_bytes=950_000):
 
 
 # ---------- post text ----------
-def post_texts(names, filters, group):
-    """-> (main text, reply or None). Credits go to a reply when the post would be too long."""
+def in_name(label, target):
+    """True when a SIMBAD label is already in the target name (NGC 5905 in NGC-5905, ACO S 1063 in ABELL-S1063)."""
+    return re.search(re.escape(norm(label)) + r'(?![0-9])', norm(target)) is not None
+
+
+def post_texts(target, names, filters, group, crval):
+    """-> (main text, reply or None). The target name, then the labels it does not include; ends with a link to the
+    news page. Credits go to a reply when the post would be too long, then extra labels are dropped."""
     r = group.iloc[0]
     kind = 'RGB filters' if len(filters) > 1 else 'Filter'
-    main = f"\U0001F916 #Hubble \U0001F52D {', '.join(names)}. {kind}: {', '.join(filters)}. " \
-           f"PI: {r['proposal_pi']}, program {r['proposal_id']}."
-    if len(main) + 1 + len(CREDIT) <= BSKY_LIMIT:
-        return main + '\n' + CREDIT, None
-    if len(main) > BSKY_LIMIT:  # too many names
-        while len(names) > 1 and len(main) > BSKY_LIMIT:
-            names = names[:-1]
-            main = f"\U0001F916 #Hubble \U0001F52D {', '.join(names)} and more. {kind}: {', '.join(filters)}. " \
-                   f"PI: {r['proposal_pi']}, program {r['proposal_id']}."
-        main = main[:BSKY_LIMIT]
+    extra = [n for n in names if not in_name(n, target)]
+
+    def build(extra, more=False, credit=True):
+        with_ = f" with {', '.join(extra)}{' and more' if more else ''}" if extra else ''
+        return f"\U0001F916 image processing for #Hubble \U0001F52D data ({target}){with_}. {kind}: {', '.join(filters)}. " \
+               f"PI: {r['proposal_pi']}, program {r['proposal_id']}. CRVAL: {crval[0]:.6f}, {crval[1]:.6f}." + \
+               (f"\n{CREDIT}" if credit else '') + f"\n{NEWS_TEXT}"
+
+    main = build(extra)
+    if len(main) <= BSKY_LIMIT:
+        return main, None
+    main, k = build(extra, credit=False), len(extra)
+    while len(main) > BSKY_LIMIT and k > 0:
+        k -= 1
+        main = build(extra[:k], more=True, credit=False)
     return main, CREDIT
 
 
@@ -322,14 +335,19 @@ def bsky():
     return _client
 
 
-def _builder(text):
-    """Text with clickable #hashtags."""
+def _builder(text, links=None):
+    """Text with clickable #hashtags and links: {phrase: url}, default "news page" -> NEWS_URL."""
     from atproto import client_utils
+    links = {'news page': NEWS_URL} if links is None else links
     tb = client_utils.TextBuilder()
     pos = 0
-    for m in re.finditer(r'#(\w+)', text):
+    rx = '|'.join([r'#\w+'] + [re.escape(k) for k in links])
+    for m in re.finditer(rx, text):
         tb.text(text[pos:m.start()])
-        tb.tag(m.group(), m.group(1))
+        if m.group().startswith('#'):
+            tb.tag(m.group(), m.group()[1:])
+        else:
+            tb.link(m.group(), links[m.group()])
         pos = m.end()
     tb.text(text[pos:])
     return tb
@@ -415,15 +433,14 @@ def process(group, do_post=False, log=None, out_dir=OUT):
         names = [target_obj['label']] + names
     elif target_obj is not None:
         names = [target_obj['label']] + [n for n in names if n != target_obj['label']]
-    if moving:
-        names = [target]
     row['labels'] = ';'.join(names)
     img = draw_labels(rgb[::-1], labels) if len(labels) else rgb[::-1]
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, re.sub(r'[^\w.+-]', '_', f'{target}_{"_".join(filters)}.jpg'))
     size = save_jpg(img, path)
-    text, reply = post_texts(names, filters, group)
-    alt = f"Hubble image of {', '.join(names)} ({'color, filters' if len(filters) > 1 else 'filter'} " \
+    _, c1, c2, _ = cl.ref_info(ref)
+    text, reply = post_texts(target, names, filters, group, (c1, c2))
+    alt = f"Hubble image of {', '.join([target] + [n for n in names if not in_name(n, target)])} ({'color, filters' if len(filters) > 1 else 'filter'} " \
           f"{', '.join(filters)}){', labels from SIMBAD' if len(labels) else ''}. Automatic processing."
     print(f'  {path}\n  {text}' + (f'\n  reply: {reply}' if reply else ''))
     if do_post:
