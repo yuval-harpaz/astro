@@ -61,3 +61,6 @@ DECALSJ0124-3536,2026-11-10 21:08:39.000,jf5619010_drc.fits,f814w,,skip: no name
 DESJ0501-4118,2026-11-10 20:40:10.000,jf5696010_drc.fits,f814w,,skip: no named objects
 VLNT-010-J110437+062343,2026-11-10 17:07:49.000,jf508y010_drz.fits;jf508y020_drz.fits,f775w;f435w,LEDA 33462,https://bsky.app/profile/astrobothst.bsky.social/post/3n2lw6btok72w
 OFFSET-JUPITER-01DEG,2026-11-10 16:36:17.000,jfk412010_drc.fits;jfk412020_drc.fits,f775w,,skip: no named objects
+CLUTCH-TARGET-JV,2026-11-18 15:16:18.000,jfq8jv020_drc.fits;jfq8jv010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JV,2026-11-18 13:34:10.000,ifq8jv040_drc.fits;ifq8jv030_drz.fits,f098m;f275w,,skip: no named objects
+J1302+7644,2026-11-18 13:09:59.000,ifpth2bsq_drz.fits,f105w,,skip: no named objects
