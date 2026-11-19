@@ -67,3 +67,6 @@ J1302+7644,2026-11-18 13:09:59.000,ifpth2bsq_drz.fits,f105w,,skip: no named obje
 VLNT-027-J094603-011707,2026-11-18 15:01:57.000,jf509p020_drz.fits;jf509p010_drz.fits,f775w;f435w,,skip: no named objects
 CLUTCH-TARGET-JW,2026-11-19 03:06:55.000,ifq8jw030_drz.fits,f098m,,skip: no named objects
 GAIADR3-2174275039828118912,2026-11-19 01:52:15.000,jfof03040_drz.fits;jfof03050_drz.fits;jfof03010_drz.fits;jfof03020_drz.fits;jfof03030_drz.fits,f165lp;f140lp;f115lp,,skip: UV only
+NGC0034,2026-11-19 16:58:46.000,ifoc12030_drz.fits;ifoc12020_drz.fits;ifoc12010_drz.fits,,,failed: SIMBAD unavailable: 404 Client Error: Not Found for url: https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=SELECT+TOP+5000+b.oid%2C+b.ra%2C+b.dec%2C
+CLUTCH-TARGET-JW,2026-11-19 04:44:15.000,jfq8jw010_drc.fits,,,failed: SIMBAD unavailable: 404 Client Error: Not Found for url: https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=SELECT+TOP+5000+b.oid%2C+b.ra%2C+b.dec%2C
+CLUTCH-TARGET-JW,2026-11-19 03:40:24.000,ifq8jw040_drc.fits;ifq8jw030_drz.fits,,,failed: SIMBAD unavailable: 404 Client Error: Not Found for url: https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=SELECT+TOP+5000+b.oid%2C+b.ra%2C+b.dec%2C
