@@ -64,3 +64,4 @@ OFFSET-JUPITER-01DEG,2026-11-10 16:36:17.000,jfk412010_drc.fits;jfk412020_drc.fi
 CLUTCH-TARGET-JV,2026-11-18 15:16:18.000,jfq8jv020_drc.fits;jfq8jv010_drc.fits,f606w;f435w,,skip: no named objects
 CLUTCH-TARGET-JV,2026-11-18 13:34:10.000,ifq8jv040_drc.fits;ifq8jv030_drz.fits,f098m;f275w,,skip: no named objects
 J1302+7644,2026-11-18 13:09:59.000,ifpth2bsq_drz.fits,f105w,,skip: no named objects
+VLNT-027-J094603-011707,2026-11-18 15:01:57.000,jf509p020_drz.fits;jf509p010_drz.fits,f775w;f435w,,skip: no named objects
