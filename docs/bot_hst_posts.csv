@@ -95,3 +95,8 @@ SN2026DIX,2026-11-19 22:15:58.000,ifl701010_drc.fits,f555w,NGC 3913,https://bsky
 NGC0034,2026-11-19 16:58:46.000,ifoc12030_drz.fits;ifoc12020_drz.fits;ifoc12010_drz.fits,f160w;f130n;f110w,NGC 34,https://bsky.app/profile/astrobothst.bsky.social/post/3n2q2h5sfpx2t
 CLUTCH-TARGET-JW,2026-11-19 04:44:15.000,jfq8jw010_drc.fits,f606w,,skip: no named objects
 CLUTCH-TARGET-JW,2026-11-19 03:40:24.000,ifq8jw040_drc.fits;ifq8jw030_drz.fits,f098m;f275w,,skip: no named objects
+ANY,2026-11-20 10:26:26.000,jfuo01xfq_drc.fits;jfuo01xlq_drc.fits;jfuo01xhq_drc.fits;jfuo01xoq_drc.fits,f502n,,skip: no named objects
+NGC-188-DENSE,2026-11-20 08:53:58.000,ifuo01xkq_drc.fits;ifuo01xgq_drc.fits;ifuo01xnq_drc.fits;ifuo01xeq_drc.fits,f410m,NGC 188,https://bsky.app/profile/astrobothst.bsky.social/post/3n2qmaz4ar42v
+CLUTCH-TARGET-JZ,2026-11-20 07:28:24.000,jfq8jz020_drc.fits;jfq8jz010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-JZ,2026-11-20 05:29:19.000,ifq8jz040_drc.fits;ifq8jz030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-JY,2026-11-20 07:19:48.000,jfq8jy020_drc.fits;jfq8jy010_drc.fits,f606w;f435w,,skip: no named objects
