@@ -1,8 +1,9 @@
 // Shared sky helpers for jwst_latest_release.html, hst_latest_release.html and color_lab.html:
 // coordinate parsing / formatting, angular distance, cone filters, SIMBAD name lookup and autocomplete.
-// SIMBAD is queried on the Harvard mirror (CORS enabled; the CDS main site was down in Nov 2026).
+// SIMBAD mirrors (CORS enabled), tried in order: the CDS main site is down since Nov 2026 (cybersecurity incident)
+// and the Harvard mirror is unreachable; IDIA (South Africa) works.
 const Sky = (() => {
-  const SIMBAD = 'https://simbad.harvard.edu/simbad/sim-script';
+  const SIMBAD_HOSTS = ['simbad.idia.ac.za', 'simbad.cfa.harvard.edu', 'simbad.harvard.edu', 'simbad.cds.unistra.fr'];
   const d2r = Math.PI / 180;
 
   // Decimal degrees as in the CRVAL fields ("13.647655, -37.653867")
@@ -41,8 +42,15 @@ const Sky = (() => {
   // SIMBAD script query -> [{name, ra, dec, otype}]
   async function script(lines) {
     const body = ['output console=off script=off error=off', 'format object "%IDLIST(1)|%COO(d;A D)|%OTYPE(S)"', ...lines].join('\n');
-    const r = await fetch(`${SIMBAD}?${new URLSearchParams({ script: body })}`);
-    if (!r.ok) throw new Error(`SIMBAD HTTP ${r.status}`);
+    let r = null, err = null;
+    for (const host of SIMBAD_HOSTS) {
+      try {
+        r = await fetch(`https://${host}/simbad/sim-script?${new URLSearchParams({ script: body })}`, { signal: AbortSignal.timeout(15000) });
+        if (r.ok) break;
+        err = new Error(`SIMBAD ${host} HTTP ${r.status}`); r = null;
+      } catch (e) { err = e; r = null; }
+    }
+    if (!r) throw err;
     const out = [];
     for (const line of (await r.text()).split('\n')) {
       const p = line.split('|');

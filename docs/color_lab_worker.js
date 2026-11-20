@@ -5,7 +5,8 @@ importScripts('https://cdn.jsdelivr.net/pyodide/v0.27.7/full/pyodide.js');
 
 const S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/';
 const BLOCK = 2880;
-const SIMBAD_HOSTS = ['simbad.harvard.edu', 'simbad.cds.unistra.fr'];  // Harvard mirror first (CDS was down, Nov 2026)
+// CDS main site down since Nov 2026 (cybersecurity incident), Harvard mirror unreachable; IDIA (South Africa) works
+const SIMBAD_HOSTS = ['simbad.idia.ac.za', 'simbad.cfa.harvard.edu', 'simbad.harvard.edu', 'simbad.cds.unistra.fr'];
 const SIMBAD_MAX = 5000;
 let py = null;
 let cacheKey = null;  // settings that require re-reading layers from scratch
@@ -180,7 +181,7 @@ self.onmessage = async (ev) => {
       self.postMessage({ type: 'image', id, w, h, rgba, ref, refFactor, pixscale, layers, crval: [crval1, crval2], ...memInfo() }, [rgba.buffer]);
     }
     else if (cmd === 'simbad') {
-      // objects from SIMBAD (Harvard mirror; the CDS main site was down in Nov 2026) on the grid of the reference layer
+      // objects from SIMBAD (first mirror that answers, SIMBAD_HOSTS) on the grid of the reference layer
       const { ref } = ev.data;
       cl = py.pyimport('color_lab');
       if (!cl.has_layer(ref)) throw new Error('reference layer not loaded');
@@ -191,7 +192,7 @@ self.onmessage = async (ev) => {
       for (const host of SIMBAD_HOSTS) {
         try {
           const url = `https://${host}/simbad/sim-tap/sync?` + new URLSearchParams({ request: 'doQuery', lang: 'adql', format: 'json', query: adql });
-          const r = await fetch(url);
+          const r = await fetch(url, { signal: AbortSignal.timeout(25000) });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           json = await r.json();
           log(`SIMBAD (${host}): ${json.data.length} objects within ${(rad * 60).toFixed(1)}′ of ${ra.toFixed(4)}, ${dec.toFixed(4)}`);
