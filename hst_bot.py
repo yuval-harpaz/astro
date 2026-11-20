@@ -36,7 +36,8 @@ LATEST = os.path.join(HERE, 'docs', 'hst', 'latest.csv')
 LOG = os.path.join(HERE, 'docs', 'bot_hst_posts.csv')
 LOG_COLUMNS = ['target_name', 'release', 'files', 'filters', 'labels', 'posted']
 OUT = os.path.join(HERE, 'data', 'tmp', 'hst_bot')
-SIMBAD_HOSTS = ['simbad.harvard.edu', 'simbad.cds.unistra.fr']  # Harvard mirror first (CDS was down, Nov 2026)
+# CDS cybersecurity incident (Nov 2026): simbad.cds.unistra.fr 404, Harvard mirror unreachable; IDIA (South Africa) works
+SIMBAD_HOSTS = ['simbad.idia.ac.za', 'simbad.cfa.harvard.edu', 'simbad.harvard.edu', 'simbad.cds.unistra.fr']
 # named catalogs, in order of preference for an object's label: (LIKE prefix for SIMBAD, full-match regex)
 CATALOGS = [('M %', r'M \d+'), ('NGC %', r'NGC \d+[A-Z]?'), ('IC %', r'IC \d+[A-Z]?'), ('Arp %', r'Arp \d+'),
             ('UGC %', r'UGC \d+[A-Z]?'), ('ESO %', r'ESO \d+-\d+[A-Z]?'), ('ACO %', r'ACO (S )?\d+'),
@@ -62,8 +63,9 @@ def clean_id(sid):
 
 
 def norm(name):
-    """For comparing names: NGC-5905, NGC 5905 and ngc5905 are the same; Abell = ACO."""
-    return re.sub(r'[^a-z0-9]', '', str(name).lower()).replace('abell', 'aco')
+    """For comparing names: NGC-5905, NGC 5905 and ngc5905 are the same, NGC0034 = NGC 34; Abell = ACO."""
+    s = re.sub(r'[^a-z0-9]', '', str(name).lower()).replace('abell', 'aco')
+    return re.sub(r'(?<=[a-z])0+(?=\d)', '', s)
 
 
 def catalog_rank(sid):
@@ -80,7 +82,7 @@ def simbad(adql):
     err = None
     for host in SIMBAD_HOSTS:
         try:
-            r = requests.get(f'https://{host}/simbad/sim-tap/sync', timeout=180,
+            r = requests.get(f'https://{host}/simbad/sim-tap/sync', timeout=(15, 180),
                              params={'request': 'doQuery', 'lang': 'adql', 'format': 'json', 'query': adql})
             r.raise_for_status()
             j = r.json()
@@ -128,7 +130,8 @@ def resolve_target(target):
     except Exception as e:
         print(f'resolve {target}: {e}')
         return None
-    lab = _best(ids)
+    same = [clean_id(i) for i in ids['id'] if catalog_rank(i) is not None and norm(i) == norm(target)]
+    lab = same[0] if same else _best(ids)  # NGC0034 -> NGC 34, not its other name NGC 17
     if not lab:
         return None
     return {'oid': oid, 'label': lab, 'ra': float(df['ra'].iloc[0]), 'dec': float(df['dec'].iloc[0])}
@@ -424,6 +427,8 @@ def process(group, do_post=False, log=None, out_dir=OUT):
     if not moving:
         ra, dec, rad = cl.footprint(ref)
         labels = select_labels(frame_labels(ref, named_objects(ra, dec, rad)), target_obj)
+        if target_obj is not None:  # the target's own name (NGC 34), not another id of it (NGC 17)
+            labels.loc[labels['oid'] == target_obj['oid'], 'label'] = target_obj['label']
         if not len(labels) and target_obj is None:
             row['posted'] = 'skip: no named objects in frame'
             print(f'{tag}: no named objects in frame')
