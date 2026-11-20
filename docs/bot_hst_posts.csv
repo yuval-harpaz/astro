@@ -84,3 +84,14 @@ SN2026DIX,2026-11-19 22:15:58.000,ifl701010_drc.fits,,,failed: SIMBAD unavailabl
 NGC0034,2026-11-19 16:58:46.000,ifoc12030_drz.fits;ifoc12020_drz.fits;ifoc12010_drz.fits,,,failed: SIMBAD unavailable: 404 Client Error: Not Found for url: https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=SELECT+TOP+5000+b.oid%2C+b.ra%2C+b.dec%2C
 CLUTCH-TARGET-JW,2026-11-19 04:44:15.000,jfq8jw010_drc.fits,,,failed: SIMBAD unavailable: 404 Client Error: Not Found for url: https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=SELECT+TOP+5000+b.oid%2C+b.ra%2C+b.dec%2C
 CLUTCH-TARGET-JW,2026-11-19 03:40:24.000,ifq8jw040_drc.fits;ifq8jw030_drz.fits,,,failed: SIMBAD unavailable: 404 Client Error: Not Found for url: https://simbad.cds.unistra.fr/simbad/sim-tap/sync?request=doQuery&lang=adql&format=json&query=SELECT+TOP+5000+b.oid%2C+b.ra%2C+b.dec%2C
+IC5298,2026-11-20 06:13:38.000,ifoc14020_drz.fits;ifoc14010_drz.fits;ifoc14030_drz.fits,f160w;f132n;f110w,IC 5298,https://bsky.app/profile/astrobothst.bsky.social/post/3n2q2f7vuj32v
+PG2349-014,2026-11-20 06:06:06.000,ifpz21030_drc.fits;ifpz21020_drc.fits;ifpz21010_drz.fits,f160w;f621m,LEDA 72664,https://bsky.app/profile/astrobothst.bsky.social/post/3n2q2fu6c6f2a
+CLUTCH-TARGET-JZ,2026-11-20 05:29:19.000,ifq8jz040_drc.fits,f275w,,skip: UV only
+CLUTCH-TARGET-JY,2026-11-20 03:46:24.000,ifq8jy040_drc.fits;ifq8jy030_drz.fits,f098m;f275w,,skip: no named objects
+EUCLIDDSPL115943+673249,2026-11-20 03:14:13.000,ifo610010_drc.fits;ifo609010_drc.fits,f814w;f475w,,skip: no named objects
+G191B2B,2026-11-20 00:53:48.000,ifvt06080_drz.fits;ifvt06040_drz.fits;ifvt060a0_drz.fits;ifvt06090_drz.fits;ifvt06070_drz.fits;ifvt06010_drz.fits;ifvt06030_drz.fits;ifvt06060_drz.fits;ifvt06050_drz.fits;ifvt06020_drz.fits,f160w;f127m;f098m,,skip: no named objects
+EUCLIDDSPL235319-602119,2026-11-19 22:45:51.000,ifo613010_drc.fits,f475w,,skip: no named objects
+SN2026DIX,2026-11-19 22:15:58.000,ifl701010_drc.fits,f555w,NGC 3913,https://bsky.app/profile/astrobothst.bsky.social/post/3n2q2gkctmp2t
+NGC0034,2026-11-19 16:58:46.000,ifoc12030_drz.fits;ifoc12020_drz.fits;ifoc12010_drz.fits,f160w;f130n;f110w,NGC 34,https://bsky.app/profile/astrobothst.bsky.social/post/3n2q2h5sfpx2t
+CLUTCH-TARGET-JW,2026-11-19 04:44:15.000,jfq8jw010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-JW,2026-11-19 03:40:24.000,ifq8jw040_drc.fits;ifq8jw030_drz.fits,f098m;f275w,,skip: no named objects
