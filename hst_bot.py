@@ -39,7 +39,7 @@ OUT = os.path.join(HERE, 'data', 'tmp', 'hst_bot')
 # CDS cybersecurity incident (Nov 2026): simbad.cds.unistra.fr 404, Harvard mirror unreachable; IDIA (South Africa) works
 SIMBAD_HOSTS = ['simbad.idia.ac.za', 'simbad.cfa.harvard.edu', 'simbad.harvard.edu', 'simbad.cds.unistra.fr']
 # named catalogs, in order of preference for an object's label: (LIKE prefix for SIMBAD, full-match regex)
-CATALOGS = [('M %', r'M \d+'), ('NGC %', r'NGC \d+[A-Z]?'), ('IC %', r'IC \d+[A-Z]?'), ('Arp %', r'Arp \d+'),
+CATALOGS = [('M %', r'M \d+'), ('NGC %', r'NGC \d+[A-Z]?'), ('IC %', r'IC \d+[A-Z]?'), ('APG %', r'Arp \d+'),
             ('UGC %', r'UGC \d+[A-Z]?'), ('ESO %', r'ESO \d+-\d+[A-Z]?'), ('ACO %', r'ACO (S )?\d+'),
             ('Mrk %', r'Mrk \d+[A-Z]?'), ('LEDA %', r'LEDA \d+'), ('PGC %', r'PGC \d+')]
 FAINT = ('LEDA', 'PGC')  # dropped first when a field has too many labels
@@ -58,8 +58,8 @@ MIN_ASPECT = 0.35  # subarray strips
 
 # ---------- names ----------
 def clean_id(sid):
-    """SIMBAD 'NGC  5905' -> 'NGC 5905'"""
-    return ' '.join(str(sid).split())
+    """SIMBAD 'NGC  5905' -> 'NGC 5905'; SIMBAD's 'APG 220' (Atlas of Peculiar Galaxies) -> 'Arp 220'"""
+    return re.sub(r'^APG (?=\d)', 'Arp ', ' '.join(str(sid).split()))
 
 
 def norm(name):
@@ -111,18 +111,41 @@ def named_objects(ra, dec, rad):
         if lab:
             out.append({'oid': int(oid), 'label': lab, 'rank': catalog_rank(lab), 'ra': float(rows['ra'].iloc[0]),
                         'dec': float(rows['dec'].iloc[0]), 'otype': rows['otype'].iloc[0],
-                        'ids': {norm(i) for i in rows['id']}})
+                        'ids': {norm(clean_id(i)) for i in rows['id']}})
     return pd.DataFrame(out, columns=['oid', 'label', 'rank', 'ra', 'dec', 'otype', 'ids'])
+
+
+# target names that start with a single-number catalog: NGC4302-N, NGC-300a, M31-FIELD1, ARP220-NUC -> the catalog
+# name and number, whatever follows; nothing alphanumeric between the catalog and the number (MRK231 is not M)
+CATALOG_START = re.compile(r'(M|NGC|IC|ARP|UGC|MRK|LEDA|PGC)[^A-Z0-9]*0*(\d+)', re.I)
+CATALOG_CASE = {'ARP': 'Arp', 'MRK': 'Mrk'}
+
+
+def catalog_start(target):
+    """'NGC4302-N' -> 'NGC 4302', None when the name does not start with a catalog and a number."""
+    m = CATALOG_START.match(str(target).strip())
+    if not m:
+        return None
+    cat = m.group(1).upper()
+    return f'{CATALOG_CASE.get(cat, cat)} {m.group(2)}'
 
 
 def resolve_target(target):
     """The SIMBAD object named like the HST target name, if it has a named-catalog identifier:
-    dict oid, label, ra, dec, or None. NGC-5905 -> NGC 5905, ABELL-S1063 -> ACO S 1063."""
-    cands = list(dict.fromkeys([target.replace('-', ' '), target, target.replace('-', '')]))
-    cands = [c.replace("'", "''") for c in cands if c.strip()]
-    where = ' OR '.join(f"i.id = '{c}'" for c in cands)
+    dict oid, label, ra, dec, or None. NGC-5905 -> NGC 5905, ABELL-S1063 -> ACO S 1063. When the full name is
+    unknown, a name that starts with a catalog and a number is tried as that: NGC4302-N -> NGC 4302."""
+    def lookup(cands):
+        cands = [c.replace("'", "''") for c in dict.fromkeys(cands) if c.strip()]
+        where = ' OR '.join(f"i.id = '{c}'" for c in cands)
+        return simbad(f"SELECT TOP 1 b.oid, b.ra, b.dec FROM ident AS i JOIN basic AS b ON i.oidref = b.oid WHERE {where}")
     try:
-        df = simbad(f"SELECT TOP 1 b.oid, b.ra, b.dec FROM ident AS i JOIN basic AS b ON i.oidref = b.oid WHERE {where}")
+        df = lookup([target.replace('-', ' '), target, target.replace('-', '')])
+        base = catalog_start(target)
+        if not len(df) and base and norm(base) != norm(target):
+            df = lookup([base])
+            if len(df):
+                print(f'resolve {target}: as {base}')
+                target = base
         if not len(df):
             return None
         oid = int(df['oid'].iloc[0])
@@ -130,7 +153,7 @@ def resolve_target(target):
     except Exception as e:
         print(f'resolve {target}: {e}')
         return None
-    same = [clean_id(i) for i in ids['id'] if catalog_rank(i) is not None and norm(i) == norm(target)]
+    same = [clean_id(i) for i in ids['id'] if catalog_rank(i) is not None and norm(clean_id(i)) == norm(target)]
     lab = same[0] if same else _best(ids)  # NGC0034 -> NGC 34, not its other name NGC 17
     if not lab:
         return None
