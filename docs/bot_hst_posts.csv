@@ -105,3 +105,14 @@ CLUTCH-TARGET-KA,2026-11-20 21:01:38.000,jfq8ka010_drc.fits,f606w,,skip: no name
 CLUTCH-TARGET-KA,2026-11-20 20:49:27.000,ifq8ka040_drc.fits;ifq8ka030_drz.fits,f098m;f275w,,skip: no named objects
 GAIADR3-2194332434010280960,2026-11-20 19:50:56.000,jfof04010_drz.fits;jfof04050_drz.fits;jfof04040_drz.fits;jfof04020_drz.fits;jfof04030_drz.fits,f165lp;f140lp;f115lp,,skip: UV only
 OFFSET-JUPITER-01DEG,2026-11-20 17:54:26.000,jfk411010_drc.fits;jfk411020_drc.fits,f775w,,skip: no named objects
+N300-C,2026-11-21 06:22:05.000,jf9s38020_drc.fits;jf9s38010_drc.fits,f814w;f606w,NGC 300,https://bsky.app/profile/astrobothst.bsky.social/post/3n2siojdvjd2p
+N300-C,2026-11-21 05:42:09.000,if9s38pqq_drc.fits;if9s38pmq_drc.fits;if9s38piq_drz.fits;if9s38pfq_drz.fits,f160w;f110w;f555w,,skip: no named objects
+CLUTCH-TARGET-JX,2026-11-21 05:07:11.000,ifq8jx040_drc.fits,f275w,,skip: UV only
+SN2022XXF,2026-11-21 05:01:33.000,ifou05020_drc.fits;ifou05010_drc.fits,f275w;f225w,,skip: UV only
+PHOENIX-XRAY-ARC,2026-11-21 04:27:44.000,ifsl01010_drc.fits,f336w,,skip: UV only
+CLUTCH-TARGET-KD,2026-11-21 03:40:44.000,ifq8kd040_drc.fits;ifq8kd030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KC,2026-11-21 03:12:25.000,jfq8kc020_drc.fits;jfq8kc010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-KC,2026-11-21 01:38:20.000,ifq8kc040_drc.fits;ifq8kc030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KB,2026-11-21 01:40:12.000,ifq8kb040_drc.fits;ifq8kb030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KB,2026-11-20 21:32:40.000,jfq8kb010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-KA,2026-11-20 23:51:22.000,jfq8ka020_drc.fits;jfq8ka010_drc.fits,f606w;f435w,,skip: no named objects
