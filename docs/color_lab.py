@@ -27,7 +27,7 @@ from numpy.lib.stride_tricks import sliding_window_view as _swv
 
 warnings.simplefilter('ignore', FITSFixedWarning)
 
-VERSION = '1.0'  # bump, commit, then tag colorlab-v<VERSION> (minor: fixes and features, major: images look different)
+VERSION = '1.1'  # bump, commit, then tag colorlab-v<VERSION> (minor: fixes and features, major: images look different)
 
 S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/'
 S3_HST = 'https://stpubdata.s3.amazonaws.com/hst/public/'
@@ -35,6 +35,7 @@ RAW = {}     # name -> (data float32 2D, WCS, block factor, (full nx, full ny)),
 REPROJ = {}  # (name, ref, align, (dx, dy)) -> float32 2D on ref grid, with a nudge of (dx, dy) ref pixels built in
 MOVING = {}  # name -> True for moving targets (HST MTFLAG = T, JWST TARGTYPE = MOVING): align by pixels, not by sky
 BAKED = {}   # (name, ref, align, ref shape) -> nudge (dx, dy) in ref pixels built into the reprojection ("Fill edges")
+GRID = {}    # ref -> (shape, WCS, signature, names): reference grid extended to cover mosaic tiles (set_grid)
 CRMASK = {}  # name -> fraction of cosmic-ray pixels removed in each pixel of the layer (same grid as RAW data)
 WCSNAME = {}  # name -> WCSNAME of the SCI header: HST '...GAIA...' = aligned to Gaia, others can be off by ~1 arcsec
 _T0 = [time.time()]
@@ -619,6 +620,77 @@ def has_layer(name):
     return name in RAW
 
 
+def grid(ref):
+    """(shape, WCS) of the reference grid: the reference layer's own, or extended to cover mosaic tiles."""
+    return GRID[ref][:2] if ref in GRID else (RAW[ref][0].shape, RAW[ref][1])
+
+
+def gridscale(ref):
+    """Pixel size (arcsec) of the reference grid."""
+    return float(np.mean(proj_plane_pixel_scales(grid(ref)[1])) * 3600)
+
+
+def set_grid(ref, names, align='sky', mosaic=True, max_factor=4):
+    """Mosaics of tiles that do not overlap (e.g. a galaxy in two halves from different visits): with mosaic on and
+    sky alignment, the reference grid is extended to cover all images of filters that have two or more images, so a
+    tile outside the reference image is not cut away. Same orientation and pixel size as the reference; when the
+    extended grid would exceed max_factor x the reference's pixels, it is coarsened by an integer factor.
+    A single image of another filter never extends the grid (the reference still crops it)."""
+    old = GRID.get(ref)
+    new = None
+    if align == 'sky' and mosaic and ref in RAW:
+        groups = {}
+        for n in names:
+            groups.setdefault((short(n).lower(), round(wavelength(n))), []).append(n)
+        tiles = [n for g in groups.values() if len(g) > 1 for n in g if n in RAW]
+        if tiles:
+            (ny, nx), rw = RAW[ref][0].shape, RAW[ref][1]
+            xs, ys = [-0.5, nx - 0.5], [-0.5, ny - 0.5]
+            for n in tiles:
+                data, w = RAW[n][:2]
+                fin = np.isfinite(data)
+                rows, cols = np.nonzero(fin.any(1))[0], np.nonzero(fin.any(0))[0]
+                if not len(rows):
+                    continue
+                cx = np.array([cols[0], cols[-1], cols[0], cols[-1]], float) + np.array([-0.5, 0.5, -0.5, 0.5])
+                cy = np.array([rows[0], rows[0], rows[-1], rows[-1]], float) + np.array([-0.5, -0.5, 0.5, 0.5])
+                x, y = rw.world_to_pixel_values(*w.pixel_to_world_values(cx, cy))
+                xs += list(x)
+                ys += list(y)
+            x0, x1 = int(np.floor(min(xs) + 0.5)), int(np.ceil(max(xs) - 0.5))
+            y0, y1 = int(np.floor(min(ys) + 0.5)), int(np.ceil(max(ys) - 0.5))
+            if x0 < -1 or y0 < -1 or x1 > nx or y1 > ny:  # tiles reach beyond the reference image
+                x0, y0, x1, y1 = min(x0, 0), min(y0, 0), max(x1, nx - 1), max(y1, ny - 1)
+                W, H = x1 - x0 + 1, y1 - y0 + 1
+                k = max(1, int(np.ceil(np.sqrt(W * H / (max_factor * nx * ny)))))
+                w = rw.deepcopy()
+                # 0-based: old p = x0 + q * k + (k - 1) / 2 for new pixel q
+                w.wcs.crpix = [(w.wcs.crpix[0] - 1 - x0 - (k - 1) / 2) / k + 1, (w.wcs.crpix[1] - 1 - y0 - (k - 1) / 2) / k + 1]
+                if k > 1:
+                    if w.wcs.has_cd():
+                        w.wcs.cd = w.wcs.cd * k
+                    else:
+                        w.wcs.cdelt = w.wcs.cdelt * k
+                w.wcs.set()
+                shape = (-(-H // k), -(-W // k))
+                new = (shape, w, (shape, tuple(np.round(w.wcs.crpix, 6)), k), list(names))
+    sig = lambda g: g[2] if g else None
+    if sig(old) != sig(new):
+        for k_ in [k_ for k_ in REPROJ if k_[1] == ref]:
+            del REPROJ[k_]
+        for k_ in [k_ for k_ in BAKED if k_[1] == ref]:
+            del BAKED[k_]
+    if new is None:
+        GRID.pop(ref, None)
+    else:
+        GRID[ref] = new
+        if sig(old) != sig(new):
+            (gy, gx), k = new[0], new[2][2]
+            step(f'mosaic: reference grid extended to cover all tiles, {gx}x{gy} ({gx * gy / 1e6:.1f} MP)' +
+                 (f', {k}x coarser than {short(ref)} to stay within {max_factor}x its size' if k > 1 else ''))
+    return new
+
+
 def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data', cache=True):
     """Layer `name` on the grid of `ref`, moved by shift = (dx, dy) ref pixels (right, up), so a nudge brings in the
     layer's own data instead of empty edges. align 'sky': by WCS; 'pixels': centers matched and the pixel scale of ref,
@@ -626,7 +698,7 @@ def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data', c
     what 'cosmic': the layer's cosmic-ray mask (fraction of removed pixels, CRMASK) instead of its data, processed
     the same way (not cached; None when the layer was not cleaned). cache False: not kept (one-off grids)."""
     shift = (int(shift[0]), int(shift[1]))
-    key = (name, ref, align, shift)
+    key = (name, ref, align, shift, GRID[ref][2] if ref in GRID else None)
     cosmic = what == 'cosmic'
     if cosmic and name not in CRMASK:
         return None
@@ -634,12 +706,12 @@ def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data', c
         step(f'{short(name)}: reprojected layer cached')
         return REPROJ[key]
     data, wcs = (CRMASK[name] if cosmic else RAW[name][0]), RAW[name][1]
-    if name == ref and shift == (0, 0):
+    own = name == ref and ref not in GRID  # the reference on its own grid
+    if own and shift == (0, 0):
         out = data
     else:
         t = time.time()
-        ref_data, ref_wcs = RAW[ref][:2]
-        ny, nx = ref_data.shape
+        (ny, nx), ref_wcs = grid(ref)
         ly, lx = data.shape
         s = pixscale(ref) / pixscale(name)  # layer pixels per ref pixel
         out = np.empty((ny, nx), np.float32)
@@ -647,7 +719,7 @@ def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data', c
         for y0 in range(0, ny, chunk):
             y1 = min(ny, y0 + chunk)
             gx, gy = np.meshgrid(xx, np.arange(y0, y1, dtype=np.float64) - shift[1])
-            if align == 'pixels' or name == ref:
+            if align == 'pixels' or own:
                 px, py = (gx - (nx - 1) / 2) * s + (lx - 1) / 2, (gy - (ny - 1) / 2) * s + (ly - 1) / 2
             else:
                 lon, lat = ref_wcs.pixel_to_world_values(gx, gy)
@@ -657,7 +729,7 @@ def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data', c
         step(f'{short(name)}: {"cosmic-ray mask " if cosmic else ""}reprojected onto {short(ref)} {how} ({nx}x{ny})' + (f', moved {shift[0]:+d}, {shift[1]:+d} px' if any(shift) else '') + f', {time.time() - t:.1f}s')
     if cosmic or not cache:
         return out
-    for k in [k for k in REPROJ if k[:3] == key[:3] and k != key]:  # keep one version per layer
+    for k in [k for k in REPROJ if k[:3] == key[:3] and k != key]:  # keep one version per layer (shift, grid)
         del REPROJ[k]
     REPROJ[key] = out
     return out
@@ -720,7 +792,7 @@ def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=6.0):  # fa
         align = 'pixels' if any(MOVING.get(n) for n in names) else 'sky'
     t = time.time()
     anchors = [n for n in names if gaia_aligned(n)] or [ref]
-    scale = pixscale(ref)
+    scale = gridscale(ref)
     step(f'auto-align: staying put: {", ".join(short(n) for n in anchors)}' +
          (' (WCS aligned to Gaia)' if gaia_aligned(anchors[0]) else ' (reference; no layer is aligned to Gaia)') +
          f', search +-{max_arcsec:.1f}"')
@@ -758,7 +830,7 @@ def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=6.0):  # fa
                  f'{", at the search limit" if edge else ""}), left as is [{wcs}]')
             continue
         if own:  # the shift on the layer's grid -> on the sky -> on the reference grid
-            w, rw = RAW[n][1], RAW[ref][1]
+            w, rw = RAW[n][1], grid(ref)[1]
             ny, nx = RAW[n][0].shape
             cx, cy = (nx - 1) / 2, (ny - 1) / 2
             lon, lat = w.pixel_to_world_values(np.array([cx, cx + dx]), np.array([cy, cy + dy]))
@@ -774,6 +846,7 @@ def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=6.0):  # fa
 
 def clear():
     RAW.clear()
+    GRID.clear()
     CRMASK.clear()
     REPROJ.clear()
     BAKED.clear()
@@ -795,6 +868,8 @@ def forget(keep, max_raw=8):
     ref = keep[0] if keep else None
     for k in [k for k in REPROJ if k[1] != ref or k[0] not in RAW]:
         del REPROJ[k]
+    for r in [r for r in GRID if r != ref or r not in RAW]:
+        del GRID[r]
     gc.collect()
 
 
@@ -852,13 +927,14 @@ def compose_rgb(red, green, blue, **opts):
     if not allnames:
         raise ValueError('no layers chosen')
     ref = o['ref'] if o['ref'] in allnames else allnames[0]
-    ny, nx = RAW[ref][0].shape
+    align = o['align'] if o['align'] in ('sky', 'pixels') else ('pixels' if any(MOVING.get(n) for n in allnames) else 'sky')
+    set_grid(ref, allnames, align, o['mosaic'])
+    ny, nx = grid(ref)[0]
     shifts = o['shifts'] or {}
     sample = area_mask(o['area'], (ny, nx)) if o['area'] else None
     if sample is not None:
         step(f'limits sampled from a {int(sample.any(1).sum())}x{int(sample.any(0).sum())} px area')
-    scale = 1.0 / pixscale(ref)  # arcsec -> pixels of the reference grid
-    align = o['align'] if o['align'] in ('sky', 'pixels') else ('pixels' if any(MOVING.get(n) for n in allnames) else 'sky')
+    scale = 1.0 / gridscale(ref)  # arcsec -> pixels of the reference grid
     hst = [n for n in allnames if WCSNAME.get(n) and not os.path.basename(n).startswith('jw')]
     loose = [n for n in hst if not gaia_aligned(n)]
     if loose and len(hst) > 1 and align == 'sky':
@@ -994,15 +1070,15 @@ def pixscale(name):
 
 
 def ref_info(name):
-    """(block factor, CRVAL1, CRVAL2, pixel scale arcsec) of a loaded layer."""
+    """(block factor, CRVAL1, CRVAL2, pixel scale arcsec) of a loaded layer as the reference grid."""
     _, wcs, f, _ = RAW[name]
-    return f, float(wcs.wcs.crval[0]), float(wcs.wcs.crval[1]), pixscale(name)
+    return f, float(wcs.wcs.crval[0]), float(wcs.wcs.crval[1]), gridscale(name)
 
 
 def footprint(name):
-    """[RA, Dec, radius] in degrees: a circle around the center of a loaded layer that covers its corners (for SIMBAD)."""
-    data, w, _, _ = RAW[name]
-    ny, nx = data.shape
+    """[RA, Dec, radius] in degrees: a circle around the center of the reference grid of a loaded layer that covers
+    its corners (for SIMBAD)."""
+    (ny, nx), w = grid(name)
     ra, dec = (float(v) for v in w.pixel_to_world_values((nx - 1) / 2, (ny - 1) / 2))
     cra, cdec = w.pixel_to_world_values(np.array([-0.5, nx - 0.5, -0.5, nx - 0.5]), np.array([-0.5, -0.5, ny - 0.5, ny - 0.5]))
     r0, d0, r1, d1 = np.radians(ra), np.radians(dec), np.radians(cra), np.radians(cdec)
@@ -1011,17 +1087,25 @@ def footprint(name):
 
 
 def sky_to_pix(name, ra, dec):
-    """Pixel x, y (0-based, FITS orientation) on the grid of a loaded layer; NaN outside the image or its data."""
+    """Pixel x, y (0-based, FITS orientation) on the reference grid of a loaded layer; NaN outside the image or its
+    data (with an extended mosaic grid: outside the data of all its images)."""
     if hasattr(ra, 'to_py'):
         ra, dec = ra.to_py(), dec.to_py()
-    data, w, _, _ = RAW[name]
-    ny, nx = data.shape
-    x, y = w.world_to_pixel_values(np.asarray(ra, float), np.asarray(dec, float))
+    ra, dec = np.atleast_1d(np.asarray(ra, float)), np.atleast_1d(np.asarray(dec, float))
+    (ny, nx), w = grid(name)
+    x, y = w.world_to_pixel_values(ra, dec)
     x, y = np.atleast_1d(x).astype(float), np.atleast_1d(y).astype(float)
     ix, iy = np.round(x), np.round(y)
     inside = np.isfinite(x) & np.isfinite(y) & (ix >= 0) & (ix < nx) & (iy >= 0) & (iy < ny)
     ok = np.zeros(len(x), bool)
-    ok[inside] = np.isfinite(data[iy[inside].astype(int), ix[inside].astype(int)])
+    for n in (GRID[name][3] if name in GRID else [name]):  # data of any image there
+        if n not in RAW:
+            continue
+        data, lw = RAW[n][:2]
+        lx, ly = lw.world_to_pixel_values(ra, dec)
+        jx, jy = np.round(np.atleast_1d(lx)), np.round(np.atleast_1d(ly))
+        on = inside & np.isfinite(jx) & np.isfinite(jy) & (jx >= 0) & (jx < data.shape[1]) & (jy >= 0) & (jy < data.shape[0])
+        ok[on] |= np.isfinite(data[jy[on].astype(int), jx[on].astype(int)])
     x[~ok], y[~ok] = np.nan, np.nan
     return [x.tolist(), y.tolist()]
 
