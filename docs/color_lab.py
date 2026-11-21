@@ -27,7 +27,7 @@ from numpy.lib.stride_tricks import sliding_window_view as _swv
 
 warnings.simplefilter('ignore', FITSFixedWarning)
 
-VERSION = '1.1'  # bump, commit, then tag colorlab-v<VERSION> (minor: fixes and features, major: images look different)
+VERSION = '1.1'  # bump, commit, then tag colorlab-v<VERSION> (minor: fixes, features, changes for particular cases; major: most images look different)
 
 S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/'
 S3_HST = 'https://stpubdata.s3.amazonaws.com/hst/public/'
