@@ -101,3 +101,7 @@ CLUTCH-TARGET-JZ,2026-11-20 07:28:24.000,jfq8jz020_drc.fits;jfq8jz010_drc.fits,f
 CLUTCH-TARGET-JZ,2026-11-20 05:29:19.000,ifq8jz040_drc.fits;ifq8jz030_drz.fits,f098m;f275w,,skip: no named objects
 CLUTCH-TARGET-JY,2026-11-20 07:19:48.000,jfq8jy020_drc.fits;jfq8jy010_drc.fits,f606w;f435w,,skip: no named objects
 EUCLIDDSPL235319-602119,2026-11-20 11:44:38.000,ifo614010_drc.fits;ifo613010_drc.fits,f814w;f475w,,skip: no named objects
+CLUTCH-TARGET-KA,2026-11-20 21:01:38.000,jfq8ka010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-KA,2026-11-20 20:49:27.000,ifq8ka040_drc.fits;ifq8ka030_drz.fits,f098m;f275w,,skip: no named objects
+GAIADR3-2194332434010280960,2026-11-20 19:50:56.000,jfof04010_drz.fits;jfof04050_drz.fits;jfof04040_drz.fits;jfof04020_drz.fits;jfof04030_drz.fits,f165lp;f140lp;f115lp,,skip: UV only
+OFFSET-JUPITER-01DEG,2026-11-20 17:54:26.000,jfk411010_drc.fits;jfk411020_drc.fits,f775w,,skip: no named objects
