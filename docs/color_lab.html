@@ -480,7 +480,7 @@ linear = only normalize between the limits.">Factor</label>
             <input type="number" id="lim-hi" value="98" min="50" max="100" step="0.1" title="upper percentile">
           </div>
           <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
-          <label title="HST images made from one or two exposures are full of cosmic-ray hits: dots and short streaks that show up as red, green or blue specks. This removes pixels much sharper than any star or nebula detail and fills them from their neighbours. HST only (JWST images are already clean). Reprocesses from scratch."><input type="checkbox" id="cosmic" checked> remove cosmic rays <span class="hint">(HST)</span></label>
+          <label title="HST images made from one or two exposures are full of cosmic-ray hits: dots and short streaks that show up as red, green or blue specks. This removes pixels much sharper than any star or nebula detail and fills them from their neighbours. Only images from a single exposure are cleaned: when HST combined several exposures the hits are already gone, and cleaning would remove small stars instead (likewise infrared images, and JWST). Reprocesses from scratch."><input type="checkbox" id="cosmic" checked> remove cosmic rays <span class="hint">(HST)</span></label>
           <label title="Pixels outside one channel's footprint get the max of the other two, so areas covered by only some filters look grey instead of tinted (noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
           <label title="Several images of the same filter (e.g. neighbouring tiles of a mosaic) become one layer: where they overlap each pixel is their median, and where one has no data (empty or zero) the others fill it in. The stretch then sees the whole mosaic at once, so a bright object in one tile does not darken that tile alone. Unchecked: each image is stretched on its own and they are averaged."><input type="checkbox" id="mosaic" checked> mosaic same filter</label>
 
@@ -489,6 +489,7 @@ linear = only normalize between the limits.">Factor</label>
             <select id="nudge-layer"></select>
             <input type="number" id="nudge-n" value="1" min="1" max="200" step="1" title="pixels per click">
             <span class="hint">px</span>
+            <button id="auto-align" class="ghost small" title="Line up the stars of all layers automatically, by matching their point sources. Layers whose position comes from a Gaia-based alignment stay put and the others move to them (otherwise the reference grid stays put). Replaces the current nudges; a layer without a clear match is left as is (see the log). Compose first.">⌖ Auto-align</button>
             <button id="fill-edges" class="ghost small" title="Nudges are fast: they move the composed layer, so edges that move into view stay empty. Fill edges reprojects the nudged layers with their nudges built in, so those edges show the layer's own data (where it has any). Takes a moment per layer.">↻ Fill edges</button>
           </div>
           <div class="row">
@@ -625,6 +626,15 @@ linear = only normalize between the limits.">Factor</label>
         if (d.id !== simbad.req) return;
         simbad.loading = false; simbad.key = null;
         logLine('SIMBAD: ' + d.msg); $('simbad-info').textContent = 'SIMBAD failed (see log)';
+      }
+      else if (d.type === 'autoalign') {
+        for (const k of Object.keys(shifts)) delete shifts[k];
+        let moved = 0;
+        for (const [k, v] of Object.entries(d.shifts)) if (v[0] || v[1]) { shifts[k] = v; moved++; }
+        logLine(`Auto-align: ${moved ? moved + ' layer' + (moved > 1 ? 's' : '') + ' nudged' : 'no nudges needed'}`);
+        showShifts();
+        setBusy(false, 'Aligned');
+        compose();
       }
       else if (d.type === 'error') { logLine('ERROR: ' + d.msg); setBusy(false, 'Error (see log)'); }
       else if (d.type === 'image') {
@@ -1223,6 +1233,14 @@ linear = only normalize between the limits.">Factor</label>
     $('fill-edges').onclick = () => {
       if (!hasImage) { logLine('Compose first, then nudge and fill the edges.'); return; }
       fillNext = true; compose(); showShifts();
+    };
+
+    $('auto-align').onclick = () => {
+      if (!hasImage || busy) { if (!hasImage) logLine('Compose first, then auto-align.'); return; }
+      const names = allChosen();
+      if (names.length < 2) { logLine('Auto-align needs at least two layers.'); return; }
+      setBusy(true, 'Aligning…');
+      worker.postMessage({ cmd: 'autoalign', names, ref: effectiveRef(), align: $('align').value });
     };
 
     document.querySelectorAll('#nudge-pad button').forEach(btn => {

@@ -32,6 +32,7 @@ RAW = {}     # name -> (data float32 2D, WCS, block factor, (full nx, full ny)),
 REPROJ = {}  # (name, ref, align, (dx, dy)) -> float32 2D on ref grid, with a nudge of (dx, dy) ref pixels built in
 MOVING = {}  # name -> True for moving targets (HST MTFLAG = T, JWST TARGTYPE = MOVING): align by pixels, not by sky
 BAKED = {}   # (name, ref, align, ref shape) -> nudge (dx, dy) in ref pixels built into the reprojection ("Fill edges")
+WCSNAME = {}  # name -> WCSNAME of the SCI header: HST '...GAIA...' = aligned to Gaia, others can be off by ~1 arcsec
 _T0 = [time.time()]
 
 
@@ -414,16 +415,46 @@ def add_layer(name, buf, ny, nx, header_text, factor, fill=True, cosmic=False):
     return data.nbytes
 
 
+def skip_cosmic(name, hdr):
+    """Why an image needs no cosmic-ray cleaning (None = clean it), from the SCI header alone:
+    JWST i2d products are already clean; IR detectors (WFC3/IR, NICMOS) read up the ramp, which rejects hits;
+    drizzled from >= 2 exposures (NCOMBINE), drizzle already rejected the hits wherever the exposures overlap, and
+    cleaning would mostly remove real stars (at the reduced size of the browser a star is as sharp as a hit).
+    WFPC2 products have no NCOMBINE: treated as single exposures."""
+    base = os.path.basename(name).lower()
+    if base.startswith('jw'):
+        return 'JWST'
+    try:
+        scale = 3600 * float(np.hypot(hdr.get('CD1_1', 0), hdr.get('CD2_1', 0)))
+    except (TypeError, ValueError):
+        scale = 0
+    if base.startswith('n') or (base.startswith('i') and scale > 0.1):
+        return 'IR detector, hits removed by the pipeline'
+    try:
+        nexp = int(hdr.get('NCOMBINE', 1) or 1)
+    except (TypeError, ValueError):
+        nexp = 1
+    if nexp >= 2:
+        return f'{nexp} exposures, hits already removed by drizzle'
+    return None
+
+
 def _add(name, data, header_text, factor, fill, cosmic=False):
-    if cosmic and not os.path.basename(name).startswith('jw'):  # HST only: JWST i2d products are already clean
-        t = time.time()
-        data, n = clean_cosmic(data)
-        step(f'{short(name)}: remove cosmic rays, {n} pixels ({n / data.size * 100:.2f}%), {time.time() - t:.1f}s')
+    hdr = fits.Header.fromstring(header_text)
+    WCSNAME[name] = str(hdr.get('WCSNAME', '') or '').strip()
+    if cosmic:
+        why = skip_cosmic(name, hdr)
+        if why:
+            if why != 'JWST':
+                step(f'{short(name)}: no cosmic-ray removal needed ({why})')
+        else:
+            t = time.time()
+            data, n = clean_cosmic(data)
+            step(f'{short(name)}: remove cosmic rays, {n} pixels ({n / data.size * 100:.2f}%), {time.time() - t:.1f}s')
     if fill:
         t = time.time()
         data, n, it = fill_holes(data)
         step(f'{short(name)}: fill holes, {n} hole pixels, {it} iterations, {time.time() - t:.1f}s')
-    hdr = fits.Header.fromstring(header_text)
     RAW[name] = (data, binned_wcs(header_text, factor), factor, (int(hdr['NAXIS1']), int(hdr['NAXIS2'])))
 
 
@@ -465,6 +496,88 @@ def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256):
     for k in [k for k in REPROJ if k[:3] == key[:3] and k != key]:  # keep one version per layer
         del REPROJ[k]
     REPROJ[key] = out
+    return out
+
+
+def gaia_aligned(name):
+    """HST: WCSNAME says so (e.g. IDC_...-FIT_REL_GAIAeDR3); JWST pipeline products are tied to Gaia."""
+    return os.path.basename(name).startswith('jw') or 'GAIA' in WCSNAME.get(name, '').upper()
+
+
+def _point_sources(img, edge=4):
+    """High-pass image in noise units, clipped to 0..50: stars and compact knots stand out, smooth light and sky
+    are ~0. Pixels near the footprint edge are 0 so the edge itself does not pull the alignment to no shift."""
+    good = np.isfinite(img) & (img != 0)
+    if good.sum() < 100:
+        return None
+    x = np.where(good, img, np.median(img[good])).astype(np.float32)
+    r = x - ndimage.median_filter(x, 5)
+    s = 1.4826 * np.median(np.abs(r[good])) + 1e-12
+    r = np.clip(r / s, 0, 50)
+    r[~ndimage.binary_erosion(good, iterations=edge)] = 0
+    return r
+
+
+def _xcorr(a, b, maxs):
+    """(dx, dy, snr, at_limit): moving b by (dx, dy) pixels (right, up) best matches a; snr = peak height over the scatter
+    of the correlation within +-maxs."""
+    ny, nx = a.shape
+    shape = (ny + maxs, nx + maxs)  # zero padding: no wrap-around
+    c = np.fft.irfft2(np.fft.rfft2(a, shape) * np.conj(np.fft.rfft2(b, shape)), shape)
+    w = np.roll(np.roll(c, maxs, 0), maxs, 1)[:2 * maxs + 1, :2 * maxs + 1]
+    iy, ix = np.unravel_index(np.argmax(w), w.shape)
+    med = np.median(w)
+    snr = (w[iy, ix] - med) / (1.4826 * np.median(np.abs(w - med)) + 1e-12)
+    edge = ix in (0, 2 * maxs) or iy in (0, 2 * maxs)
+    fx = fy = 0.0
+    if not edge:  # sub-pixel peak: parabola through the peak and its neighbours
+        l, m, r = w[iy, ix - 1], w[iy, ix], w[iy, ix + 1]
+        fx = float(np.clip(0.5 * (l - r) / (l - 2 * m + r - 1e-12), -0.5, 0.5))
+        l, r = w[iy - 1, ix], w[iy + 1, ix]
+        fy = float(np.clip(0.5 * (l - r) / (l - 2 * m + r - 1e-12), -0.5, 0.5))
+    return ix - maxs + fx, iy - maxs + fy, float(snr), edge
+
+
+def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=8.0):
+    """Nudges (arcsec, right / up, as compose_rgb's shifts) that line up the stars and compact knots of all layers
+    with an anchor layer, found by cross-correlation on the reference grid. The anchor is the reference if its WCS is
+    aligned to Gaia (or no layer is), else the first Gaia-aligned layer, so a well-aligned layer stays put.
+    Returns {name: [dx, dy]} for all names (anchor [0, 0]); a layer whose match is not clear keeps [0, 0] and is
+    reported in the log."""
+    names = list(names.to_py() if hasattr(names, 'to_py') else names)
+    names = [n for n in dict.fromkeys(names) if n in RAW]
+    if not names:
+        return {}
+    ref = ref if ref in names else names[0]
+    if align not in ('sky', 'pixels'):
+        align = 'pixels' if any(MOVING.get(n) for n in names) else 'sky'
+    t = time.time()
+    gaia = [n for n in names if gaia_aligned(n)]
+    anchor = ref if (gaia_aligned(ref) or not gaia) else gaia[0]
+    scale = pixscale(ref)
+    maxs = max(3, int(np.ceil(max_arcsec / scale)))
+    a = _point_sources(reproject_to(anchor, ref, align))
+    step(f'auto-align: anchor {short(anchor)}' + (f' (WCS aligned to Gaia: {WCSNAME[anchor]})' if gaia_aligned(anchor) else '') +
+         f', search +-{maxs} px ({maxs * scale:.1f}")')
+    out = {n: [0.0, 0.0] for n in names}
+    if a is None:
+        step('auto-align: the anchor layer has no data')
+        return out
+    for n in names:
+        if n == anchor:
+            continue
+        b = _point_sources(reproject_to(n, ref, align))
+        if b is None:
+            step(f'auto-align: {short(n)}: no data on the reference grid, left as is')
+            continue
+        dx, dy, snr, edge = _xcorr(a, b, maxs)
+        wcs = WCSNAME.get(n, '') or 'no WCSNAME'
+        if snr < min_snr or edge:
+            step(f'auto-align: {short(n)}: no clear match (confidence {snr:.0f}{", at the search limit" if edge else ""}), left as is [{wcs}]')
+            continue
+        out[n] = [dx * scale, dy * scale]
+        step(f'auto-align: {short(n)}: {dx:+.1f}, {dy:+.1f} px ({dx * scale:+.2f}", {dy * scale:+.2f}"), confidence {snr:.0f} [{wcs}]')
+    step(f'auto-align: {time.time() - t:.1f}s')
     return out
 
 
@@ -553,6 +666,11 @@ def compose_rgb(red, green, blue, **opts):
         step(f'limits sampled from a {int(sample.any(1).sum())}x{int(sample.any(0).sum())} px area')
     scale = 1.0 / pixscale(ref)  # arcsec -> pixels of the reference grid
     align = o['align'] if o['align'] in ('sky', 'pixels') else ('pixels' if any(MOVING.get(n) for n in allnames) else 'sky')
+    hst = [n for n in allnames if WCSNAME.get(n) and not os.path.basename(n).startswith('jw')]
+    loose = [n for n in hst if not gaia_aligned(n)]
+    if loose and len(hst) > 1 and align == 'sky':
+        step('note: not aligned to Gaia, may be off by up to ~1": ' + ', '.join(f'{short(n)} ({WCSNAME[n]})' for n in loose) +
+             '. Auto-align can line them up.')
     if o['align'] not in ('sky', 'pixels'):
         step(f'align: {align}' + (' (moving target: the stars move between images, so layers are matched by pixels)' if align == 'pixels' else ''))
     # nudges in reference pixels; the reference keeps the frame, so a nudge of the reference moves the others the opposite way

@@ -180,6 +180,15 @@ self.onmessage = async (ev) => {
       res.destroy();
       self.postMessage({ type: 'image', id, w, h, rgba, ref, refFactor, pixscale, layers, crval: [crval1, crval2], ...memInfo() }, [rgba.buffer]);
     }
+    else if (cmd === 'autoalign') {
+      // nudges (arcsec) that line up the loaded layers' point sources with an anchor layer (color_lab.auto_align)
+      const { names, ref, align } = ev.data;
+      cl = py.pyimport('color_lab');
+      cl.reset_clock();
+      const res = cl.auto_align(py.toPy(names), ref, align);
+      const shifts = res.toJs({ dict_converter: Object.fromEntries }); res.destroy();
+      post('autoalign', { id, shifts });
+    }
     else if (cmd === 'simbad') {
       // objects from SIMBAD (first mirror that answers, SIMBAD_HOSTS) on the grid of the reference layer
       const { ref } = ev.data;
