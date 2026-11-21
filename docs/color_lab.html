@@ -247,6 +247,14 @@
     #panel .panel-head { display: flex; align-items: center; justify-content: space-between; }
     button.small { padding: 2px 10px; font-size: 12px; }
     #panel h4 { margin: 4px 0 0; color: var(--accent); font-size: 13px; }
+    #panel details.sect { display: flex; flex-direction: column; }
+    #panel details.sect > summary { cursor: pointer; list-style: none; margin: 4px 0 0; color: var(--accent); font-size: 13px; font-weight: bold; user-select: none; }
+    #panel details.sect > summary::-webkit-details-marker { display: none; }
+    #panel details.sect > summary::before { content: '▸'; display: inline-block; width: 1em; transition: transform .15s; }
+    #panel details.sect[open] > summary::before { transform: rotate(90deg); }
+    #panel details.sect > summary .hint { font-weight: normal; margin-left: 4px; }
+    #panel details.sect[open] > summary .hint { display: none; }
+    #panel details.sect .sect-body { display: flex; flex-direction: column; gap: 7px; margin-top: 7px; }
     #panel .row label.lbl { width: 84px; flex: 0 0 auto; color: #aaa; white-space: nowrap; }
     #panel select { flex: 1; min-width: 0; width: 100%; text-overflow: ellipsis; }
     .hint { font-size: 11px; color: #888; }
@@ -479,8 +487,14 @@ linear = only normalize between the limits.">Factor</label>
             <span>–</span>
             <input type="number" id="lim-hi" value="98" min="50" max="100" step="0.1" title="upper percentile">
           </div>
-          <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours"><input type="checkbox" id="fill" checked> fill holes <span class="hint">(reprocesses from scratch)</span></label>
-          <label title="HST images made from one or two exposures are full of cosmic-ray hits: dots and short streaks that show up as red, green or blue specks. This removes pixels much sharper than any star or nebula detail and fills them from their neighbours. Only images from a single exposure are cleaned: when HST combined several exposures the hits are already gone, and cleaning would remove small stars instead (likewise infrared images, and JWST). Reprocesses from scratch."><input type="checkbox" id="cosmic" checked> remove cosmic rays <span class="hint">(HST)</span></label>
+          <details class="sect" id="clean-sect">
+            <summary title="Repairs to the data before the colors are made. Changing these reprocesses from scratch.">Cleaning <span class="hint" id="clean-sum"></span></summary>
+            <div class="sect-body">
+              <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours"><input type="checkbox" id="fill" checked> fill holes</label>
+              <label title="HST images made from one or two exposures are full of cosmic-ray hits: dots and short streaks that show up as red, green or blue specks. This removes pixels much sharper than any star or nebula detail and fills them from their neighbours. Only images from a single exposure are cleaned: when HST combined several exposures the hits are already gone, and cleaning would remove small stars instead (likewise infrared images, and JWST). Reprocesses from scratch."><input type="checkbox" id="cosmic" checked> remove cosmic rays <span class="hint">(HST)</span></label>
+              <span class="hint">Changing these reprocesses from scratch.</span>
+            </div>
+          </details>
           <label title="Pixels outside one channel's footprint get the max of the other two, so areas covered by only some filters look grey instead of tinted (noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
           <label title="Several images of the same filter (e.g. neighbouring tiles of a mosaic) become one layer: where they overlap each pixel is their median, and where one has no data (empty or zero) the others fill it in. The stretch then sees the whole mosaic at once, so a bright object in one tile does not darken that tile alone. Unchecked: each image is stretched on its own and they are averaged."><input type="checkbox" id="mosaic" checked> mosaic same filter</label>
 
@@ -842,6 +856,16 @@ linear = only normalize between the limits.">Factor</label>
     }
     $('compose-btn').onclick = compose;
 
+    // Cleaning section: collapsed shows what is on; open / closed is remembered per browser
+    function showCleanSum() {
+      const on = [['fill', 'holes'], ['cosmic', 'cosmic rays']].filter(([id]) => $(id).checked).map(([, t]) => t);
+      $('clean-sum').textContent = on.length ? on.join(', ') : 'off';
+    }
+    for (const id of ['fill', 'cosmic']) $(id).addEventListener('change', showCleanSum);
+    showCleanSum();
+    try { if (localStorage.getItem('colorlab-clean-open') === '1') $('clean-sect').open = true; } catch (e) { }
+    $('clean-sect').addEventListener('toggle', () => { try { localStorage.setItem('colorlab-clean-open', $('clean-sect').open ? '1' : '0'); } catch (e) { } });
+
     // processing controls re-compose right away when an image is shown (layers are cached, so it is fast)
     const showBlue = () => { $('blue-row').style.display = $('method').value === 'filt05' ? '' : 'none'; };
     $('method').addEventListener('change', showBlue);
@@ -1161,7 +1185,7 @@ linear = only normalize between the limits.">Factor</label>
     });
     document.addEventListener('mousedown', () => { clearTimeout(tipTimer); tip.style.display = 'none'; });
     // "?" after the labels of the processing controls (and Size), which carry the explanations
-    document.querySelectorAll('#panel label.lbl[title], #panel h4[title], #panel > label[title], #top > label[title]').forEach(l => {
+    document.querySelectorAll('#panel label.lbl[title], #panel h4[title], #panel > label[title], #panel .sect-body > label[title], #top > label[title]').forEach(l => {
       const q = Object.assign(document.createElement('span'), { className: 'q', textContent: '?' });
       if (l.matches('#top > label')) l.insertBefore(q, l.querySelector('select')); else l.appendChild(q);
     });
@@ -1183,6 +1207,7 @@ linear = only normalize between the limits.">Factor</label>
       }
       for (const id of ['lim-lo', 'lim-hi', 'blue-shift']) if ($(id).value !== $(id).defaultValue) { $(id).value = $(id).defaultValue; changed = true; }
       for (const id of ['fill', 'cosmic', 'grey', 'mosaic']) if ($(id).checked !== $(id).defaultChecked) { $(id).checked = $(id).defaultChecked; changed = true; }
+      showCleanSum();
       $('nudge-n').value = $('nudge-n').defaultValue;
       if (bcVals().some(Boolean)) resetBC();
       showShifts(); showBlue(); updateChosen();
