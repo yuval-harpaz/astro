@@ -425,7 +425,7 @@ Chrome / Edge: choose a folder once and the files are written there directly. Ot
 
       <div id="side">
         <div id="panel">
-          <div class="panel-head"><h4>Processing</h4><button id="reset-btn" class="ghost small" title="Return all processing controls and nudges to the defaults">Reset</button></div>
+          <div class="panel-head"><h4>Settings</h4><button id="reset-btn" class="ghost small" title="Return all settings and nudges to the defaults">Reset</button></div>
           <div class="row"><label class="lbl" for="method" title="R / G / B: each checked image goes to its color channel (several per channel are averaged). Without G, green is the mean of R and B.
 filt05: every chosen image gets a color from its wavelength on a color wheel (longest = red, shortest = blue / violet) and all are added. The R / G / B checks then only mean &quot;use this image&quot;.
 rrgggbb: the filters of the chosen images are split by wavelength into three groups: the longest third is R, the shortest third is B, the rest is G (all images of one filter go to the same color; each color is averaged). The checks only mean &quot;use this image&quot;.
@@ -487,15 +487,15 @@ linear = only normalize between the limits.">Factor</label>
             <span>–</span>
             <input type="number" id="lim-hi" value="98" min="50" max="100" step="0.1" title="upper percentile">
           </div>
-          <details class="sect" id="clean-sect">
-            <summary title="Repairs to the data before the colors are made. Changing these reprocesses from scratch.">Cleaning <span class="hint" id="clean-sum"></span></summary>
+          <details class="sect" id="proc-sect">
+            <summary title="Repairs to the data and how the layers are combined">Processing <span class="hint" id="proc-sum"></span></summary>
             <div class="sect-body">
-              <label title="Fill holes (e.g. saturated star cores) with the max of their neighbours"><input type="checkbox" id="fill" checked> fill holes</label>
-              <label title="HST images made from one or two exposures are full of cosmic-ray hits: dots and short streaks that show up as red, green or blue specks. This removes pixels much sharper than any star or nebula detail and fills them from their neighbours. Only images from a single exposure are cleaned: when HST combined several exposures the hits are already gone, and cleaning would remove small stars instead (likewise infrared images, and JWST). Reprocesses from scratch."><input type="checkbox" id="cosmic" checked> remove cosmic rays <span class="hint">(HST)</span></label>
-              <span class="hint">Changing these reprocesses from scratch.</span>
+              <label title="JWST: fill holes (e.g. saturated star cores) with the max of their neighbours. HST: fill pixels without data inside the image (dead rows, bad columns) with the mean of their neighbours. Reprocesses from scratch."><input type="checkbox" id="fill" checked> fill holes</label>
+              <label title="Specks are pixels much sharper than any star or nebula detail: cosmic-ray hits (dots and short streaks that show up as red, green or blue specks) and hot pixels. They are found at full resolution, before the image is reduced to the chosen size, and filled from their neighbours. HST optical and UV images; not infrared images, where star cores are as sharp as specks, not photon-counting UV images (ACS/SBC), which have no hits, and not JWST, which is already clean. Reprocesses from scratch."><input type="checkbox" id="cosmic" checked> remove specks <span class="hint">(cosmic rays, hot pixels)</span></label>
+              <label title="Pixels outside one channel's footprint get the max of the other two, so areas covered by only some filters look grey instead of tinted (noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
+              <label title="Line up the stars of all layers automatically, by matching their point sources, whenever the images, the reference grid or the size change. Layers whose position comes from a Gaia-based alignment stay put and the others move to them (otherwise the reference grid stays put). Sets the nudges, which you can still adjust; a layer without a clear match is left as is (see the log). Unchecking removes the automatic nudges."><input type="checkbox" id="autoalign"> auto-align</label>
             </div>
           </details>
-          <label title="Pixels outside one channel's footprint get the max of the other two, so areas covered by only some filters look grey instead of tinted (noise that is 0 after log is left alone)"><input type="checkbox" id="grey" checked> grey missing</label>
           <label title="Several images of the same filter (e.g. neighbouring tiles of a mosaic) become one layer: where they overlap each pixel is their median, and where one has no data (empty or zero) the others fill it in. The stretch then sees the whole mosaic at once, so a bright object in one tile does not darken that tile alone. Unchecked: each image is stretched on its own and they are averaged."><input type="checkbox" id="mosaic" checked> mosaic same filter</label>
 
           <h4 title="Shift one layer, or all layers of one color (R, G or B), relative to the others to fix a small misalignment (e.g. between telescopes or epochs). Steps are pixels of the shown image; the shift is kept in arcsec, so it survives size and reference changes, and it is written into the Local script.">Nudge a layer <span class="hint">(pixels of the shown image)</span></h4>
@@ -503,7 +503,6 @@ linear = only normalize between the limits.">Factor</label>
             <select id="nudge-layer"></select>
             <input type="number" id="nudge-n" value="1" min="1" max="200" step="1" title="pixels per click">
             <span class="hint">px</span>
-            <button id="auto-align" class="ghost small" title="Line up the stars of all layers automatically, by matching their point sources. Layers whose position comes from a Gaia-based alignment stay put and the others move to them (otherwise the reference grid stays put). Replaces the current nudges; a layer without a clear match is left as is (see the log). Compose first.">⌖ Auto-align</button>
             <button id="fill-edges" class="ghost small" title="Nudges are fast: they move the composed layer, so edges that move into view stay empty. Fill edges reprojects the nudged layers with their nudges built in, so those edges show the layer's own data (where it has any). Takes a moment per layer.">↻ Fill edges</button>
           </div>
           <div class="row">
@@ -643,8 +642,9 @@ linear = only normalize between the limits.">Factor</label>
       }
       else if (d.type === 'autoalign') {
         for (const k of Object.keys(shifts)) delete shifts[k];
+        for (const k of Object.keys(autoShifts)) delete autoShifts[k];
         let moved = 0;
-        for (const [k, v] of Object.entries(d.shifts)) if (v[0] || v[1]) { shifts[k] = v; moved++; }
+        for (const [k, v] of Object.entries(d.shifts)) if (v[0] || v[1]) { shifts[k] = v; autoShifts[k] = v; moved++; }
         logLine(`Auto-align: ${moved ? moved + ' layer' + (moved > 1 ? 's' : '') + ' nudged' : 'no nudges needed'}`);
         showShifts();
         setBusy(false, 'Aligned');
@@ -671,6 +671,7 @@ linear = only normalize between the limits.">Factor</label>
         $('credit').innerHTML = creditHTML(lastSel, d.crval);
         drawSpectrum();
         setBusy(false, 'Done');
+        maybeAutoAlign(false);
       }
     };
     worker.onerror = (e) => { logLine('worker error: ' + e.message); setBusy(false, 'Error'); };
@@ -856,15 +857,16 @@ linear = only normalize between the limits.">Factor</label>
     }
     $('compose-btn').onclick = compose;
 
-    // Cleaning section: collapsed shows what is on; open / closed is remembered per browser
-    function showCleanSum() {
-      const on = [['fill', 'holes'], ['cosmic', 'cosmic rays']].filter(([id]) => $(id).checked).map(([, t]) => t);
-      $('clean-sum').textContent = on.length ? on.join(', ') : 'off';
+    // Processing section: collapsed shows what is on; open / closed is remembered per browser
+    const PROC = [['fill', 'holes'], ['cosmic', 'specks'], ['grey', 'grey missing'], ['autoalign', 'auto-align']];
+    function showProcSum() {
+      const on = PROC.filter(([id]) => $(id).checked).map(([, t]) => t);
+      $('proc-sum').textContent = on.length ? on.join(', ') : 'off';
     }
-    for (const id of ['fill', 'cosmic']) $(id).addEventListener('change', showCleanSum);
-    showCleanSum();
-    try { if (localStorage.getItem('colorlab-clean-open') === '1') $('clean-sect').open = true; } catch (e) { }
-    $('clean-sect').addEventListener('toggle', () => { try { localStorage.setItem('colorlab-clean-open', $('clean-sect').open ? '1' : '0'); } catch (e) { } });
+    for (const [id] of PROC) $(id).addEventListener('change', showProcSum);
+    showProcSum();
+    try { if (localStorage.getItem('colorlab-proc-open') === '1') $('proc-sect').open = true; } catch (e) { }
+    $('proc-sect').addEventListener('toggle', () => { try { localStorage.setItem('colorlab-proc-open', $('proc-sect').open ? '1' : '0'); } catch (e) { } });
 
     // processing controls re-compose right away when an image is shown (layers are cached, so it is fast)
     const showBlue = () => { $('blue-row').style.display = $('method').value === 'filt05' ? '' : 'none'; };
@@ -1206,8 +1208,10 @@ linear = only normalize between the limits.">Factor</label>
         if (sel.value !== def.value) { sel.value = def.value; changed = true; }
       }
       for (const id of ['lim-lo', 'lim-hi', 'blue-shift']) if ($(id).value !== $(id).defaultValue) { $(id).value = $(id).defaultValue; changed = true; }
-      for (const id of ['fill', 'cosmic', 'grey', 'mosaic']) if ($(id).checked !== $(id).defaultChecked) { $(id).checked = $(id).defaultChecked; changed = true; }
-      showCleanSum();
+      for (const id of ['fill', 'cosmic', 'grey', 'mosaic', 'autoalign']) if ($(id).checked !== $(id).defaultChecked) { $(id).checked = $(id).defaultChecked; changed = true; }
+      for (const k of Object.keys(autoShifts)) delete autoShifts[k];
+      alignedKey = '';
+      showProcSum();
       $('nudge-n').value = $('nudge-n').defaultValue;
       if (bcVals().some(Boolean)) resetBC();
       showShifts(); showBlue(); updateChosen();
@@ -1260,13 +1264,33 @@ linear = only normalize between the limits.">Factor</label>
       fillNext = true; compose(); showShifts();
     };
 
-    $('auto-align').onclick = () => {
-      if (!hasImage || busy) { if (!hasImage) logLine('Compose first, then auto-align.'); return; }
+    // auto-align: after a compose, when the images, reference grid, size or alignment mode changed since the last
+    // alignment, line up the layers (worker autoalign) and recompose with the nudges it found
+    const autoShifts = {};  // fname -> nudge set by auto-align (removed again when unchecked)
+    let alignedKey = '';
+    const alignKey = () => JSON.stringify([allChosen().slice().sort(), effectiveRef(), $('maxmp').value, $('align').value]);
+    function maybeAutoAlign(force) {
+      if (!$('autoalign').checked || !hasImage || busy) return false;
       const names = allChosen();
-      if (names.length < 2) { logLine('Auto-align needs at least two layers.'); return; }
+      if (names.length < 2) return false;
+      const key = alignKey();
+      if (!force && key === alignedKey) return false;
+      alignedKey = key;
       setBusy(true, 'Aligning…');
       worker.postMessage({ cmd: 'autoalign', names, ref: effectiveRef(), align: $('align').value });
-    };
+      return true;
+    }
+    $('autoalign').addEventListener('change', () => {
+      if ($('autoalign').checked) { maybeAutoAlign(true); return; }
+      let changed = false;  // unchecked: drop the automatic nudges, keep the ones changed by hand since
+      for (const [k, v] of Object.entries(autoShifts)) {
+        if (shifts[k] && shifts[k][0] === v[0] && shifts[k][1] === v[1]) { delete shifts[k]; changed = true; }
+        delete autoShifts[k];
+      }
+      alignedKey = '';
+      showShifts();
+      if (changed && hasImage) compose();
+    });
 
     document.querySelectorAll('#nudge-pad button').forEach(btn => {
       btn.onclick = () => {
@@ -1426,7 +1450,8 @@ linear = only normalize between the limits.">Factor</label>
       const code = await (await fetch('color_lab.py?v=' + Date.now())).text();
       const shiftsPy = '{' + Object.entries(o.shifts).map(([k, v]) => `${pyStr(k)}: [${v[0].toFixed(4)}, ${v[1].toFixed(4)}]`).join(', ') + '}';
       const credit = creditText(sel, null, false);
-      const head = `"""Stand-alone ${[...new Set(allChosen(sel).map(telOf))].join(' + ')} color composition, generated by Color Lab
+      const version = (code.match(/^VERSION = '([^']+)'/m) || [, '?'])[1];
+      const head = `"""Stand-alone ${[...new Set(allChosen(sel).map(telOf))].join(' + ')} color composition, generated by Color Lab ${version}
 (https://yuval-harpaz.github.io/astro/color_lab.html) on ${new Date().toISOString().slice(0, 16)}Z.
 
 Run:  python ${name}.py
@@ -1461,7 +1486,7 @@ GREEN = ${pyList(sel.green)}
 BLUE = ${pyList(sel.blue)}
 MAX_MP = 0
 FILL_HOLES = ${$('fill').checked ? 'True' : 'False'}
-REMOVE_COSMIC_RAYS = ${$('cosmic').checked ? 'True' : 'False'}  # HST only
+REMOVE_COSMIC_RAYS = ${$('cosmic').checked ? 'True' : 'False'}  # HST optical / UV specks: cosmic rays, hot pixels
 OPTIONS = dict(
     method=${pyStr(o.method)},  # 'rgb', 'rrgggbb' or 'mnn' (as RED / GREEN / BLUE above), 'filt05' or 'natural'
     brightness=${bcVals()[0]}, contrast=${bcVals()[1]},  # -100..100, on the final image

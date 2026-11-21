@@ -509,6 +509,7 @@ def process(group, do_post=False, log=None, out_dir=OUT):
 
 def run(days=7, do_post=True, only=None, write_log=True):
     """Process every group with new files. only: list of target names. -> DataFrame of log rows."""
+    print(f'hst_bot with Color Lab {cl.VERSION}')
     log = read_log()
     groups = [g for g in make_groups(load_rows(days)) if is_new(g, log)]
     if only:

@@ -27,6 +27,8 @@ from numpy.lib.stride_tricks import sliding_window_view as _swv
 
 warnings.simplefilter('ignore', FITSFixedWarning)
 
+VERSION = '1.0'  # bump, commit, then tag colorlab-v<VERSION> (minor: fixes and features, major: images look different)
+
 S3 = 'https://stpubdata.s3.amazonaws.com/jwst/public/'
 S3_HST = 'https://stpubdata.s3.amazonaws.com/hst/public/'
 RAW = {}     # name -> (data float32 2D, WCS, block factor, (full nx, full ny)), downsampled and hole-filled
@@ -267,6 +269,39 @@ def fill_holes(img, size=5, n_iter=100):
     return img, n_holes0, it
 
 
+def fill_gaps(img, thin=15, n_iter=100):
+    """HST: missing data is NaN (no_data), and 0 or the minimum can be real (photon counting), so only NaN holes
+    are filled: inside the footprint (data on both sides along the row and the column) and either not part of the
+    outside (largest NaN cluster) or thinner than `thin` pixels (dead rows and bad columns, which can run into the
+    outside). Each iteration gives holes next to data the mean of their valid 3 x 3 neighbours, so a dead row gets
+    the level of its surroundings instead of their brightest pixel. Returns img, holes, iterations."""
+    nan = np.isnan(img)
+    if not nan.any():
+        return img, 0, 0
+    labels, _ = label(nan)
+    outside = largest_cluster_mask(labels)
+    del labels
+    valid = ~nan
+    inside = (np.cumsum(valid, 1) > 0) & (np.cumsum(valid[:, ::-1], 1)[:, ::-1] > 0)
+    inside &= (np.cumsum(valid, 0) > 0) & (np.cumsum(valid[::-1], 0)[::-1] > 0)
+    thin_nan = nan & ~ndimage.binary_opening(nan, np.ones((thin, thin), bool))
+    holes = nan & inside & (~outside | thin_nan)
+    n0 = int(holes.sum())
+    it = 0
+    for it in range(1, n_iter + 1):
+        v = np.isfinite(img)
+        cnt = ndimage.uniform_filter(v.astype(np.float32), 3)
+        tot = ndimage.uniform_filter(np.where(v, img, 0).astype(np.float32), 3)
+        new = holes & ~v & (cnt > 0.05)
+        if not new.any():
+            break
+        img[new] = tot[new] / cnt[new]
+        holes &= ~new
+        if not holes.any():
+            break
+    return img, n0, it
+
+
 # ---------- reading FITS SCI with HTTP range requests (used by the local script; the browser does it in JS) ----------
 def s3url(fname):
     if not fname.startswith('jw'):  # HST pipeline product, e.g. jfq8jq010_drc.fits
@@ -408,9 +443,9 @@ def clean_strip_buf(buf, ny, nx, top=0, bottom=0):
     return c.tobytes(), m.astype(np.uint8).tobytes(), int(m.sum())
 
 
-def skip_cosmic_text(name, header_text):
-    """skip_cosmic from the SCI header text (for the browser): '' = clean it."""
-    return skip_cosmic(name, fits.Header.fromstring(header_text)) or ''
+def skip_cosmic_text(name, header_text, detector=''):
+    """skip_cosmic from the SCI header text and the primary header's DETECTOR (for the browser): '' = clean it."""
+    return skip_cosmic(name, fits.Header.fromstring(header_text), detector) or ''
 
 
 CR_MARGIN = 8  # rows borrowed from the neighbouring strips when cleaning a strip (the tests look 4 px away)
@@ -430,17 +465,44 @@ def _bin_rows(rows, f, ox):
         return np.where(cnt > 0, tot / np.maximum(cnt, 1), np.nan).astype(np.float32)
 
 
+def no_data_from_weight(name, detector):
+    """HST photon-counting detectors (ACS/SBC, STIS MAMA): a pixel can be 0 counts, so missing data is read from WHT."""
+    return not os.path.basename(name).lower().startswith('jw') and str(detector).strip().upper() in MAMA
+
+
+LOW_WEIGHT = 0.5  # photon counting: pixels below this fraction of the median weight are mostly 0 counts (biased)
+
+
+def no_data(name, rows, wht=None):
+    """Full-resolution HST rows with missing data as NaN: when the weight map is given (photon-counting detectors,
+    where 0 counts is real), weight below LOW_WEIGHT x its median (dead rows and the frame edge, where a pixel is
+    0 counts far more often than elsewhere); else exactly 0 (drizzle writes 0 where no exposure had data).
+    JWST as is."""
+    if os.path.basename(name).lower().startswith('jw'):
+        return rows
+    rows = np.array(rows, np.float32)
+    if wht is not None:
+        pos = wht[wht > 0]
+        rows[~(wht >= LOW_WEIGHT * (np.median(pos) if pos.size else 0)) | (wht <= 0)] = np.nan
+    else:
+        rows[rows == 0] = np.nan
+    return rows
+
+
 def read_sci(fname, max_mp, cosmic=False):
-    """Download only the SCI extension and block-average it (nan-mean). cosmic: remove cosmic-ray hits at full
-    resolution, strip by strip, before the block-average (where a hit is still much sharper than a star), unless
-    the header says the image needs none (skip_cosmic). Returns data, header text, factor, hit mask (fraction of
-    hit pixels in each block, on the same grid as data; None when not cleaned)."""
+    """Download only the SCI extension and block-average it (nan-mean). cosmic: remove specks (cosmic-ray hits,
+    hot pixels) at full resolution, strip by strip, before the block-average (where a hit is still much sharper than a star), unless
+    the header says the image needs none (skip_cosmic). HST pixels without data (dead rows, bad columns: weight 0
+    in the drizzled product) are NaN before the block-average, so they leave no dark lines (no_data).
+    Returns data, header text, factor, hit mask (fraction of hit pixels in each block, on the same grid as data;
+    None when not cleaned)."""
     url = s3url(fname)
     off = 0
     for ext in range(6):
         text, hdr, start, size = _read_header(url, off)
         if ext == 0:
             MOVING[fname] = is_moving(hdr)
+            detector = str(hdr.get('DETECTOR', '') or '')
         if ext > 0 and hdr.get('EXTNAME', '').strip() == 'SCI':
             break
         off = start + int(np.ceil(size / 2880)) * 2880
@@ -450,9 +512,15 @@ def read_sci(fname, max_mp, cosmic=False):
     f = block_factor(nx, ny, max_mp)
     ox, oy = -(-nx // f), -(-ny // f)
     out = np.empty((oy, ox), np.float32)
-    why = skip_cosmic(fname, hdr) if cosmic else 'off'
+    wht = None
+    if no_data_from_weight(fname, detector):  # zeros are real here: the weight map tells where data is missing
+        wtext, whdr, wstart, wsize = _read_header(url, start + int(np.ceil(size / 2880)) * 2880)
+        if whdr.get('EXTNAME', '').strip() == 'WHT' and (whdr['NAXIS1'], whdr['NAXIS2'], whdr['BITPIX']) == (nx, ny, -32):
+            wht = wstart
+            step(f'{short(fname)}: {detector.strip()} counts photons, zeros are real: reading the weight map (WHT, {wsize / 2 ** 20:.0f} MB) for missing data')
+    why = skip_cosmic(fname, hdr, detector) if cosmic else 'off'
     if cosmic and why != 'JWST' and why:
-        step(f'{short(fname)}: no cosmic-ray removal needed ({why})')
+        step(f'{short(fname)}: no speck removal ({why})')
     clean = not why
     mask = np.zeros((oy, ox), np.float32) if clean else None
     hits, tc = 0, 0.0
@@ -462,6 +530,8 @@ def read_sci(fname, max_mp, cosmic=False):
         y1 = min(ny, y0 + rows)
         a, b = (max(0, y0 - CR_MARGIN), min(ny, y1 + CR_MARGIN)) if clean else (y0, y1)
         strip = np.frombuffer(_get(url, start + a * nx * 4, start + b * nx * 4 - 1), '>f4').reshape(b - a, nx)
+        w = None if wht is None else np.frombuffer(_get(url, wht + a * nx * 4, wht + b * nx * 4 - 1), '>f4').reshape(b - a, nx)
+        strip = no_data(fname, strip, w)
         if clean:
             t = time.time()
             strip, m = clean_strip(strip, y0 - a, b - y1)
@@ -470,7 +540,7 @@ def read_sci(fname, max_mp, cosmic=False):
             mask[y0 // f:y0 // f + -(-(y1 - y0) // f)] = _bin_rows(m.astype(np.float32), f, ox)
         out[y0 // f:y0 // f + -(-(y1 - y0) // f)] = _bin_rows(strip.astype(np.float32), f, ox)
     if clean:
-        step(f'{short(fname)}: removed cosmic rays at full resolution, {hits} pixels ({hits / (nx * ny) * 100:.2f}%), {tc:.1f}s')
+        step(f'{short(fname)}: removed specks (cosmic rays, hot pixels) at full resolution, {hits} pixels ({hits / (nx * ny) * 100:.2f}%), {tc:.1f}s')
     return out, text, f, mask
 
 
@@ -504,12 +574,17 @@ def add_layer(name, buf, ny, nx, header_text, factor, fill=True, mask=None):
     return data.nbytes
 
 
-def skip_cosmic(name, hdr):
-    """Why an image needs no cosmic-ray cleaning (None = clean it), from the SCI header alone:
-    JWST i2d products are already clean; IR detectors (WFC3/IR, NICMOS) read up the ramp, which rejects hits;
-    drizzled from >= 2 exposures (NCOMBINE), drizzle already rejected the hits wherever the exposures overlap, and
-    cleaning would mostly remove real stars (small star clusters are as sharp as hits).
-    WFPC2 products have no NCOMBINE: treated as single exposures."""
+MAMA = ('SBC', 'FUV-MAMA', 'NUV-MAMA')  # photon-counting UV detectors (ACS/SBC, STIS): no cosmic-ray hits
+
+
+def skip_cosmic(name, hdr, detector=''):
+    """Why an image gets no speck removal (cosmic rays, hot pixels; None = clean it), from its headers:
+    JWST i2d products are already clean; on IR detectors (WFC3/IR, NICMOS) the pixels are large for the star image,
+    so star cores are as sharp as specks (and the pipeline already rejects hits); photon-counting MAMA detectors
+    (ACS/SBC, STIS; detector: DETECTOR of the primary header) have no hits, and their single-photon noise peaks
+    would be flattened, darkening faint light. Optical / UV CCD images are cleaned also when drizzled from several
+    exposures: specks remain where only one exposure covers (edges, chip gaps), and at full resolution the
+    well-covered stars and clusters are left alone."""
     base = os.path.basename(name).lower()
     if base.startswith('jw'):
         return 'JWST'
@@ -517,14 +592,11 @@ def skip_cosmic(name, hdr):
         scale = 3600 * float(np.hypot(hdr.get('CD1_1', 0), hdr.get('CD2_1', 0)))
     except (TypeError, ValueError):
         scale = 0
-    if base.startswith('n') or (base.startswith('i') and scale > 0.1):
-        return 'IR detector, hits removed by the pipeline'
-    try:
-        nexp = int(hdr.get('NCOMBINE', 1) or 1)
-    except (TypeError, ValueError):
-        nexp = 1
-    if nexp >= 2:
-        return f'{nexp} exposures, hits already removed by drizzle'
+    detector = str(detector or hdr.get('DETECTOR', '') or '').strip().upper()
+    if detector in MAMA:
+        return f'{detector}: photon counting, no specks'
+    if base.startswith('n') or detector == 'IR' or (base.startswith('i') and scale > 0.1):
+        return 'infrared: star cores are as sharp as specks'
     return None
 
 
@@ -538,7 +610,7 @@ def _add(name, data, header_text, factor, fill, mask=None):
         CRMASK.pop(name, None)
     if fill:
         t = time.time()
-        data, n, it = fill_holes(data)
+        data, n, it = fill_holes(data) if os.path.basename(name).lower().startswith('jw') else fill_gaps(data)
         step(f'{short(name)}: fill holes, {n} hole pixels, {it} iterations, {time.time() - t:.1f}s')
     RAW[name] = (data, binned_wcs(header_text, factor), factor, (int(hdr['NAXIS1']), int(hdr['NAXIS2'])))
 
@@ -547,12 +619,12 @@ def has_layer(name):
     return name in RAW
 
 
-def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data'):
+def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data', cache=True):
     """Layer `name` on the grid of `ref`, moved by shift = (dx, dy) ref pixels (right, up), so a nudge brings in the
     layer's own data instead of empty edges. align 'sky': by WCS; 'pixels': centers matched and the pixel scale of ref,
     ignoring the sky position (moving targets, where the stars move between images).
     what 'cosmic': the layer's cosmic-ray mask (fraction of removed pixels, CRMASK) instead of its data, processed
-    the same way (not cached; None when the layer was not cleaned)."""
+    the same way (not cached; None when the layer was not cleaned). cache False: not kept (one-off grids)."""
     shift = (int(shift[0]), int(shift[1]))
     key = (name, ref, align, shift)
     cosmic = what == 'cosmic'
@@ -583,7 +655,7 @@ def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data'):
             out[y0:y1] = map_coordinates(data, [py, px], order=1, cval=np.nan, prefilter=False)
         how = 'pixel grid' if align == 'pixels' else 'grid'
         step(f'{short(name)}: {"cosmic-ray mask " if cosmic else ""}reprojected onto {short(ref)} {how} ({nx}x{ny})' + (f', moved {shift[0]:+d}, {shift[1]:+d} px' if any(shift) else '') + f', {time.time() - t:.1f}s')
-    if cosmic:
+    if cosmic or not cache:
         return out
     for k in [k for k in REPROJ if k[:3] == key[:3] and k != key]:  # keep one version per layer
         del REPROJ[k]
@@ -599,7 +671,7 @@ def gaia_aligned(name):
 def _point_sources(img, edge=4):
     """High-pass image in noise units, clipped to 0..50: stars and compact knots stand out, smooth light and sky
     are ~0. Pixels near the footprint edge are 0 so the edge itself does not pull the alignment to no shift."""
-    good = np.isfinite(img) & (img != 0)
+    good = np.isfinite(img)  # not "!= 0": photon-counting UV images (ACS/SBC) have real zeros
     if good.sum() < 100:
         return None
     x = np.where(good, img, np.median(img[good])).astype(np.float32)
@@ -630,11 +702,14 @@ def _xcorr(a, b, maxs):
     return ix - maxs + fx, iy - maxs + fy, float(snr), edge
 
 
-def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=8.0):
-    """Nudges (arcsec, right / up, as compose_rgb's shifts) that line up the stars and compact knots of all layers
-    with an anchor layer, found by cross-correlation on the reference grid. The anchor is the reference if its WCS is
-    aligned to Gaia (or no layer is), else the first Gaia-aligned layer, so a well-aligned layer stays put.
-    Returns {name: [dx, dy]} for all names (anchor [0, 0]); a layer whose match is not clear keeps [0, 0] and is
+def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=6.0):  # false matches score 3-4.5
+    """Nudges (arcsec, right / up, as compose_rgb's shifts) that line up the stars and compact knots of all layers,
+    found by cross-correlation. Layers whose WCS is aligned to Gaia stay put (they agree with each other) and each
+    other layer is matched to the one of them that it resembles most (clearest match; a far-UV image may match the
+    infrared better than the optical). Without Gaia-aligned layers, the reference stays put.
+    Each layer is compared on the finer of its own grid and the reference grid: a small, sharp image (e.g. ACS/SBC)
+    keeps its knots, which a coarse reference grid would blur away; the shift is then turned into the reference frame.
+    Returns {name: [dx, dy]} for all names (anchors [0, 0]); a layer whose match is not clear keeps [0, 0] and is
     reported in the log."""
     names = list(names.to_py() if hasattr(names, 'to_py') else names)
     names = [n for n in dict.fromkeys(names) if n in RAW]
@@ -644,34 +719,58 @@ def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=8.0):
     if align not in ('sky', 'pixels'):
         align = 'pixels' if any(MOVING.get(n) for n in names) else 'sky'
     t = time.time()
-    gaia = [n for n in names if gaia_aligned(n)]
-    anchor = ref if (gaia_aligned(ref) or not gaia) else gaia[0]
+    anchors = [n for n in names if gaia_aligned(n)] or [ref]
     scale = pixscale(ref)
-    maxs = max(3, int(np.ceil(max_arcsec / scale)))
-    a = _point_sources(reproject_to(anchor, ref, align))
-    step(f'auto-align: anchor {short(anchor)}' + (f' (WCS aligned to Gaia: {WCSNAME[anchor]})' if gaia_aligned(anchor) else '') +
-         f', search +-{maxs} px ({maxs * scale:.1f}")')
+    step(f'auto-align: staying put: {", ".join(short(n) for n in anchors)}' +
+         (' (WCS aligned to Gaia)' if gaia_aligned(anchors[0]) else ' (reference; no layer is aligned to Gaia)') +
+         f', search +-{max_arcsec:.1f}"')
     out = {n: [0.0, 0.0] for n in names}
-    if a is None:
-        step('auto-align: the anchor layer has no data')
-        return out
+    on_ref = {}  # anchor -> point sources on the reference grid
     for n in names:
-        if n == anchor:
+        if n in anchors:
             continue
-        b = _point_sources(reproject_to(n, ref, align))
-        if b is None:
-            step(f'auto-align: {short(n)}: no data on the reference grid, left as is')
-            continue
-        dx, dy, snr, edge = _xcorr(a, b, maxs)
+        own = align == 'sky' and pixscale(n) < 0.8 * scale  # compare on the layer's own, finer grid
+        grid = n if own else ref
+        gs = pixscale(grid)
+        maxs = max(3, int(np.ceil(max_arcsec / gs)))
+        b = _point_sources(RAW[n][0] if own else reproject_to(n, ref, align))
+        best = None
+        for anc in anchors:
+            if own:
+                a = _point_sources(reproject_to(anc, n, align, cache=False))
+            else:
+                if anc not in on_ref:
+                    on_ref[anc] = _point_sources(reproject_to(anc, ref, align))
+                a = on_ref[anc]
+            if a is None or b is None:
+                continue
+            r = _xcorr(a, b, maxs)
+            if best is None or (not r[3] and (best[1][3] or r[2] > best[1][2])):
+                best = (anc, r)
         wcs = WCSNAME.get(n, '') or 'no WCSNAME'
-        if snr < min_snr or edge:
-            step(f'auto-align: {short(n)}: no clear match (confidence {snr:.0f}{", at the search limit" if edge else ""}), left as is [{wcs}]')
+        where = f'on its own grid ({gs:.3f}"/px)' if own else 'on the reference grid'
+        if best is None:
+            step(f'auto-align: {short(n)}: no overlap with {", ".join(short(a) for a in anchors)}, left as is')
             continue
-        out[n] = [dx * scale, dy * scale]
-        step(f'auto-align: {short(n)}: {dx:+.1f}, {dy:+.1f} px ({dx * scale:+.2f}", {dy * scale:+.2f}"), confidence {snr:.0f} [{wcs}]')
+        anc, (dx, dy, snr, edge) = best
+        if snr < min_snr or edge:
+            step(f'auto-align: {short(n)}: no clear match {where} (best confidence {snr:.0f}, with {short(anc)}'
+                 f'{", at the search limit" if edge else ""}), left as is [{wcs}]')
+            continue
+        if own:  # the shift on the layer's grid -> on the sky -> on the reference grid
+            w, rw = RAW[n][1], RAW[ref][1]
+            ny, nx = RAW[n][0].shape
+            cx, cy = (nx - 1) / 2, (ny - 1) / 2
+            lon, lat = w.pixel_to_world_values(np.array([cx, cx + dx]), np.array([cy, cy + dy]))
+            rx, ry = rw.world_to_pixel_values(lon, lat)
+            sx, sy = float(rx[1] - rx[0]) * scale, float(ry[1] - ry[0]) * scale
+        else:
+            sx, sy = dx * scale, dy * scale
+        out[n] = [sx, sy]
+        step(f'auto-align: {short(n)}: {sx:+.2f}", {sy:+.2f}" ({sx / scale:+.1f}, {sy / scale:+.1f} px of the reference), '
+             f'confidence {snr:.0f} with {short(anc)} {where} [{wcs}]')
     step(f'auto-align: {time.time() - t:.1f}s')
     return out
-
 
 def clear():
     RAW.clear()

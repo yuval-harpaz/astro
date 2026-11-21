@@ -73,6 +73,8 @@ async function readHeader(url, offset) {
   }
 }
 
+const MAMA = ['SBC', 'FUV-MAMA', 'NUV-MAMA'];  // photon-counting HST detectors, same as color_lab.MAMA
+const LOW_WEIGHT = 0.5;  // same as color_lab.LOW_WEIGHT
 let FILTERS = {};  // fname -> [filter label, wavelength nm], from the page (HST names carry no filter)
 const shortName = (f) => { if (FILTERS[f]) return FILTERS[f][0]; const m = [...f.matchAll(/[-_](f\d{3,4}[a-z]*\d?)/gi)]; return m.length ? m[m.length - 1][1].toLowerCase() : f; };
 
@@ -82,10 +84,11 @@ const shortName = (f) => { if (FILTERS[f]) return FILTERS[f][0]; const m = [...f
 // Returns the binned data and, when cleaned, the binned hit mask (fraction of removed pixels per block).
 async function readSci(fname, maxMP, cosmic) {
   const url = s3url(fname);
-  let off = 0, hdr = null, moving = false;
+  let off = 0, hdr = null, moving = false, detector = '';
   for (let ext = 0; ext < 6; ext++) {
     hdr = await readHeader(url, off);
-    if (ext === 0) {  // moving target (comet, asteroid, planet): HST MTFLAG = T, JWST TARGTYPE = MOVING
+    if (ext === 0) {
+      detector = (hdr.cards.DETECTOR || '').trim();  // moving target (comet, asteroid, planet): HST MTFLAG = T, JWST TARGTYPE = MOVING
       const mt = (hdr.cards.MTFLAG || '').trim().toUpperCase(), tt = (hdr.cards.TARGTYPE || '').trim().toUpperCase();
       moving = mt === 'T' || mt === 'TRUE' || tt === 'MOVING';
     }
@@ -98,14 +101,26 @@ async function readSci(fname, maxMP, cosmic) {
   const nx = parseInt(hdr.cards.NAXIS1), ny = parseInt(hdr.cards.NAXIS2);
   const f = maxMP ? Math.max(1, Math.ceil(Math.sqrt(nx * ny / (maxMP * 1e6)))) : 1;  // same as color_lab.block_factor
   const ox = Math.ceil(nx / f), oy = Math.ceil(ny / f);
+  // HST pixels without data (dead rows, bad columns: weight 0 in the drizzled product) become NaN before the
+  // block-average, so they leave no dark lines: exactly 0, or for photon-counting detectors (0 counts is real)
+  // weight 0 in the WHT extension that follows SCI (same as color_lab.no_data)
+  const hst = !fname.split('/').pop().toLowerCase().startsWith('jw');
+  let wht = null;
+  if (hst && MAMA.includes(detector.toUpperCase())) {
+    const w = await readHeader(url, hdr.dataStart + Math.ceil(hdr.dataSize / BLOCK) * BLOCK);
+    if (w.cards.EXTNAME === 'WHT' && w.cards.NAXIS1 === hdr.cards.NAXIS1 && w.cards.NAXIS2 === hdr.cards.NAXIS2 && w.cards.BITPIX === '-32') {
+      wht = w.dataStart;
+      step(`${shortName(fname)}: ${detector} counts photons, zeros are real: reading the weight map (WHT, ${(w.dataSize / 1048576).toFixed(0)} MB) for missing data`);
+    }
+  }
   let clean = false;
   if (cosmic) {
     const cl = py.pyimport('color_lab');
-    const why = cl.skip_cosmic_text(fname, hdr.text);
+    const why = cl.skip_cosmic_text(fname, hdr.text, detector);
     const margin = cl.CR_MARGIN;
     cl.destroy();
     clean = !why ? margin : false;  // rows borrowed from the neighbouring strips
-    if (why && why !== 'JWST') step(`${shortName(fname)}: no cosmic-ray removal needed (${why})`);
+    if (why && why !== 'JWST') step(`${shortName(fname)}: no speck removal (${why})`);
   }
   step(`${shortName(fname)}: downloading SCI ${nx}x${ny} (${(hdr.dataSize / 1048576).toFixed(0)} MB), block-average /${f} → ${ox}x${oy}`);
   const sum = new Float64Array(ox * oy), cnt = new Uint32Array(ox * oy);
@@ -121,6 +136,19 @@ async function readSci(fname, maxMP, cosmic) {
     const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const rows = new Float32Array((b - a) * nx);
     for (let i = 0; i < rows.length; i++) rows[i] = dv.getFloat32(i * 4, false);  // FITS is big-endian
+    if (wht !== null) {
+      const wb = await getRange(url, wht + a * nx * 4, wht + b * nx * 4 - 1);
+      const wv = new DataView(wb.buffer, wb.byteOffset, wb.byteLength);
+      const w = new Float32Array(rows.length);
+      for (let i = 0; i < rows.length; i++) w[i] = wv.getFloat32(i * 4, false);
+      // below LOW_WEIGHT x the median weight: mostly 0 counts (dead rows, frame edge), as color_lab.no_data
+      const pos = []; for (let i = 0; i < w.length; i += 7) if (w[i] > 0) pos.push(w[i]);
+      pos.sort((p, q) => p - q);
+      const lim = pos.length ? LOW_WEIGHT * pos[pos.length >> 1] : 0;
+      for (let i = 0; i < rows.length; i++) if (!(w[i] > 0 && w[i] >= lim)) rows[i] = NaN;
+    } else if (hst) {
+      for (let i = 0; i < rows.length; i++) if (rows[i] === 0) rows[i] = NaN;
+    }
     let data = rows, mask = null, base = (y0 - a) * nx;  // base: first pixel of row y0 in data
     if (clean) {
       const t = performance.now();
@@ -151,7 +179,7 @@ async function readSci(fname, maxMP, cosmic) {
       const h = Math.min(f, ny - j * f);
       for (let i = 0; i < ox; i++) crmask[j * ox + i] = hit[j * ox + i] / (h * Math.min(f, nx - i * f));
     }
-    step(`${shortName(fname)}: removed cosmic rays at full resolution, ${hits} pixels (${(hits / (nx * ny) * 100).toFixed(2)}%), ${(tClean / 1000).toFixed(1)}s`);
+    step(`${shortName(fname)}: removed specks (cosmic rays, hot pixels) at full resolution, ${hits} pixels (${(hits / (nx * ny) * 100).toFixed(2)}%), ${(tClean / 1000).toFixed(1)}s`);
   }
   step(`${shortName(fname)}: downloaded in ${((performance.now() - tDl) / 1000).toFixed(1)}s`);
   return { data: out, ny: oy, nx: ox, header: hdr.text, factor: f, moving, crmask };
@@ -167,7 +195,7 @@ async function init() {
   const code = await (await fetch('color_lab.py?v=' + Date.now())).text();
   py.FS.writeFile('/home/pyodide/color_lab.py', code);
   py.runPython('import color_lab');
-  log(`Python ready in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
+  log(`Color Lab ${py.runPython('color_lab.VERSION')}: Python ready in ${((performance.now() - t0) / 1000).toFixed(1)} s`);
   post('ready', memInfo());
 }
 
