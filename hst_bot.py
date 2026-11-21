@@ -236,10 +236,10 @@ def make_image(red, green, blue, group):
     cl.set_filters(filters)
     names = list(dict.fromkeys(red + green + blue))
     for name in names:
-        data, text, f = cl.read_sci(name, MAX_MP)
+        data, text, f, mask = cl.read_sci(name, MAX_MP, cosmic=True)  # hits removed at full resolution
         if not group['file'].str.startswith('jw').any():
             data[data == 0] = np.nan  # HST drizzled products: 0 = no data
-        cl._add(name, data, text, f, True, cosmic=True)
+        cl._add(name, data, text, f, True, mask)
     rgb = cl.compose_rgb(red, green, blue, method='rgb', factor=2.0, grey=True, mosaic=True)
     return rgb, red[0]
 

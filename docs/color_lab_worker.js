@@ -77,7 +77,10 @@ let FILTERS = {};  // fname -> [filter label, wavelength nm], from the page (HST
 const shortName = (f) => { if (FILTERS[f]) return FILTERS[f][0]; const m = [...f.matchAll(/[-_](f\d{3,4}[a-z]*\d?)/gi)]; return m.length ? m[m.length - 1][1].toLowerCase() : f; };
 
 // Download SCI and block-average (nan-mean) by an integer factor so the image is <= maxMP megapixels.
-async function readSci(fname, maxMP) {
+// cosmic: remove cosmic-ray hits at full resolution strip by strip (Python color_lab.clean_strip_buf), before the
+// block-average, where a hit is still much sharper than a star; skipped when the header says the image needs none.
+// Returns the binned data and, when cleaned, the binned hit mask (fraction of removed pixels per block).
+async function readSci(fname, maxMP, cosmic) {
   const url = s3url(fname);
   let off = 0, hdr = null, moving = false;
   for (let ext = 0; ext < 6; ext++) {
@@ -95,32 +98,63 @@ async function readSci(fname, maxMP) {
   const nx = parseInt(hdr.cards.NAXIS1), ny = parseInt(hdr.cards.NAXIS2);
   const f = maxMP ? Math.max(1, Math.ceil(Math.sqrt(nx * ny / (maxMP * 1e6)))) : 1;  // same as color_lab.block_factor
   const ox = Math.ceil(nx / f), oy = Math.ceil(ny / f);
+  let clean = false;
+  if (cosmic) {
+    const cl = py.pyimport('color_lab');
+    const why = cl.skip_cosmic_text(fname, hdr.text);
+    const margin = cl.CR_MARGIN;
+    cl.destroy();
+    clean = !why ? margin : false;  // rows borrowed from the neighbouring strips
+    if (why && why !== 'JWST') step(`${shortName(fname)}: no cosmic-ray removal needed (${why})`);
+  }
   step(`${shortName(fname)}: downloading SCI ${nx}x${ny} (${(hdr.dataSize / 1048576).toFixed(0)} MB), block-average /${f} → ${ox}x${oy}`);
   const sum = new Float64Array(ox * oy), cnt = new Uint32Array(ox * oy);
+  const hit = clean ? new Uint32Array(ox * oy) : null;
+  let hits = 0, tClean = 0;
   // strips of whole output rows, ~32 MB each
   const rowsPerStrip = Math.max(f, Math.floor(32 * 1048576 / (nx * 4) / f) * f);
   const tDl = performance.now();
   for (let y0 = 0; y0 < ny; y0 += rowsPerStrip) {
     const y1 = Math.min(ny, y0 + rowsPerStrip);
-    const bytes = await getRange(url, hdr.dataStart + y0 * nx * 4, hdr.dataStart + y1 * nx * 4 - 1);
-    const dv = new DataView(bytes.buffer);
+    const a = clean ? Math.max(0, y0 - clean) : y0, b = clean ? Math.min(ny, y1 + clean) : y1;
+    const bytes = await getRange(url, hdr.dataStart + a * nx * 4, hdr.dataStart + b * nx * 4 - 1);
+    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const rows = new Float32Array((b - a) * nx);
+    for (let i = 0; i < rows.length; i++) rows[i] = dv.getFloat32(i * 4, false);  // FITS is big-endian
+    let data = rows, mask = null, base = (y0 - a) * nx;  // base: first pixel of row y0 in data
+    if (clean) {
+      const t = performance.now();
+      const cl = py.pyimport('color_lab');
+      const res = cl.clean_strip_buf(new Uint8Array(rows.buffer), b - a, nx, y0 - a, b - y1);
+      const [cb, mb, n] = res.toJs(); res.destroy(); cl.destroy();
+      data = new Float32Array(cb.slice().buffer); mask = mb; hits += n; base = 0;
+      tClean += performance.now() - t;
+    }
     for (let y = y0; y < y1; y++) {
       const orow = Math.floor(y / f) * ox;
-      const base = (y - y0) * nx * 4;
+      const r = base + (y - y0) * nx, mr = (y - y0) * nx;
       for (let x = 0; x < nx; x++) {
-        const v = dv.getFloat32(base + x * 4, false);  // FITS is big-endian
-        if (v === v) {  // not NaN
-          const o = orow + Math.floor(x / f);
-          sum[o] += v; cnt[o]++;
-        }
+        const v = data[r + x];
+        const o = orow + Math.floor(x / f);
+        if (v === v) { sum[o] += v; cnt[o]++; }  // not NaN
+        if (mask && mask[mr + x]) hit[o]++;
       }
     }
     post('progress', { fname, frac: y1 / ny });
   }
   const out = new Float32Array(ox * oy);
   for (let i = 0; i < out.length; i++) out[i] = cnt[i] ? sum[i] / cnt[i] : NaN;
+  let crmask = null;
+  if (clean) {  // fraction of removed pixels per block (the last row / column of blocks may be partial)
+    crmask = new Float32Array(ox * oy);
+    for (let j = 0; j < oy; j++) {
+      const h = Math.min(f, ny - j * f);
+      for (let i = 0; i < ox; i++) crmask[j * ox + i] = hit[j * ox + i] / (h * Math.min(f, nx - i * f));
+    }
+    step(`${shortName(fname)}: removed cosmic rays at full resolution, ${hits} pixels (${(hits / (nx * ny) * 100).toFixed(2)}%), ${(tClean / 1000).toFixed(1)}s`);
+  }
   step(`${shortName(fname)}: downloaded in ${((performance.now() - tDl) / 1000).toFixed(1)}s`);
-  return { data: out, ny: oy, nx: ox, header: hdr.text, factor: f, moving };
+  return { data: out, ny: oy, nx: ox, header: hdr.text, factor: f, moving, crmask };
 }
 
 async function init() {
@@ -162,8 +196,8 @@ self.onmessage = async (ev) => {
       log(`---- compose: R=${red.map(shortName)} G=${green.map(shortName)} B=${blue.map(shortName)}, reference grid ${shortName(names[0])}`);
       for (const n of names) {
         if (cl.has_layer(n)) { step(`${shortName(n)}: using cached layer`); continue; }
-        const L = await readSci(n, maxMP);
-        cl.add_layer(n, new Uint8Array(L.data.buffer), L.ny, L.nx, L.header, L.factor, fill, !!cosmic);
+        const L = await readSci(n, maxMP, !!cosmic);
+        cl.add_layer(n, new Uint8Array(L.data.buffer), L.ny, L.nx, L.header, L.factor, fill, L.crmask ? new Uint8Array(L.crmask.buffer) : null);
         cl.set_moving(n, L.moving);
         if (L.moving) step(`${shortName(n)}: moving target`);
         post('mem', memInfo());

@@ -23,6 +23,7 @@ from astropy.wcs import WCS, FITSFixedWarning
 from astropy.wcs.utils import proj_plane_pixel_scales
 from scipy import ndimage
 from scipy.ndimage import map_coordinates, maximum_filter, label
+from numpy.lib.stride_tricks import sliding_window_view as _swv
 
 warnings.simplefilter('ignore', FITSFixedWarning)
 
@@ -32,6 +33,7 @@ RAW = {}     # name -> (data float32 2D, WCS, block factor, (full nx, full ny)),
 REPROJ = {}  # (name, ref, align, (dx, dy)) -> float32 2D on ref grid, with a nudge of (dx, dy) ref pixels built in
 MOVING = {}  # name -> True for moving targets (HST MTFLAG = T, JWST TARGTYPE = MOVING): align by pixels, not by sky
 BAKED = {}   # (name, ref, align, ref shape) -> nudge (dx, dy) in ref pixels built into the reprojection ("Fill edges")
+CRMASK = {}  # name -> fraction of cosmic-ray pixels removed in each pixel of the layer (same grid as RAW data)
 WCSNAME = {}  # name -> WCSNAME of the SCI header: HST '...GAIA...' = aligned to Gaia, others can be off by ~1 arcsec
 _T0 = [time.time()]
 
@@ -311,51 +313,128 @@ def block_factor(nx, ny, max_mp):
     return 1 if not max_mp else max(1, int(np.ceil(np.sqrt(nx * ny / (max_mp * 1e6)))))
 
 
-def clean_cosmic(d, sig=5.0, objlim=3.0, iters=3):
-    """Remove cosmic-ray hits (dots and short streaks) from one image, a simplified L.A.Cosmic (van Dokkum 2001):
-    a pixel is a hit when it is sig x the local noise above the 5x5 median AND much sharper than the fine structure
-    of real sources (med3 - med7 of med3), which keeps stars and nebula detail. Hits (grown by one pixel) get the
-    5x5 median. HST images made from one or two exposures are full of hits; JWST i2d products are already clean.
-    Returns the cleaned image and the number of replaced pixels."""
-    from numpy.lib.stride_tricks import sliding_window_view as swv
-    d = d.astype(np.float32, copy=True)
-    good = np.isfinite(d)
-    if not good.any():
-        return d, 0
-    fillv = np.float32(np.nanmedian(d))
-    total = np.zeros(d.shape, bool)
-    ny, nx = d.shape
-    b = 32
-    for _ in range(iters):
-        x = np.where(good, d, fillv)
-        med5 = ndimage.median_filter(x, 5)
-        resid = x - med5
-        # local noise: robust scatter of the residual in 32 px blocks, interpolated
-        py_, px_ = (-ny) % b, (-nx) % b
-        r = np.pad(np.abs(resid), ((0, py_), (0, px_)), mode='edge').reshape((ny + py_) // b, b, (nx + px_) // b, b)
-        blk = 1.4826 * np.median(r.transpose(0, 2, 1, 3).reshape(r.shape[0], r.shape[2], -1), -1)
-        noise = ndimage.zoom(blk, b, order=1)[:ny, :nx]
-        noise = np.maximum(noise, 1.4826 * np.median(np.abs(resid[good])) + 1e-12)
-        ys, xs = np.nonzero(good & (resid > sig * noise))
-        if not len(ys):
-            break
-        # fine structure at the candidates only, from a 9x9 window: med3 at the center minus the median of the 7x7 med3
-        w = swv(np.pad(x, 4, mode='edge'), (9, 9))[ys, xs]
-        m3 = np.median(swv(w, (3, 3), axis=(1, 2)).reshape(len(ys), 7, 7, 9), -1)
-        fine = np.maximum(m3[:, 3, 3] - np.median(m3.reshape(len(ys), -1), -1), 0.1 * noise[ys, xs])
-        keep = resid[ys, xs] / fine > objlim
-        if not keep.any():
-            break
-        cr = np.zeros(d.shape, bool)
-        cr[ys[keep], xs[keep]] = True
-        cr = ndimage.binary_dilation(cr) & good & (resid > 2 * noise)
-        d[cr] = med5[cr]
-        total |= cr
-    return d, int(total.sum())
+def _windows(xp, ys, xs, k):
+    """(n, k, k) windows of the padded image xp (pad k // 2) centred at pixels (ys, xs) of the unpadded image.
+    Gathered by index, not by a sliding-window view of the whole image, which can exceed the 2 GB array limit
+    of the browser's 32-bit Python even though it is only a view."""
+    o = np.arange(k)
+    return xp[ys[:, None, None] + o[None, :, None], xs[:, None, None] + o[None, None, :]]
 
 
-def read_sci(fname, max_mp):
-    """Download only the SCI extension and block-average it (nan-mean). Returns data, header text, factor."""
+def _median_at(x, ys, xs, k, xp=None):
+    """k x k median at pixels (ys, xs) of x (edge-padded; xp: x already padded by k // 2)."""
+    xp = np.pad(x, k // 2, mode='edge') if xp is None else xp
+    return np.median(_windows(xp, ys, xs, k).reshape(len(ys), -1), -1)
+
+def cosmic_mask(d, sig=5.0, objlim=3.0, b=32, grow=3):
+    """Boolean mask of cosmic-ray hits (dots and short streaks), a simplified L.A.Cosmic (van Dokkum 2001), meant for
+    full-resolution data, where a hit is much sharper than a star: a pixel is a hit when it is sig x the local noise
+    above the 5x5 median AND much sharper than the fine structure of real sources (med3 - med7 of med3), which keeps
+    stars and nebula detail. Fast: candidates come from a 5x5 box mean, the median and the fine-structure test are
+    computed at the candidates only. Hits grow (up to `grow` pixels) into neighbours that are also clearly high.
+    0 and NaN are no data (HST drizzled products)."""
+    d = np.asarray(d, np.float32)
+    good = np.isfinite(d) & (d != 0)
+    mask = np.zeros(d.shape, bool)
+    if good.sum() < 100:
+        return mask
+    x = np.where(good, d, np.float32(np.median(d[good])))
+    ny, nx = x.shape
+    r0 = x - ndimage.uniform_filter(x, 5)
+    py_, px_ = (-ny) % b, (-nx) % b
+    r = np.pad(np.abs(r0), ((0, py_), (0, px_)), mode='edge').reshape((ny + py_) // b, b, (nx + px_) // b, b)
+    blk = 1.4826 * np.median(r.transpose(0, 2, 1, 3).reshape(r.shape[0], r.shape[2], -1), -1)
+    noise = ndimage.zoom(blk, b, order=1, grid_mode=True, mode='nearest')[:ny, :nx] if blk.size > 1 else np.full(x.shape, blk.item(), np.float32)
+    if noise.shape != x.shape:
+        noise = np.pad(noise, ((0, ny - noise.shape[0]), (0, nx - noise.shape[1])), mode='edge')
+    noise = np.maximum(noise, 1.4826 * np.median(np.abs(r0[good])) + 1e-12)
+    ys, xs = np.nonzero(good & (r0 > 0.8 * sig * noise))
+    if not len(ys):
+        return mask
+    res = x[ys, xs] - _median_at(x, ys, xs, 5)
+    n = noise[ys, xs]
+    ok = res > sig * n
+    ys, xs, res, n = ys[ok], xs[ok], res[ok], n[ok]
+    if not len(ys):
+        return mask
+    xp9 = np.pad(x, 4, mode='edge')
+    fine = np.empty(len(ys), np.float32)
+    for i in range(0, len(ys), 20000):  # batches: 441 values per candidate
+        w = _windows(xp9, ys[i:i + 20000], xs[i:i + 20000], 9)
+        m3 = np.median(_swv(w, (3, 3), axis=(1, 2)).reshape(len(w), 7, 7, 9), -1)
+        fine[i:i + 20000] = m3[:, 3, 3] - np.median(m3.reshape(len(w), -1), -1)
+    fine = np.maximum(fine, 0.1 * n)
+    keep = res / fine > objlim
+    mask[ys[keep], xs[keep]] = True
+    # grow along streaks: neighbours clearly above the 5x5 median of the pixels not yet flagged, up to `grow` times
+    for _ in range(grow):
+        gy, gx = np.nonzero(ndimage.binary_dilation(mask, np.ones((3, 3), bool)) & ~mask & good)
+        if not len(gy):
+            break
+        w = _windows(np.pad(np.where(mask, np.nan, x), 2, mode='edge'), gy, gx, 5).reshape(len(gy), -1)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            hit = x[gy, gx] - np.nanmedian(w, -1) > 2 * noise[gy, gx]
+        if not hit.any():
+            break
+        mask[gy[hit], gx[hit]] = True
+    return mask
+
+
+def clean_strip(d, top=0, bottom=0):
+    """Remove cosmic-ray hits from full-resolution rows. d: rows including `top` and `bottom` margin rows borrowed
+    from the neighbouring strips (so hits at the strip edges are judged with their neighbours). Hits get the median
+    of the other pixels in their 5x5 neighbourhood. Returns (cleaned rows, hit mask) without the margins."""
+    d = np.array(d, np.float32)
+    m = cosmic_mask(d)
+    if m.any():
+        x = np.where(m | (d == 0), np.nan, d)
+        ys, xs = np.nonzero(m)
+        w = _windows(np.pad(x, 2, mode='constant', constant_values=np.nan), ys, xs, 5).reshape(len(ys), -1)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', RuntimeWarning)
+            d[ys, xs] = np.nanmedian(w, -1)  # NaN if all 25 are hits or no data
+    b = d.shape[0] - bottom
+    return d[top:b], m[top:b]
+
+
+def clean_strip_buf(buf, ny, nx, top=0, bottom=0):
+    """For the browser: buf = native float32 rows (ny, nx) as bytes / Uint8Array. Returns (cleaned float32 bytes,
+    uint8 mask bytes, number of hit pixels), without the margin rows."""
+    if hasattr(buf, 'to_py'):
+        buf = buf.to_py()
+    d = np.frombuffer(buf, np.float32).reshape(int(ny), int(nx))
+    c, m = clean_strip(d, int(top), int(bottom))
+    return c.tobytes(), m.astype(np.uint8).tobytes(), int(m.sum())
+
+
+def skip_cosmic_text(name, header_text):
+    """skip_cosmic from the SCI header text (for the browser): '' = clean it."""
+    return skip_cosmic(name, fits.Header.fromstring(header_text)) or ''
+
+
+CR_MARGIN = 8  # rows borrowed from the neighbouring strips when cleaning a strip (the tests look 4 px away)
+
+
+def _bin_rows(rows, f, ox):
+    """nan-mean of f x f blocks of full-resolution rows (the last block row / column may be partial)."""
+    if f == 1:
+        return rows
+    pad = np.full((-(-rows.shape[0] // f) * f, ox * f), np.nan, np.float32)
+    pad[:rows.shape[0], :rows.shape[1]] = rows
+    pad = pad.reshape(pad.shape[0] // f, f, ox, f)
+    valid = ~np.isnan(pad)
+    cnt = valid.sum(axis=(1, 3))
+    tot = np.where(valid, pad, 0).sum(axis=(1, 3), dtype=np.float64)
+    with np.errstate(invalid='ignore', divide='ignore'):
+        return np.where(cnt > 0, tot / np.maximum(cnt, 1), np.nan).astype(np.float32)
+
+
+def read_sci(fname, max_mp, cosmic=False):
+    """Download only the SCI extension and block-average it (nan-mean). cosmic: remove cosmic-ray hits at full
+    resolution, strip by strip, before the block-average (where a hit is still much sharper than a star), unless
+    the header says the image needs none (skip_cosmic). Returns data, header text, factor, hit mask (fraction of
+    hit pixels in each block, on the same grid as data; None when not cleaned)."""
     url = s3url(fname)
     off = 0
     for ext in range(6):
@@ -371,23 +450,28 @@ def read_sci(fname, max_mp):
     f = block_factor(nx, ny, max_mp)
     ox, oy = -(-nx // f), -(-ny // f)
     out = np.empty((oy, ox), np.float32)
+    why = skip_cosmic(fname, hdr) if cosmic else 'off'
+    if cosmic and why != 'JWST' and why:
+        step(f'{short(fname)}: no cosmic-ray removal needed ({why})')
+    clean = not why
+    mask = np.zeros((oy, ox), np.float32) if clean else None
+    hits, tc = 0, 0.0
     rows = max(f, (32 * 2 ** 20 // (nx * 4)) // f * f)
     step(f'{short(fname)}: downloading SCI {nx}x{ny} ({size / 2 ** 20:.0f} MB), block-average /{f} -> {ox}x{oy}')
     for y0 in range(0, ny, rows):
         y1 = min(ny, y0 + rows)
-        strip = np.frombuffer(_get(url, start + y0 * nx * 4, start + y1 * nx * 4 - 1), '>f4').reshape(y1 - y0, nx)
-        if f == 1:
-            out[y0:y1] = strip
-            continue
-        pad = np.full((-(-(y1 - y0) // f) * f, ox * f), np.nan, np.float32)
-        pad[:y1 - y0, :nx] = strip
-        pad = pad.reshape(pad.shape[0] // f, f, ox, f)
-        valid = ~np.isnan(pad)
-        cnt = valid.sum(axis=(1, 3))
-        s = np.where(valid, pad, 0).sum(axis=(1, 3), dtype=np.float64)
-        with np.errstate(invalid='ignore', divide='ignore'):
-            out[y0 // f:y0 // f + cnt.shape[0]] = np.where(cnt > 0, s / np.maximum(cnt, 1), np.nan)
-    return out, text, f
+        a, b = (max(0, y0 - CR_MARGIN), min(ny, y1 + CR_MARGIN)) if clean else (y0, y1)
+        strip = np.frombuffer(_get(url, start + a * nx * 4, start + b * nx * 4 - 1), '>f4').reshape(b - a, nx)
+        if clean:
+            t = time.time()
+            strip, m = clean_strip(strip, y0 - a, b - y1)
+            hits += int(m.sum())
+            tc += time.time() - t
+            mask[y0 // f:y0 // f + -(-(y1 - y0) // f)] = _bin_rows(m.astype(np.float32), f, ox)
+        out[y0 // f:y0 // f + -(-(y1 - y0) // f)] = _bin_rows(strip.astype(np.float32), f, ox)
+    if clean:
+        step(f'{short(fname)}: removed cosmic rays at full resolution, {hits} pixels ({hits / (nx * ny) * 100:.2f}%), {tc:.1f}s')
+    return out, text, f, mask
 
 
 # ---------- layers ----------
@@ -406,12 +490,17 @@ def binned_wcs(header_text, factor):
     return wcs
 
 
-def add_layer(name, buf, ny, nx, header_text, factor, fill=True, cosmic=False):
-    """buf: bytes-like (or Pyodide JsProxy of a Uint8Array) of native float32, row-major (ny, nx)."""
+def add_layer(name, buf, ny, nx, header_text, factor, fill=True, mask=None):
+    """buf: bytes-like (or Pyodide JsProxy of a Uint8Array) of native float32, row-major (ny, nx).
+    mask: same layout, fraction of cosmic-ray pixels per block (None = not cleaned)."""
     if hasattr(buf, 'to_py'):
         buf = buf.to_py()
     data = np.frombuffer(buf, dtype=np.float32).reshape(int(ny), int(nx)).copy()
-    _add(name, data, header_text, int(factor), fill, cosmic)
+    if mask is not None:
+        if hasattr(mask, 'to_py'):
+            mask = mask.to_py()
+        mask = np.frombuffer(mask, dtype=np.float32).reshape(int(ny), int(nx)).copy()
+    _add(name, data, header_text, int(factor), fill, mask)
     return data.nbytes
 
 
@@ -419,7 +508,7 @@ def skip_cosmic(name, hdr):
     """Why an image needs no cosmic-ray cleaning (None = clean it), from the SCI header alone:
     JWST i2d products are already clean; IR detectors (WFC3/IR, NICMOS) read up the ramp, which rejects hits;
     drizzled from >= 2 exposures (NCOMBINE), drizzle already rejected the hits wherever the exposures overlap, and
-    cleaning would mostly remove real stars (at the reduced size of the browser a star is as sharp as a hit).
+    cleaning would mostly remove real stars (small star clusters are as sharp as hits).
     WFPC2 products have no NCOMBINE: treated as single exposures."""
     base = os.path.basename(name).lower()
     if base.startswith('jw'):
@@ -439,18 +528,14 @@ def skip_cosmic(name, hdr):
     return None
 
 
-def _add(name, data, header_text, factor, fill, cosmic=False):
+def _add(name, data, header_text, factor, fill, mask=None):
+    """mask: fraction of cosmic-ray pixels per pixel of data (read_sci), kept as layer 'cosmic' (see reproject_to)."""
     hdr = fits.Header.fromstring(header_text)
     WCSNAME[name] = str(hdr.get('WCSNAME', '') or '').strip()
-    if cosmic:
-        why = skip_cosmic(name, hdr)
-        if why:
-            if why != 'JWST':
-                step(f'{short(name)}: no cosmic-ray removal needed ({why})')
-        else:
-            t = time.time()
-            data, n = clean_cosmic(data)
-            step(f'{short(name)}: remove cosmic rays, {n} pixels ({n / data.size * 100:.2f}%), {time.time() - t:.1f}s')
+    if mask is not None:
+        CRMASK[name] = mask
+    else:
+        CRMASK.pop(name, None)
     if fill:
         t = time.time()
         data, n, it = fill_holes(data)
@@ -462,16 +547,21 @@ def has_layer(name):
     return name in RAW
 
 
-def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256):
+def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256, what='data'):
     """Layer `name` on the grid of `ref`, moved by shift = (dx, dy) ref pixels (right, up), so a nudge brings in the
     layer's own data instead of empty edges. align 'sky': by WCS; 'pixels': centers matched and the pixel scale of ref,
-    ignoring the sky position (moving targets, where the stars move between images)."""
+    ignoring the sky position (moving targets, where the stars move between images).
+    what 'cosmic': the layer's cosmic-ray mask (fraction of removed pixels, CRMASK) instead of its data, processed
+    the same way (not cached; None when the layer was not cleaned)."""
     shift = (int(shift[0]), int(shift[1]))
     key = (name, ref, align, shift)
-    if key in REPROJ:
+    cosmic = what == 'cosmic'
+    if cosmic and name not in CRMASK:
+        return None
+    if not cosmic and key in REPROJ:
         step(f'{short(name)}: reprojected layer cached')
         return REPROJ[key]
-    data, wcs = RAW[name][:2]
+    data, wcs = (CRMASK[name] if cosmic else RAW[name][0]), RAW[name][1]
     if name == ref and shift == (0, 0):
         out = data
     else:
@@ -492,7 +582,9 @@ def reproject_to(name, ref, align='sky', shift=(0, 0), chunk=256):
                 px, py = wcs.world_to_pixel_values(lon, lat)
             out[y0:y1] = map_coordinates(data, [py, px], order=1, cval=np.nan, prefilter=False)
         how = 'pixel grid' if align == 'pixels' else 'grid'
-        step(f'{short(name)}: reprojected onto {short(ref)} {how} ({nx}x{ny})' + (f', moved {shift[0]:+d}, {shift[1]:+d} px' if any(shift) else '') + f', {time.time() - t:.1f}s')
+        step(f'{short(name)}: {"cosmic-ray mask " if cosmic else ""}reprojected onto {short(ref)} {how} ({nx}x{ny})' + (f', moved {shift[0]:+d}, {shift[1]:+d} px' if any(shift) else '') + f', {time.time() - t:.1f}s')
+    if cosmic:
+        return out
     for k in [k for k in REPROJ if k[:3] == key[:3] and k != key]:  # keep one version per layer
         del REPROJ[k]
     REPROJ[key] = out
@@ -583,6 +675,7 @@ def auto_align(names, ref=None, align='sky', max_arcsec=3.0, min_snr=8.0):
 
 def clear():
     RAW.clear()
+    CRMASK.clear()
     REPROJ.clear()
     BAKED.clear()
     gc.collect()
@@ -599,6 +692,7 @@ def forget(keep, max_raw=8):
     extra = [k for k in RAW if k not in keep]
     for k in extra[:max(0, len(RAW) - max(max_raw, len(keep)))]:
         del RAW[k]
+        CRMASK.pop(k, None)
     ref = keep[0] if keep else None
     for k in [k for k in REPROJ if k[1] != ref or k[0] not in RAW]:
         del REPROJ[k]
@@ -872,8 +966,8 @@ def run_local(red, green, blue, max_mp=0, fill=True, out='color.jpg', credit='',
     reset_clock()
     set_filters(opts.get('filters'))
     for name in dict.fromkeys(list(red) + list(green) + list(blue)):
-        data, text, f = read_sci(name, max_mp)
-        _add(name, data, text, f, fill, cosmic)
+        data, text, f, mask = read_sci(name, max_mp, cosmic)
+        _add(name, data, text, f, fill, mask)
     names = list(dict.fromkeys(list(red) + list(green) + list(blue)))
     size_report(names, opts.get('ref') if opts.get('ref') in names else names[0], max_mp)
     brightness, contrast = float(opts.pop('brightness', 0) or 0), float(opts.pop('contrast', 0) or 0)
