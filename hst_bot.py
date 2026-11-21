@@ -41,7 +41,7 @@ SIMBAD_HOSTS = ['simbad.idia.ac.za', 'simbad.cfa.harvard.edu', 'simbad.harvard.e
 # named catalogs, in order of preference for an object's label: (LIKE prefix for SIMBAD, full-match regex)
 CATALOGS = [('M %', r'M \d+'), ('NGC %', r'NGC \d+[A-Z]?'), ('IC %', r'IC \d+[A-Z]?'), ('APG %', r'Arp \d+'),
             ('UGC %', r'UGC \d+[A-Z]?'), ('ESO %', r'ESO \d+-\d+[A-Z]?'), ('ACO %', r'ACO (S )?\d+'),
-            ('Mrk %', r'Mrk \d+[A-Z]?'), ('LEDA %', r'LEDA \d+'), ('PGC %', r'PGC \d+')]
+            ('Mrk %', r'Mrk \d+[A-Z]?'), ('LEDA %', r'LEDA \d+'), ('PGC %', r'PGC \d+'), ('SN %', r'SN \d{4}[A-Za-z]{1,3}')]
 FAINT = ('LEDA', 'PGC')  # dropped first when a field has too many labels
 MAX_LABELS = 5
 MAX_MP = 4  # megapixels of the reference grid (block-averaged on download)
@@ -102,7 +102,7 @@ def _best(rows):
 
 def named_objects(ra, dec, rad):
     """Objects with a named-catalog identifier within rad degrees: DataFrame oid, label, rank, ra, dec, otype, ids (normalized)."""
-    like = ' OR '.join(f"i.id LIKE '{p}'" for p, _ in CATALOGS)
+    like = ' OR '.join(f"i.id LIKE '{p}'" for p, _ in CATALOGS if p != 'SN %')  # SN: only as the target (sn_target)
     df = simbad(f"SELECT TOP 5000 b.oid, b.ra, b.dec, b.otype, i.id FROM basic AS b JOIN ident AS i ON i.oidref = b.oid "
                 f"WHERE CONTAINS(POINT('ICRS', b.ra, b.dec), CIRCLE('ICRS', {ra}, {dec}, {rad})) = 1 AND ({like})")
     out = []
@@ -130,6 +130,25 @@ def catalog_start(target):
     return f'{CATALOG_CASE.get(cat, cat)} {m.group(2)}'
 
 
+SN_START = re.compile(r'SN[^A-Z0-9]*((?:18|19|20)\d\d)([A-Z]{1,3}(?![A-Z]))?', re.I)
+
+
+def sn_target(target):
+    """The target is a supernova: its name starts with SN and a year (SN2022XXF, SN-2023IXF, SN1987A).
+    Such datasets are always posted, also UV only and without other named objects in the field."""
+    return SN_START.match(str(target).strip()) is not None
+
+
+def sn_name(target):
+    """Supernova target names (SN2022XXF, SN-2023IXF-1, sn1987a) -> SIMBAD's spelling (SN 2022xxf, SN 1987A),
+    None for other targets or without the letters after the year."""
+    m = SN_START.match(str(target).strip())
+    if not m or not m.group(2):
+        return None
+    letters = m.group(2)
+    return f'SN {m.group(1)}{letters.upper() if len(letters) == 1 else letters.lower()}'
+
+
 def resolve_target(target):
     """The SIMBAD object named like the HST target name, if it has a named-catalog identifier:
     dict oid, label, ra, dec, or None. NGC-5905 -> NGC 5905, ABELL-S1063 -> ACO S 1063. When the full name is
@@ -140,7 +159,7 @@ def resolve_target(target):
         return simbad(f"SELECT TOP 1 b.oid, b.ra, b.dec FROM ident AS i JOIN basic AS b ON i.oidref = b.oid WHERE {where}")
     try:
         df = lookup([target.replace('-', ' '), target, target.replace('-', '')])
-        base = catalog_start(target)
+        base = catalog_start(target) or sn_name(target)
         if not len(df) and base and norm(base) != norm(target):
             df = lookup([base])
             if len(df):
@@ -417,6 +436,7 @@ def process(group, do_post=False, log=None, out_dir=OUT):
     """Decide, make the image and (optionally) post one group. -> log row (dict)."""
     target = group['target_name'].iloc[0]
     moving = bool(group['moving'].iloc[0])
+    sn = sn_target(target)  # supernovae are always posted
     row = {'target_name': target, 'release': group['t_obs_release'].max(), 'files': ';'.join(group['file']),
            'filters': '', 'labels': '', 'posted': ''}
     red, green, blue, filters = choose_rgb(group)
@@ -426,7 +446,7 @@ def process(group, do_post=False, log=None, out_dir=OUT):
         row['posted'] = 'skip: already posted'
         print(f'{tag}: already posted')
         return row
-    if not moving and group[group['filt'].isin(filters)]['wave'].max() < MIN_WAVE:
+    if not moving and not sn and group[group['filt'].isin(filters)]['wave'].max() < MIN_WAVE:
         row['posted'] = 'skip: UV only'
         print(f'{tag}: UV only')
         return row
@@ -436,7 +456,7 @@ def process(group, do_post=False, log=None, out_dir=OUT):
         ra, dec = group['s_ra'].mean(), group['s_dec'].mean()
         rad = max(_sep(ra, dec, group['s_ra'], group['s_dec']).max() + group['s_rad'].max(), 0.01)
         objects = named_objects(ra, dec, rad)
-        if not len(objects) and target_obj is None:
+        if not len(objects) and target_obj is None and not sn:
             row['posted'] = 'skip: no named objects'
             print(f'{tag}: no named objects')
             return row
@@ -449,10 +469,14 @@ def process(group, do_post=False, log=None, out_dir=OUT):
     labels = pd.DataFrame(columns=['oid', 'label', 'rank', 'x', 'y'])
     if not moving:
         ra, dec, rad = cl.footprint(ref)
-        labels = select_labels(frame_labels(ref, named_objects(ra, dec, rad)), target_obj)
+        objs = named_objects(ra, dec, rad)
+        if sn and target_obj is not None and not (objs['oid'] == target_obj['oid']).any():  # label the supernova itself
+            objs = pd.concat([objs, pd.DataFrame([{**target_obj, 'rank': catalog_rank(target_obj['label']), 'otype': 'SN*',
+                                                   'ids': {norm(target_obj['label'])}}])], ignore_index=True)
+        labels = select_labels(frame_labels(ref, objs), target_obj)
         if target_obj is not None:  # the target's own name (NGC 34), not another id of it (NGC 17)
             labels.loc[labels['oid'] == target_obj['oid'], 'label'] = target_obj['label']
-        if not len(labels) and target_obj is None:
+        if not len(labels) and target_obj is None and not sn:
             row['posted'] = 'skip: no named objects in frame'
             print(f'{tag}: no named objects in frame')
             return row
