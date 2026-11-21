@@ -121,3 +121,6 @@ CLUTCH-TARGET-JX,2026-11-21 08:28:55.000,jfq8jx020_drc.fits;jfq8jx010_drc.fits,f
 CLUTCH-TARGET-JX,2026-11-21 05:07:11.000,ifq8jx040_drc.fits;ifq8jx030_drz.fits,f098m;f275w,,skip: no named objects
 CLUTCH-TARGET-KD,2026-11-21 05:34:17.000,jfq8kd010_drc.fits,f606w,,skip: no named objects
 CLUTCH-TARGET-KB,2026-11-21 03:23:48.000,jfq8kb020_drc.fits;jfq8kb010_drc.fits,f606w;f435w,,skip: no named objects
+GAIADR3-2205542917130608512,2026-11-21 15:55:54.000,jfof05030_drz.fits;jfof05010_drz.fits;jfof05040_drz.fits;jfof05050_drz.fits;jfof05020_drz.fits,f165lp;f140lp;f115lp,,skip: UV only
+ANY,2026-11-21 15:27:50.000,jfoq14020_drc.fits,f606w,,skip: no named objects
+NGC4302-N,2026-11-21 13:38:09.000,ifoq14060_drc.fits;ifoq14070_drc.fits;ifoq14040_drc.fits;ifoq14030_drc.fits;ifoq14050_drc.fits,f814w;f555w;f275w,,skip: no named objects
