@@ -124,3 +124,6 @@ ANY,2026-11-21 15:27:50.000,jfoq14020_drc.fits,f606w,,skip: no named objects
 NGC4302-N,2026-11-21 13:38:09.000,ifoq14060_drc.fits;ifoq14070_drc.fits;ifoq14040_drc.fits;ifoq14030_drc.fits;ifoq14050_drc.fits,f814w;f555w;f275w,NGC 4302,https://bsky.app/profile/astrobothst.bsky.social/post/3n2tvtybpon2p
 SN2022XXF,2026-11-21 05:01:33.000,ifou05020_drc.fits;ifou05010_drc.fits,f275w;f225w,SN 2022xxf;NGC 3705,https://bsky.app/profile/astrobothst.bsky.social/post/3n2tyw5s3wr2p
 ANY,2026-11-21 19:12:56.000,jfoq14010_drc.fits;jfoq14020_drc.fits,f814w;f606w,,skip: no named objects
+PHOENIX-II,2026-11-22 11:25:31.000,jfnr03010_drc.fits,f814w,,skip: no named objects
+LEDA-166192,2026-11-22 09:34:45.000,jfob1l020_drc.fits;jfob1l010_drc.fits,f814w;f606w,LEDA 166192,https://bsky.app/profile/astrobothst.bsky.social/post/3n2wb67yd6w2t
+ANY,2026-11-22 09:10:16.000,ifnr03020_drc.fits,f814w,,skip: no named objects
