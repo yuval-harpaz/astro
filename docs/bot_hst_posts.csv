@@ -127,3 +127,5 @@ ANY,2026-11-21 19:12:56.000,jfoq14010_drc.fits;jfoq14020_drc.fits,f814w;f606w,,s
 PHOENIX-II,2026-11-22 11:25:31.000,jfnr03010_drc.fits,f814w,,skip: no named objects
 LEDA-166192,2026-11-22 09:34:45.000,jfob1l020_drc.fits;jfob1l010_drc.fits,f814w;f606w,LEDA 166192,https://bsky.app/profile/astrobothst.bsky.social/post/3n2wb67yd6w2t
 ANY,2026-11-22 09:10:16.000,ifnr03020_drc.fits,f814w,,skip: no named objects
+CLUTCH-TARGET-KO,2026-11-22 18:17:52.000,jfq8ko010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-KO,2026-11-22 18:03:26.000,ifq8ko040_drc.fits;ifq8ko030_drz.fits,f098m;f275w,,skip: no named objects
