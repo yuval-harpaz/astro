@@ -145,3 +145,8 @@ CLUTCH-TARGET-KN,2026-11-22 21:24:26.000,ifq8kn040_drc.fits;ifq8kn030_drz.fits,f
 CLUTCH-TARGET-KO,2026-11-22 21:37:41.000,jfq8ko020_drc.fits;jfq8ko010_drc.fits,f606w;f435w,,skip: no named objects
 CLUTCH-TARGET-KM,2026-11-22 21:31:59.000,jfq8km020_drc.fits;jfq8km010_drc.fits,f606w;f435w,,skip: no named objects
 CLUTCH-TARGET-KM,2026-11-22 19:45:30.000,ifq8km040_drc.fits;ifq8km030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KZ,2026-11-24 03:11:10.000,jfq8kz020_drc.fits;jfq8kz010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-KZ,2026-11-24 00:44:06.000,ifq8kz040_drc.fits;ifq8kz030_drz.fits,f098m;f275w,LEDA 1209479,https://bsky.app/profile/astrobothst.bsky.social/post/3n32o5us6qe22
+CLUTCH-TARGET-LD,2026-11-24 00:48:05.000,jfq8ld020_drc.fits;jfq8ld010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LD,2026-11-23 22:56:31.000,ifq8ld040_drc.fits;ifq8ld030_drz.fits,f098m;f275w,,skip: no named objects
+G191B2B,2026-11-24 00:08:26.000,ifyp05fdq_drz.fits;ifyp05f8q_drz.fits;ifyp05fcq_drz.fits;ifvo150c0_drc.fits;ifvo15070_drc.fits;ifvo15050_drc.fits;ifvo15010_drc.fits;ifvo150e0_drc.fits;ifvo15060_drc.fits;ifvo150b0_drc.fits;ifvo15090_drc.fits;ifvo15030_drc.fits;ifvo150a0_drc.fits;ifvo15080_drc.fits;ifvo150f0_drc.fits;ifvo150d0_drc.fits;ifvo15020_drc.fits;ifvo15040_drc.fits;ifyp05f3q_drz.fits;ifyp05f5q_drz.fits;ifyp05ezq_drz.fits,f140w;f814w;f218w,,skip: no named objects
