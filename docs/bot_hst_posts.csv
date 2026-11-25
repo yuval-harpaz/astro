@@ -166,3 +166,10 @@ SDSSJ080327.38+084152.2,2026-11-24 18:51:49.000,ifya20010_drc.fits;ifya20ikq_drc
 NGC3521-N,2026-11-24 18:21:03.000,ifabr7hmq_drc.fits;ifabr7hpq_drc.fits;ifabr7hkq_drc.fits;ifabr7hiq_drc.fits;ifabr7htq_drc.fits,f814w;f555w;f275w,NGC 3521,https://bsky.app/profile/astrobothst.bsky.social/post/3n34kuxnyyv2g
 J2229+2725,2026-11-25 08:33:06.000,ifg134030_drc.fits;ifg134020_drc.fits;ifg134010_drc.fits,f814w;f438w;f336w,,skip: no named objects
 CLUTCH-TARGET-KK,2026-11-25 04:38:45.000,jfq8kk020_drc.fits;jfq8kk010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LH,2026-11-25 16:45:20.000,jfq8lh010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-LH,2026-11-25 16:21:59.000,ifq8lh040_drc.fits,f275w,,skip: UV only
+CLUTCH-TARGET-LG,2026-11-25 15:00:39.000,jfq8lg010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-LG,2026-11-25 14:07:56.000,ifq8lg030_drz.fits,f098m,,skip: no named objects
+CLUTCH-TARGET-LF,2026-11-25 14:02:13.000,ifq8lf040_drc.fits;ifq8lf030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LE,2026-11-25 13:59:48.000,ifq8le040_drc.fits;ifq8le030_drz.fits,f098m;f275w,,skip: no named objects
+ANY,2026-11-25 13:53:25.000,jfoq51r2q_drc.fits,f606w,,skip: no named objects
