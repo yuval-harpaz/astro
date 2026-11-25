@@ -311,6 +311,7 @@
         </div>
         <div class="row">
           <span class="seg" title="Show all cards of the list, or only the selected ones (checked R, G or B)"><button id="show-all" class="on">All</button><button id="show-sel">Selected</button></span>
+          <span class="seg" title="Order of the images: newest release first, or by frequency (long to short wavelength, red to blue). In the weekly and search lists the images stay grouped by object."><button id="sort-date">by date</button><button id="sort-freq">by freq</button></span>
           <span id="auto-opts" title="What Auto RGB chooses from in the weekly list. By default only the target's images released this week (any checked instrument).">
             <span>Auto RGB +</span>
             <label title="Also the target's images released before this week"><input type="checkbox" id="auto-prev"> previous</label>
@@ -326,7 +327,7 @@
           <label title="Radius (arcmin) for position searches and Show nearby, from the edge of each image" style="white-space:nowrap;font-size:12px;color:#aaa">r <input type="number" id="radius" value="3" min="0.1" step="any" style="width:46px">′</label>
           <button id="search-btn">Search</button>
         </div>
-        <div id="near-bar"><span id="near-label"></span><span class="seg" title="Order of the nearby list: newest release first, or by frequency (long to short wavelength, red to blue)"><button id="sort-date">Release date</button><button id="sort-freq">Frequency</button></span><button class="ghost" id="near-exit" title="Back to the previous list">✕ Exit</button></div>
+        <div id="near-bar"><span id="near-label"></span><button class="ghost" id="near-exit" title="Back to the previous list">✕ Exit</button></div>
       </div>
       <div id="cards">Loading…</div>
     </div>
@@ -383,8 +384,8 @@ Chrome / Edge: choose a folder once and the files are written there directly. Ot
           <div id="intro">
             <h2>How to make a color image</h2>
             <ol>
-              <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). Once you choose the first image, the list switches to images of the same sky area from all telescopes, instruments and target names, newest release first (<b>Frequency</b> sorts them from long to short wavelength instead; <b>✕ Exit</b> returns to the previous list; <b>r</b> sets the radius).
-                Each object's images are sorted from long to short wavelength. <b>Selected</b> (next to <b>All</b>) shows only the checked images.</li>
+              <li>Choose <b>JWST</b> and / or <b>HST</b> at the top left, or single instruments (e.g. only MIRI). Find an object in the list: browse by week with <b>◀ 7 days</b>, or search by target, title, filter or position (RA, Dec; names not in the list are looked up in SIMBAD). Once you choose the first image, the list switches to images of the same sky area from all telescopes, instruments and target names, newest release first or by frequency as chosen (<b>✕ Exit</b> returns to the previous list; <b>r</b> sets the radius).
+                Each object's images are sorted by release date, newest first (<b>by freq</b>: from long to short wavelength). <b>Selected</b> (next to <b>All</b>) shows only the checked images.</li>
               <li>Check <b class="r">R</b> for the long wavelength image(s), <b class="g">G</b> for the middle and <b class="b">B</b> for the short ones.
                 One or more per color; without G, green is the average of R and B. <b>Auto RGB</b> next to an object name chooses for you: the reddest image as R, the bluest as B and the middle one as G, from images of the same pointing. In a list of images near a position, <b>Select all</b> checks every image, split into thirds by wavelength.</li>
               <li>Press <b>Compose</b>. The first time takes 10–30 s per image: only the science layer is downloaded and reduced to the chosen size.</li>
@@ -1859,17 +1860,17 @@ if __name__ == '__main__':
         $('next-btn').disabled = Date.now() - currentEndDate.getTime() < 36e5;
       }
       rows = rows.filter(it => it.jpegURL);
-      // group by object (newest release first), within an object long -> short wavelength (red -> blue)
+      // group by object (newest release first), within an object newest release first (by date) or long -> short wavelength (by freq)
       const gkey = (it) => it.tel + '|' + it.target_name;
       const newest = {}, count = {};
       const near = isSearchMode && searchPos;  // groups nearest first, else newest release first
       for (const it of rows) { const k = gkey(it); newest[k] = Math.max(newest[k] ?? -Infinity, near ? -it._sep : parseUTC(it.t_obs_release).getTime()); count[k] = (count[k] || 0) + 1; }
+      const rel = (it) => parseUTC(it.t_obs_release).getTime();
       rows.sort((a, b) => (newest[gkey(b)] - newest[gkey(a)]) || gkey(a).localeCompare(gkey(b))
-        || (b.wave - a.wave) || fileOf(a).localeCompare(fileOf(b)));
+        || (nearSort === 'date' && rel(b) - rel(a)) || (b.wave - a.wave) || fileOf(a).localeCompare(fileOf(b)));
       if (!rows.length) { container.textContent = telOn('JWST') || telOn('HST') ? 'No images found.' : 'Check JWST and/or HST above.'; return; }
       if (near) {  // one sky area: a single list across telescopes and target names (the 300 nearest), newest release first or long -> short wavelength
         const total = rows.length;
-        const rel = (it) => parseUTC(it.t_obs_release).getTime();
         rows = [...rows].sort((a, b) => a._sep - b._sep).slice(0, 300).sort(nearSort === 'date'
           ? (a, b) => (rel(b) - rel(a)) || (b.wave - a.wave) || (a._sep - b._sep)
           : (a, b) => (b.wave - a.wave) || (a._sep - b._sep));
@@ -1905,7 +1906,7 @@ if __name__ == '__main__':
     });
     $('search-input').addEventListener('input', () => { if (!$('search-input').value.trim() && isSearchMode) { isSearchMode = false; searchPos = null; beforeNear = null; updateView(); } });
     $('radius').onchange = () => { if (isSearchMode && searchPos) updateView(); };
-    // nearby list order: release date (newest first) or frequency (long -> short wavelength); remembered between visits
+    // list order: release date (newest first) or frequency (long -> short wavelength); remembered between visits
     let nearSort = (() => { try { return localStorage.getItem('colorlab-near-sort'); } catch (e) { } })() === 'freq' ? 'freq' : 'date';
     const setNearSort = (v) => {
       nearSort = v; try { localStorage.setItem('colorlab-near-sort', v); } catch (e) { }
