@@ -164,3 +164,5 @@ CETUS-L,2026-11-25 01:50:15.000,ifns03010_drc.fits;ifns03020_drc.fits,f814w;f606
 ATHENA,2026-11-24 19:19:18.000,ifu906020_drc.fits;ifu906010_drz.fits,f105w;f814w,LEDA 960232,https://bsky.app/profile/astrobothst.bsky.social/post/3n34ktqtuvd2h
 SDSSJ080327.38+084152.2,2026-11-24 18:51:49.000,ifya20010_drc.fits;ifya20ikq_drc.fits,f225w,,skip: UV only
 NGC3521-N,2026-11-24 18:21:03.000,ifabr7hmq_drc.fits;ifabr7hpq_drc.fits;ifabr7hkq_drc.fits;ifabr7hiq_drc.fits;ifabr7htq_drc.fits,f814w;f555w;f275w,NGC 3521,https://bsky.app/profile/astrobothst.bsky.social/post/3n34kuxnyyv2g
+J2229+2725,2026-11-25 08:33:06.000,ifg134030_drc.fits;ifg134020_drc.fits;ifg134010_drc.fits,f814w;f438w;f336w,,skip: no named objects
+CLUTCH-TARGET-KK,2026-11-25 04:38:45.000,jfq8kk020_drc.fits;jfq8kk010_drc.fits,f606w;f435w,,skip: no named objects
