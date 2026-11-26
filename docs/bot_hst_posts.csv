@@ -173,3 +173,9 @@ CLUTCH-TARGET-LG,2026-11-25 14:07:56.000,ifq8lg030_drz.fits,f098m,,skip: no name
 CLUTCH-TARGET-LF,2026-11-25 14:02:13.000,ifq8lf040_drc.fits;ifq8lf030_drz.fits,f098m;f275w,,skip: no named objects
 CLUTCH-TARGET-LE,2026-11-25 13:59:48.000,ifq8le040_drc.fits;ifq8le030_drz.fits,f098m;f275w,,skip: no named objects
 ANY,2026-11-25 13:53:25.000,jfoq51r2q_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-LJ,2026-11-25 18:21:58.000,jfq8lj010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-LG,2026-11-25 14:45:59.000,ifq8lg040_drc.fits;ifq8lg030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LE,2026-11-25 14:36:33.000,jfq8le010_drc.fits,f606w,,skip: no named objects
+NGC4302-N,2026-11-25 14:27:44.000,ifoq51020_drc.fits,f658n,NGC 4302,https://bsky.app/profile/astrobothst.bsky.social/post/3n36heln2462b
+CLUTCH-TARGET-LF,2026-11-25 14:13:32.000,jfq8lf010_drc.fits,f606w,,skip: no named objects
+ANY,2026-11-25 14:12:25.000,jfoq51010_drc.fits;jfoq51r2q_drc.fits,f814w;f606w,,skip: no named objects
