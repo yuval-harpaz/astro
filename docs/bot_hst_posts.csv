@@ -211,3 +211,8 @@ CLUTCH-TARGET-LH,2026-11-25 16:21:59.000,ifq8lh040_drc.fits;ifq8lh030_drz.fits,f
 CLUTCH-TARGET-LF,2026-11-25 16:56:29.000,jfq8lf020_drc.fits;jfq8lf010_drc.fits,f606w;f435w,,skip: no named objects
 CLUTCH-TARGET-LG,2026-11-25 16:27:45.000,jfq8lg020_drc.fits;jfq8lg010_drc.fits,f606w;f435w,,skip: no named objects
 CLUTCH-TARGET-LE,2026-11-25 16:26:23.000,jfq8le020_drc.fits;jfq8le010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-KS,2026-11-27 03:58:18.000,jfq8ks020_drc.fits;jfq8ks010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-KS,2026-11-26 21:17:11.000,ifq8ks040_drc.fits;ifq8ks030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KT,2026-11-27 01:19:26.000,jfq8kt010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-KT,2026-11-27 00:02:25.000,ifq8kt030_drz.fits,f098m,,skip: no named objects
+CLUTCH-TARGET-LQ,2026-11-26 21:23:24.000,jfq8lq020_drc.fits;jfq8lq010_drc.fits,f606w;f435w,,skip: no named objects
