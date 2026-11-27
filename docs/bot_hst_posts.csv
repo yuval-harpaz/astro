@@ -179,3 +179,35 @@ CLUTCH-TARGET-LE,2026-11-25 14:36:33.000,jfq8le010_drc.fits,f606w,,skip: no name
 NGC4302-N,2026-11-25 14:27:44.000,ifoq51020_drc.fits,f658n,NGC 4302,https://bsky.app/profile/astrobothst.bsky.social/post/3n36heln2462b
 CLUTCH-TARGET-LF,2026-11-25 14:13:32.000,jfq8lf010_drc.fits,f606w,,skip: no named objects
 ANY,2026-11-25 14:12:25.000,jfoq51010_drc.fits;jfoq51r2q_drc.fits,f814w;f606w,,skip: no named objects
+CLUTCH-TARGET-KS,2026-11-26 20:41:59.000,ifq8ks030_drz.fits,f098m,,skip: no named objects
+CLUTCH-TARGET-LQ,2026-11-26 19:39:48.000,ifq8lq040_drc.fits;ifq8lq030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LQ,2026-11-26 18:50:54.000,jfq8lq010_drc.fits,f606w,,skip: no named objects
+SDSSJ151521.25+022123.89,2026-11-26 18:30:55.000,ifpk0u010_drc.fits;ifpk0u020_drc.fits,f689m;f621m,,skip: no named objects
+GAIADR3-1999875247073083648,2026-11-26 18:15:47.000,jfof02020_drz.fits;jfof02010_drz.fits;jfof02050_drz.fits;jfof02030_drz.fits;jfof02040_drz.fits,f165lp;f140lp;f115lp,,skip: UV only
+CLUTCH-TARGET-LP,2026-11-26 18:03:30.000,jfq8lp020_drc.fits;jfq8lp010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LP,2026-11-26 16:14:15.000,ifq8lp040_drc.fits;ifq8lp030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LO,2026-11-26 17:37:54.000,jfq8lo020_drc.fits;jfq8lo010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LO,2026-11-26 15:50:09.000,ifq8lo040_drc.fits;ifq8lo030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LN,2026-11-26 16:10:12.000,jfq8ln020_drc.fits;jfq8ln010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LN,2026-11-26 13:16:10.000,ifq8ln040_drc.fits;ifq8ln030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LM,2026-11-26 14:56:37.000,jfq8lm020_drc.fits;jfq8lm010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LM,2026-11-26 13:07:28.000,ifq8lm040_drc.fits;ifq8lm030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KR,2026-11-26 06:31:55.000,ifq8kr040_drc.fits;ifq8kr030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KR,2026-11-26 04:33:52.000,jfq8kr010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-KQ,2026-11-26 05:34:13.000,jfq8kq020_drc.fits;jfq8kq010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-KQ,2026-11-26 03:46:14.000,ifq8kq040_drc.fits;ifq8kq030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KP,2026-11-26 02:09:31.000,ifq8kp040_drc.fits;ifq8kp030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KP,2026-11-26 02:08:31.000,jfq8kp010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-LK,2026-11-26 01:33:31.000,jfq8lk020_drc.fits;jfq8lk010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LK,2026-11-25 22:01:31.000,ifq8lk040_drc.fits;ifq8lk030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LL,2026-11-26 00:36:49.000,ifq8ll040_drc.fits;ifq8ll030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LL,2026-11-25 23:25:53.000,jfq8ll010_drc.fits,f606w,,skip: no named objects
+CLUTCH-TARGET-LJ,2026-11-25 22:06:15.000,jfq8lj020_drc.fits;jfq8lj010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LJ,2026-11-25 20:28:29.000,ifq8lj040_drc.fits;ifq8lj030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LI,2026-11-25 19:32:03.000,jfq8li020_drc.fits;jfq8li010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LI,2026-11-25 17:38:03.000,ifq8li040_drc.fits;ifq8li030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LH,2026-11-25 18:11:49.000,jfq8lh020_drc.fits;jfq8lh010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LH,2026-11-25 16:21:59.000,ifq8lh040_drc.fits;ifq8lh030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-LF,2026-11-25 16:56:29.000,jfq8lf020_drc.fits;jfq8lf010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LG,2026-11-25 16:27:45.000,jfq8lg020_drc.fits;jfq8lg010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LE,2026-11-25 16:26:23.000,jfq8le020_drc.fits;jfq8le010_drc.fits,f606w;f435w,,skip: no named objects
