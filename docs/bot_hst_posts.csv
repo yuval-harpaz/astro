@@ -216,3 +216,4 @@ CLUTCH-TARGET-KS,2026-11-26 21:17:11.000,ifq8ks040_drc.fits;ifq8ks030_drz.fits,f
 CLUTCH-TARGET-KT,2026-11-27 01:19:26.000,jfq8kt010_drc.fits,f606w,,skip: no named objects
 CLUTCH-TARGET-KT,2026-11-27 00:02:25.000,ifq8kt030_drz.fits,f098m,,skip: no named objects
 CLUTCH-TARGET-LQ,2026-11-26 21:23:24.000,jfq8lq020_drc.fits;jfq8lq010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-KT,2026-11-27 03:19:12.000,ifq8kt040_drc.fits;ifq8kt030_drz.fits,f098m;f275w,,skip: no named objects
