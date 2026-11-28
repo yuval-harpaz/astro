@@ -217,3 +217,12 @@ CLUTCH-TARGET-KT,2026-11-27 01:19:26.000,jfq8kt010_drc.fits,f606w,,skip: no name
 CLUTCH-TARGET-KT,2026-11-27 00:02:25.000,ifq8kt030_drz.fits,f098m,,skip: no named objects
 CLUTCH-TARGET-LQ,2026-11-26 21:23:24.000,jfq8lq020_drc.fits;jfq8lq010_drc.fits,f606w;f435w,,skip: no named objects
 CLUTCH-TARGET-KT,2026-11-27 03:19:12.000,ifq8kt040_drc.fits;ifq8kt030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KV,2026-11-28 02:55:29.000,ifq8kv040_drc.fits;ifq8kv030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KU,2026-11-28 00:09:37.000,jfq8ku020_drc.fits;jfq8ku010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-KU,2026-11-27 20:50:34.000,ifq8ku040_drc.fits;ifq8ku030_drz.fits,f098m;f275w,,skip: no named objects
+CLUTCH-TARGET-KR,2026-11-27 21:33:28.000,jfq8kr020_drc.fits;jfq8kr010_drc.fits,f606w;f435w,,skip: no named objects
+SN2021IRP,2026-11-27 16:52:22.000,ifou15020_drc.fits;ifou15010_drc.fits,f275w;f225w,SN 2021irp,https://bsky.app/profile/astrobothst.bsky.social/post/3n3e3zavfrl2i
+CLUTCH-TARGET-LR,2026-11-27 15:50:56.000,jfq8lr020_drc.fits;jfq8lr010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LR,2026-11-27 14:02:45.000,ifq8lr040_drc.fits;ifq8lr030_drz.fits,f098m;f275w,,skip: no named objects
+SPT2349,2026-11-27 13:11:50.000,jfe914010_drc.fits,f814w,,skip: no named objects
+CLUTCH-TARGET-KT,2026-11-27 05:02:34.000,jfq8kt020_drc.fits;jfq8kt010_drc.fits,f606w;f435w,,skip: no named objects
