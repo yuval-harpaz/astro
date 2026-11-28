@@ -226,3 +226,6 @@ CLUTCH-TARGET-LR,2026-11-27 15:50:56.000,jfq8lr020_drc.fits;jfq8lr010_drc.fits,f
 CLUTCH-TARGET-LR,2026-11-27 14:02:45.000,ifq8lr040_drc.fits;ifq8lr030_drz.fits,f098m;f275w,,skip: no named objects
 SPT2349,2026-11-27 13:11:50.000,jfe914010_drc.fits,f814w,,skip: no named objects
 CLUTCH-TARGET-KT,2026-11-27 05:02:34.000,jfq8kt020_drc.fits;jfq8kt010_drc.fits,f606w;f435w,,skip: no named objects
+CLUTCH-TARGET-LS,2026-11-28 12:16:53.000,ifq8ls030_drz.fits,f098m,,skip: no named objects
+47TUC,2026-11-28 10:42:48.000,iffz41010_drc.fits;iffz46010_drc.fits,f300x,,skip: UV only
+CLUTCH-TARGET-KV,2026-11-28 03:54:00.000,jfq8kv010_drc.fits,f606w,,skip: no named objects
